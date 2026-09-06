@@ -1,6 +1,7 @@
 package com.voltgrid.station.application;
 
 import com.voltgrid.station.domain.ChargingStation;
+import com.voltgrid.station.domain.StationStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,6 +27,7 @@ class StationQueryServiceTests {
 
         assertEquals("STATION-001", station.id());
         assertEquals("Colombo Central", station.name());
+        assertEquals(StationStatus.ONLINE, station.status());
     }
 
     @Test

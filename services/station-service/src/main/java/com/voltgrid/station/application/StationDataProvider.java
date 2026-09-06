@@ -1,6 +1,7 @@
 package com.voltgrid.station.application;
 
 import com.voltgrid.station.domain.ChargingStation;
+import com.voltgrid.station.domain.StationStatus;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -11,10 +12,10 @@ public class StationDataProvider implements StationReader {
 
     private final Map<String, ChargingStation> stations = Map.of(
             "STATION-001",
-            new ChargingStation("STATION-001", "Colombo Central"),
+            new ChargingStation("STATION-001", "Colombo Central", StationStatus.ONLINE),
 
             "STATION-002",
-            new ChargingStation("STATION-002", "Kandy Central")
+            new ChargingStation("STATION-002", "Kandy Central", StationStatus.OFFLINE)
     );
 
     @Override
