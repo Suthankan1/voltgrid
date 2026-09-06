@@ -6,10 +6,13 @@ import org.springframework.stereotype.Service;
 @Service
 public class StationQueryService {
 
+    private final StationDataProvider stationDataProvider;
+
+    public StationQueryService(StationDataProvider stationDataProvider) {
+        this.stationDataProvider = stationDataProvider;
+    }
+
     public ChargingStation getSampleStation() {
-        return new ChargingStation(
-                "STATION-001",
-                "Colombo Central"
-        );
+        return stationDataProvider.getSampleStation();
     }
 }
