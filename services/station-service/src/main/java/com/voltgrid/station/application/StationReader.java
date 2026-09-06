@@ -4,5 +4,5 @@ import com.voltgrid.station.domain.ChargingStation;
 
 public interface StationReader {
 
-    ChargingStation getSampleStation();
+    ChargingStation findById(String id);
 }

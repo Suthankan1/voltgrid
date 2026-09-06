@@ -12,7 +12,7 @@ public class StationQueryService {
         this.stationReader = stationReader;
     }
 
-    public ChargingStation getSampleStation() {
-        return stationReader.getSampleStation();
+    public ChargingStation findById(String id) {
+        return stationReader.findById(id);
     }
 }

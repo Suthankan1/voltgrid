@@ -5,8 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 class StationQueryServiceTests {
@@ -15,13 +14,20 @@ class StationQueryServiceTests {
     private StationQueryService stationQueryService;
 
     @Test
-    void shouldProvideSampleStation() {
-        assertNotNull(stationQueryService);
-
+    void shouldFindStationById() {
         ChargingStation station =
-                stationQueryService.getSampleStation();
+                stationQueryService.findById("STATION-001");
 
+        assertNotNull(station);
         assertEquals("STATION-001", station.id());
         assertEquals("Colombo Central", station.name());
+    }
+
+    @Test
+    void shouldReturnNullWhenStationDoesNotExist() {
+        ChargingStation station =
+                stationQueryService.findById("UNKNOWN");
+
+        assertNull(station);
     }
 }
