@@ -3,6 +3,8 @@ package com.voltgrid.station.application;
 import com.voltgrid.station.domain.ChargingStation;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Service
 public class StationQueryService {
 
@@ -12,7 +14,7 @@ public class StationQueryService {
         this.stationReader = stationReader;
     }
 
-    public ChargingStation findById(String id) {
+    public Optional<ChargingStation> findById(String id) {
         return stationReader.findById(id);
     }
 }

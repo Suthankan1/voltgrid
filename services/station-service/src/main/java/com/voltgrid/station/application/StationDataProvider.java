@@ -4,6 +4,7 @@ import com.voltgrid.station.domain.ChargingStation;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.Optional;
 
 @Component
 public class StationDataProvider implements StationReader {
@@ -17,7 +18,7 @@ public class StationDataProvider implements StationReader {
     );
 
     @Override
-    public ChargingStation findById(String id) {
-        return stations.get(id);
+    public Optional<ChargingStation> findById(String id) {
+        return Optional.ofNullable(stations.get(id));
     }
 }
