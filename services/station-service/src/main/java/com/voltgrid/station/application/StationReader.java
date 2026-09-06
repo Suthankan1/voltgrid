@@ -2,9 +2,12 @@ package com.voltgrid.station.application;
 
 import com.voltgrid.station.domain.ChargingStation;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface StationReader {
 
     Optional<ChargingStation> findById(String id);
+
+    List<ChargingStation> findAll();
 }

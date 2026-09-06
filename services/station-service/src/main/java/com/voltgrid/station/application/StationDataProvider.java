@@ -4,6 +4,7 @@ import com.voltgrid.station.domain.ChargingStation;
 import com.voltgrid.station.domain.StationStatus;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -21,5 +22,10 @@ public class StationDataProvider implements StationReader {
     @Override
     public Optional<ChargingStation> findById(String id) {
         return Optional.ofNullable(stations.get(id));
+    }
+
+    @Override
+    public List<ChargingStation> findAll() {
+        return List.copyOf(stations.values());
     }
 }
