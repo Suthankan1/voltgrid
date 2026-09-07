@@ -1,5 +1,6 @@
 package com.voltgrid.station.api.graphql;
 
+import com.voltgrid.station.application.StationAlreadyExistsException;
 import com.voltgrid.station.application.StationQueryService;
 import com.voltgrid.station.application.StationRegistrationService;
 import com.voltgrid.station.domain.ChargingStation;
@@ -7,6 +8,7 @@ import com.voltgrid.station.domain.StationStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.graphql.test.autoconfigure.GraphQlTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.graphql.test.tester.GraphQlTester;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
@@ -16,6 +18,7 @@ import java.util.Optional;
 import static org.mockito.Mockito.when;
 
 @GraphQlTest(StationGraphQlController.class)
+@Import(StationGraphQlExceptionHandler.class)
 class StationGraphQlControllerTests {
 
     @Autowired
@@ -124,5 +127,58 @@ class StationGraphQlControllerTests {
         response.path("registerStation.status")
                 .entity(String.class)
                 .isEqualTo("OFFLINE");
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenStationAlreadyExists() {
+        when(stationRegistrationService.register(
+                "STATION-001",
+                "Colombo Central"
+        )).thenThrow(
+                new StationAlreadyExistsException("STATION-001")
+        );
+
+        graphQlTester.document("""
+            mutation {
+                registerStation(
+                    input: {
+                        id: "STATION-001"
+                        name: "Colombo Central"
+                    }
+                ) {
+                    id
+                }
+            }
+            """)
+                .execute()
+                .errors()
+                .expect(error ->
+                        error.getMessage()
+                                .equals("Station already exists: STATION-001")
+                )
+                .verify();
+    }
+
+    @Test
+    void shouldRejectBlankStationName() {
+        graphQlTester.document("""
+            mutation {
+                registerStation(
+                    input: {
+                        id: "STATION-004"
+                        name: ""
+                    }
+                ) {
+                    id
+                }
+            }
+            """)
+                .execute()
+                .errors()
+                .expect(error ->
+                        error.getMessage()
+                                .contains("station name must not be blank")
+                )
+                .verify();
     }
 }

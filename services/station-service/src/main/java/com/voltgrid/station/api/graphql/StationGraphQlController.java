@@ -3,6 +3,7 @@ package com.voltgrid.station.api.graphql;
 import com.voltgrid.station.application.StationQueryService;
 import com.voltgrid.station.application.StationRegistrationService;
 import com.voltgrid.station.domain.ChargingStation;
+import jakarta.validation.Valid;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
@@ -37,7 +38,7 @@ public class StationGraphQlController {
 
     @MutationMapping
     public ChargingStation registerStation(
-            @Argument RegisterStationInput input
+            @Argument @Valid RegisterStationInput input
     ) {
         return stationRegistrationService.register(
                 input.id(),
