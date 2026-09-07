@@ -46,7 +46,10 @@ public class OcppMessageProcessor {
                         );
 
                 case "Heartbeat" ->
-                        handleHeartbeat(messageId);
+                        handleHeartbeat(
+                                stationId,
+                                messageId
+                        );
 
                 default ->
                         callError(
@@ -82,13 +85,18 @@ public class OcppMessageProcessor {
             );
         }
 
-        connectivityService.markOnline(stationId);
+        var now = Instant.now();
+
+        connectivityService.markOnline(
+                stationId,
+                now
+        );
 
         var responsePayload = jsonMapper.createObjectNode();
 
         responsePayload.put(
                 "currentTime",
-                Instant.now().toString()
+                now.toString()
         );
 
         responsePayload.put(
@@ -110,12 +118,22 @@ public class OcppMessageProcessor {
         return jsonMapper.writeValueAsString(response);
     }
 
-    private String handleHeartbeat(String messageId) {
+    private String handleHeartbeat(
+            String stationId,
+            String messageId
+    ) {
+        var now = Instant.now();
+
+        connectivityService.recordHeartbeat(
+                stationId,
+                now
+        );
+
         var responsePayload = jsonMapper.createObjectNode();
 
         responsePayload.put(
                 "currentTime",
-                Instant.now().toString()
+                now.toString()
         );
 
         var response = jsonMapper.createArrayNode();

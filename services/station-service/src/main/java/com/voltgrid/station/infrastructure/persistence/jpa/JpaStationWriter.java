@@ -19,7 +19,8 @@ public class JpaStationWriter implements StationWriter {
                 new ChargingStationEntity(
                         station.id(),
                         station.name(),
-                        station.status()
+                        station.status(),
+                        station.lastSeenAt()
                 )
         );
     }

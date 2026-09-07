@@ -8,6 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.util.Optional;
 
 import static org.mockito.Mockito.verify;
@@ -33,7 +34,11 @@ class StationConnectivityServiceTests {
     }
 
     @Test
-    void shouldMarkStationOnline() {
+    void shouldMarkStationOnlineAndRecordLastSeen() {
+        var seenAt = Instant.parse(
+                "2026-09-07T15:30:00Z"
+        );
+
         when(stationReader.findById("STATION-003"))
                 .thenReturn(Optional.of(
                         new ChargingStation(
@@ -43,13 +48,47 @@ class StationConnectivityServiceTests {
                         )
                 ));
 
-        service.markOnline("STATION-003");
+        service.markOnline(
+                "STATION-003",
+                seenAt
+        );
 
         verify(stationWriter).save(
                 new ChargingStation(
                         "STATION-003",
                         "Galle Central",
-                        StationStatus.ONLINE
+                        StationStatus.ONLINE,
+                        seenAt
+                )
+        );
+    }
+
+    @Test
+    void shouldRecordHeartbeatWithoutChangingStatus() {
+        var seenAt = Instant.parse(
+                "2026-09-07T15:35:00Z"
+        );
+
+        when(stationReader.findById("STATION-003"))
+                .thenReturn(Optional.of(
+                        new ChargingStation(
+                                "STATION-003",
+                                "Galle Central",
+                                StationStatus.ONLINE
+                        )
+                ));
+
+        service.recordHeartbeat(
+                "STATION-003",
+                seenAt
+        );
+
+        verify(stationWriter).save(
+                new ChargingStation(
+                        "STATION-003",
+                        "Galle Central",
+                        StationStatus.ONLINE,
+                        seenAt
                 )
         );
     }

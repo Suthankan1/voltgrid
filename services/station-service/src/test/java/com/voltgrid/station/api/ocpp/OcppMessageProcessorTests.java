@@ -8,9 +8,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.time.Instant;
+
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.never;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class OcppMessageProcessorTests {
@@ -78,7 +82,10 @@ class OcppMessageProcessorTests {
         ).isNotBlank();
 
         verify(connectivityService)
-                .markOnline("STATION-003");
+                .markOnline(
+                        eq("STATION-003"),
+                        any(Instant.class)
+                );
     }
 
     @Test
@@ -109,10 +116,11 @@ class OcppMessageProcessorTests {
                         .stringValue()
         ).isNotBlank();
 
-        verify(
-                connectivityService,
-                never()
-        ).markOnline("STATION-003");
+        verify(connectivityService)
+                .recordHeartbeat(
+                        eq("STATION-003"),
+                        any(Instant.class)
+                );
     }
 
     @Test
@@ -145,10 +153,7 @@ class OcppMessageProcessorTests {
                         "Action not implemented: StatusNotification"
                 );
 
-        verify(
-                connectivityService,
-                never()
-        ).markOnline("STATION-003");
+        verifyNoInteractions(connectivityService);
     }
 
     @Test
@@ -186,9 +191,6 @@ class OcppMessageProcessorTests {
                         "Invalid BootNotification payload"
                 );
 
-        verify(
-                connectivityService,
-                never()
-        ).markOnline("STATION-003");
+        verifyNoInteractions(connectivityService);
     }
 }

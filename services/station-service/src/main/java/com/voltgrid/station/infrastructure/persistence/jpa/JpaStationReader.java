@@ -34,7 +34,8 @@ public class JpaStationReader implements StationReader {
         return new ChargingStation(
                 entity.getId(),
                 entity.getName(),
-                entity.getStatus()
+                entity.getStatus(),
+                entity.getLastSeenAt()
         );
     }
 }

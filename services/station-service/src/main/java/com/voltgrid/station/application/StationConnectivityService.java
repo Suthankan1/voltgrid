@@ -5,6 +5,8 @@ import com.voltgrid.station.domain.StationStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+
 @Service
 public class StationConnectivityService {
 
@@ -20,20 +22,45 @@ public class StationConnectivityService {
     }
 
     @Transactional
-    public void markOnline(String stationId) {
-        var station = stationReader.findById(stationId)
-                .orElseThrow(() ->
-                        new IllegalStateException(
-                                "Station not found: " + stationId
-                        )
-                );
+    public void markOnline(
+            String stationId,
+            Instant seenAt
+    ) {
+        var station = findStation(stationId);
 
         stationWriter.save(
                 new ChargingStation(
                         station.id(),
                         station.name(),
-                        StationStatus.ONLINE
+                        StationStatus.ONLINE,
+                        seenAt
                 )
         );
+    }
+
+    @Transactional
+    public void recordHeartbeat(
+            String stationId,
+            Instant seenAt
+    ) {
+        var station = findStation(stationId);
+
+        stationWriter.save(
+                new ChargingStation(
+                        station.id(),
+                        station.name(),
+                        station.status(),
+                        seenAt
+                )
+        );
+    }
+
+    private ChargingStation findStation(String stationId) {
+        return stationReader.findById(stationId)
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Station not found: " + stationId
+                        )
+                );
     }
 }
