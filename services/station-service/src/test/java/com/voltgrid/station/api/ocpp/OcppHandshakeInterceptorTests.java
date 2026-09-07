@@ -1,5 +1,6 @@
 package com.voltgrid.station.api.ocpp;
 
+import com.voltgrid.station.application.StationConnectivityService;
 import com.voltgrid.station.application.StationReader;
 import com.voltgrid.station.domain.ChargingStation;
 import com.voltgrid.station.domain.StationStatus;
@@ -13,6 +14,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.web.socket.WebSocketHandler;
+import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.WebSocketSession;
+
+import java.util.Map;
 
 import java.net.URI;
 import java.util.HashMap;
@@ -38,6 +43,9 @@ class OcppHandshakeInterceptorTests {
 
     @Mock
     private OcppMessageProcessor messageProcessor;
+
+    @Mock
+    private StationConnectivityService connectivityService;
 
     private OcppHandshakeInterceptor interceptor;
 
@@ -156,9 +164,38 @@ class OcppHandshakeInterceptorTests {
     @Test
     void shouldSupportOcpp201Subprotocol() {
         var websocketHandler =
-                new OcppWebSocketHandler(messageProcessor);
+                new OcppWebSocketHandler(
+                        messageProcessor,
+                        connectivityService
+                );
 
         assertThat(websocketHandler.getSubProtocols())
                 .containsExactly("ocpp2.0.1");
+    }
+
+    @Test
+    void shouldMarkStationOfflineWhenWebSocketCloses()
+            throws Exception {
+
+        var session = mock(WebSocketSession.class);
+
+        when(session.getAttributes())
+                .thenReturn(Map.of(
+                        OcppHandshakeInterceptor.STATION_ID_ATTRIBUTE,
+                        "STATION-003"
+                ));
+
+        var websocketHandler = new OcppWebSocketHandler(
+                messageProcessor,
+                connectivityService
+        );
+
+        websocketHandler.afterConnectionClosed(
+                session,
+                CloseStatus.NORMAL
+        );
+
+        verify(connectivityService)
+                .markOffline("STATION-003");
     }
 }

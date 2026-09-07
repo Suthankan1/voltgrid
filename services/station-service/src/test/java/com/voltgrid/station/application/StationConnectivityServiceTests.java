@@ -92,4 +92,32 @@ class StationConnectivityServiceTests {
                 )
         );
     }
+
+    @Test
+    void shouldMarkStationOfflineWithoutChangingLastSeen() {
+        var lastSeenAt = Instant.parse(
+                "2026-09-07T16:00:00Z"
+        );
+
+        when(stationReader.findById("STATION-003"))
+                .thenReturn(Optional.of(
+                        new ChargingStation(
+                                "STATION-003",
+                                "Galle Central",
+                                StationStatus.ONLINE,
+                                lastSeenAt
+                        )
+                ));
+
+        service.markOffline("STATION-003");
+
+        verify(stationWriter).save(
+                new ChargingStation(
+                        "STATION-003",
+                        "Galle Central",
+                        StationStatus.OFFLINE,
+                        lastSeenAt
+                )
+        );
+    }
 }

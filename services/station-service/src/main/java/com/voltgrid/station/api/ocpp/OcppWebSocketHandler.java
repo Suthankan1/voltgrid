@@ -1,5 +1,6 @@
 package com.voltgrid.station.api.ocpp;
 
+import com.voltgrid.station.application.StationConnectivityService;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.SubProtocolCapable;
@@ -17,11 +18,14 @@ public class OcppWebSocketHandler
     public static final String SUBPROTOCOL = "ocpp2.0.1";
 
     private final OcppMessageProcessor messageProcessor;
+    private final StationConnectivityService connectivityService;
 
     public OcppWebSocketHandler(
-            OcppMessageProcessor messageProcessor
+            OcppMessageProcessor messageProcessor,
+            StationConnectivityService connectivityService
     ) {
         this.messageProcessor = messageProcessor;
+        this.connectivityService = connectivityService;
     }
 
     @Override
@@ -54,6 +58,20 @@ public class OcppWebSocketHandler
                     CloseStatus.BAD_DATA
                             .withReason("Invalid OCPP frame")
             );
+        }
+    }
+
+    @Override
+    public void afterConnectionClosed(
+            WebSocketSession session,
+            CloseStatus status
+    ) {
+        var stationId = (String) session
+                .getAttributes()
+                .get(OcppHandshakeInterceptor.STATION_ID_ATTRIBUTE);
+
+        if (stationId != null) {
+            connectivityService.markOffline(stationId);
         }
     }
 }

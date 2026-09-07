@@ -63,4 +63,18 @@ public class StationConnectivityService {
                         )
                 );
     }
+
+    @Transactional
+    public void markOffline(String stationId) {
+        var station = findStation(stationId);
+
+        stationWriter.save(
+                new ChargingStation(
+                        station.id(),
+                        station.name(),
+                        StationStatus.OFFLINE,
+                        station.lastSeenAt()
+                )
+        );
+    }
 }
