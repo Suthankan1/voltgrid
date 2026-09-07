@@ -16,6 +16,14 @@ public class OcppWebSocketHandler
 
     public static final String SUBPROTOCOL = "ocpp2.0.1";
 
+    private final OcppMessageProcessor messageProcessor;
+
+    public OcppWebSocketHandler(
+            OcppMessageProcessor messageProcessor
+    ) {
+        this.messageProcessor = messageProcessor;
+    }
+
     @Override
     public List<String> getSubProtocols() {
         return List.of(SUBPROTOCOL);
@@ -26,9 +34,26 @@ public class OcppWebSocketHandler
             WebSocketSession session,
             TextMessage message
     ) throws Exception {
-        session.close(
-                CloseStatus.NOT_ACCEPTABLE
-                        .withReason("OCPP message handling not implemented yet")
-        );
+
+        var stationId = (String) session
+                .getAttributes()
+                .get(OcppHandshakeInterceptor.STATION_ID_ATTRIBUTE);
+
+        try {
+            var response = messageProcessor.process(
+                    stationId,
+                    message.getPayload()
+            );
+
+            session.sendMessage(
+                    new TextMessage(response)
+            );
+
+        } catch (IllegalArgumentException exception) {
+            session.close(
+                    CloseStatus.BAD_DATA
+                            .withReason("Invalid OCPP frame")
+            );
+        }
     }
 }

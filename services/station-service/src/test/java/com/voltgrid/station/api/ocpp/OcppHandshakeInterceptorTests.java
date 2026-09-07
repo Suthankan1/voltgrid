@@ -36,6 +36,9 @@ class OcppHandshakeInterceptorTests {
     @Mock
     private WebSocketHandler handler;
 
+    @Mock
+    private OcppMessageProcessor messageProcessor;
+
     private OcppHandshakeInterceptor interceptor;
 
     @BeforeEach
@@ -46,25 +49,31 @@ class OcppHandshakeInterceptorTests {
     @Test
     void shouldAcceptKnownStationUsingOcpp201() {
         var headers = new HttpHeaders();
+
         headers.add(
                 "Sec-WebSocket-Protocol",
                 OcppWebSocketHandler.SUBPROTOCOL
         );
 
         when(request.getHeaders()).thenReturn(headers);
+
         when(request.getURI())
-                .thenReturn(URI.create(
-                        "ws://localhost:8080/ocpp/STATION-003"
-                ));
+                .thenReturn(
+                        URI.create(
+                                "ws://localhost:8080/ocpp/STATION-003"
+                        )
+                );
 
         when(stationReader.findById("STATION-003"))
-                .thenReturn(Optional.of(
-                        new ChargingStation(
-                                "STATION-003",
-                                "Galle Central",
-                                StationStatus.OFFLINE
+                .thenReturn(
+                        Optional.of(
+                                new ChargingStation(
+                                        "STATION-003",
+                                        "Galle Central",
+                                        StationStatus.OFFLINE
+                                )
                         )
-                ));
+                );
 
         var attributes = new HashMap<String, Object>();
 
@@ -76,6 +85,7 @@ class OcppHandshakeInterceptorTests {
         );
 
         assertThat(accepted).isTrue();
+
         assertThat(attributes)
                 .containsEntry(
                         OcppHandshakeInterceptor.STATION_ID_ATTRIBUTE,
@@ -86,7 +96,11 @@ class OcppHandshakeInterceptorTests {
     @Test
     void shouldRejectUnsupportedOcppProtocol() {
         var headers = new HttpHeaders();
-        headers.add("Sec-WebSocket-Protocol", "ocpp1.6");
+
+        headers.add(
+                "Sec-WebSocket-Protocol",
+                "ocpp1.6"
+        );
 
         when(request.getHeaders()).thenReturn(headers);
 
@@ -108,16 +122,20 @@ class OcppHandshakeInterceptorTests {
     @Test
     void shouldRejectUnknownStation() {
         var headers = new HttpHeaders();
+
         headers.add(
                 "Sec-WebSocket-Protocol",
                 OcppWebSocketHandler.SUBPROTOCOL
         );
 
         when(request.getHeaders()).thenReturn(headers);
+
         when(request.getURI())
-                .thenReturn(URI.create(
-                        "ws://localhost:8080/ocpp/UNKNOWN"
-                ));
+                .thenReturn(
+                        URI.create(
+                                "ws://localhost:8080/ocpp/UNKNOWN"
+                        )
+                );
 
         when(stationReader.findById("UNKNOWN"))
                 .thenReturn(Optional.empty());
@@ -137,9 +155,10 @@ class OcppHandshakeInterceptorTests {
 
     @Test
     void shouldSupportOcpp201Subprotocol() {
-        var handler = new OcppWebSocketHandler();
+        var websocketHandler =
+                new OcppWebSocketHandler(messageProcessor);
 
-        assertThat(handler.getSubProtocols())
+        assertThat(websocketHandler.getSubProtocols())
                 .containsExactly("ocpp2.0.1");
     }
 }
