@@ -1,0 +1,24 @@
+type Query {
+    stations: [ChargingStation!]!
+    station(id: ID!): ChargingStation
+}
+
+type Mutation {
+    registerStation(input: RegisterStationInput!): ChargingStation!
+}
+
+type ChargingStation {
+    id: ID!
+    name: String!
+    status: StationStatus!
+}
+
+input RegisterStationInput {
+    id: ID!
+    name: String!
+}
+
+enum StationStatus {
+    ONLINE
+    OFFLINE
+}
