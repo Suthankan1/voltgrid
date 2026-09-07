@@ -37,19 +37,24 @@ public class OcppMessageProcessor {
             var messageId = message.get(1).stringValue();
             var action = message.get(2).stringValue();
 
-            if ("BootNotification".equals(action)) {
-                return handleBootNotification(
-                        stationId,
-                        messageId,
-                        message.get(3)
-                );
-            }
+            return switch (action) {
+                case "BootNotification" ->
+                        handleBootNotification(
+                                stationId,
+                                messageId,
+                                message.get(3)
+                        );
 
-            return callError(
-                    messageId,
-                    "NotImplemented",
-                    "Action not implemented: " + action
-            );
+                case "Heartbeat" ->
+                        handleHeartbeat(messageId);
+
+                default ->
+                        callError(
+                                messageId,
+                                "NotImplemented",
+                                "Action not implemented: " + action
+                        );
+            };
 
         } catch (JacksonException exception) {
             throw new IllegalArgumentException(
@@ -94,6 +99,23 @@ public class OcppMessageProcessor {
         responsePayload.put(
                 "status",
                 "Accepted"
+        );
+
+        var response = jsonMapper.createArrayNode();
+
+        response.add(CALL_RESULT);
+        response.add(messageId);
+        response.add(responsePayload);
+
+        return jsonMapper.writeValueAsString(response);
+    }
+
+    private String handleHeartbeat(String messageId) {
+        var responsePayload = jsonMapper.createObjectNode();
+
+        responsePayload.put(
+                "currentTime",
+                Instant.now().toString()
         );
 
         var response = jsonMapper.createArrayNode();

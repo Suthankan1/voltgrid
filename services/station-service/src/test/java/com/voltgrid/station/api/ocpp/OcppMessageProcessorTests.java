@@ -82,6 +82,40 @@ class OcppMessageProcessorTests {
     }
 
     @Test
+    void shouldHandleHeartbeat() {
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "heartbeat-001",
+                  "Heartbeat",
+                  {}
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(json.get(0).intValue())
+                .isEqualTo(3);
+
+        assertThat(json.get(1).stringValue())
+                .isEqualTo("heartbeat-001");
+
+        assertThat(
+                json.get(2)
+                        .get("currentTime")
+                        .stringValue()
+        ).isNotBlank();
+
+        verify(
+                connectivityService,
+                never()
+        ).markOnline("STATION-003");
+    }
+
+    @Test
     void shouldReturnNotImplementedForUnsupportedAction() {
         var response = processor.process(
                 "STATION-003",
@@ -89,7 +123,7 @@ class OcppMessageProcessorTests {
                 [
                   2,
                   "msg-001",
-                  "Heartbeat",
+                  "StatusNotification",
                   {}
                 ]
                 """
@@ -105,6 +139,11 @@ class OcppMessageProcessorTests {
 
         assertThat(json.get(2).stringValue())
                 .isEqualTo("NotImplemented");
+
+        assertThat(json.get(3).stringValue())
+                .isEqualTo(
+                        "Action not implemented: StatusNotification"
+                );
 
         verify(
                 connectivityService,
@@ -141,6 +180,11 @@ class OcppMessageProcessorTests {
 
         assertThat(json.get(2).stringValue())
                 .isEqualTo("FormatViolation");
+
+        assertThat(json.get(3).stringValue())
+                .isEqualTo(
+                        "Invalid BootNotification payload"
+                );
 
         verify(
                 connectivityService,
