@@ -3,13 +3,11 @@ package com.voltgrid.station.infrastructure.persistence.inmemory;
 import com.voltgrid.station.application.StationReader;
 import com.voltgrid.station.domain.ChargingStation;
 import com.voltgrid.station.domain.StationStatus;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-@Component
 public class InMemoryStationDataProvider implements StationReader {
 
     private final Map<String, ChargingStation> stations = Map.of(

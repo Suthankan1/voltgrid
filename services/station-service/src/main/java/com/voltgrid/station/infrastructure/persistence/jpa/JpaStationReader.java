@@ -2,10 +2,12 @@ package com.voltgrid.station.infrastructure.persistence.jpa;
 
 import com.voltgrid.station.application.StationReader;
 import com.voltgrid.station.domain.ChargingStation;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
 
+@Component
 public class JpaStationReader implements StationReader {
 
     private final ChargingStationJpaRepository repository;
