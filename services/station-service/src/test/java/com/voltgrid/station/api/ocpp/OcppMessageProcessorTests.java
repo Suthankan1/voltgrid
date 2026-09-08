@@ -127,7 +127,7 @@ class OcppMessageProcessorTests {
         ).isNotBlank();
 
         verify(connectivityService)
-                .recordHeartbeat(
+                .recordActivity(
                         eq("STATION-003"),
                         any(Instant.class)
                 );
@@ -181,9 +181,11 @@ class OcppMessageProcessorTests {
                         )
                 );
 
-        verifyNoInteractions(
-                connectivityService
-        );
+        verify(connectivityService)
+                .recordActivity(
+                        eq("STATION-003"),
+                        any(Instant.class)
+                );
     }
 
     @Test

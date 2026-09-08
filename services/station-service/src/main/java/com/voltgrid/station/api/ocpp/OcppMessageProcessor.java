@@ -33,7 +33,10 @@ public class OcppMessageProcessor {
         this.connectorStatusService = connectorStatusService;
     }
 
-    public String process(String stationId, String rawMessage) {
+    public String process(
+            String stationId,
+            String rawMessage
+    ) {
         try {
             var message = jsonMapper.readTree(rawMessage);
 
@@ -129,7 +132,9 @@ public class OcppMessageProcessor {
         response.add(messageId);
         response.add(responsePayload);
 
-        return jsonMapper.writeValueAsString(response);
+        return jsonMapper.writeValueAsString(
+                response
+        );
     }
 
     private String handleHeartbeat(
@@ -138,7 +143,7 @@ public class OcppMessageProcessor {
     ) {
         var now = Instant.now();
 
-        connectivityService.recordHeartbeat(
+        connectivityService.recordActivity(
                 stationId,
                 now
         );
@@ -158,7 +163,9 @@ public class OcppMessageProcessor {
         response.add(messageId);
         response.add(responsePayload);
 
-        return jsonMapper.writeValueAsString(response);
+        return jsonMapper.writeValueAsString(
+                response
+        );
     }
 
     private String handleStatusNotification(
@@ -179,10 +186,10 @@ public class OcppMessageProcessor {
             );
         }
 
-        Instant timestamp;
+        Instant statusUpdatedAt;
 
         try {
-            timestamp = Instant.parse(
+            statusUpdatedAt = Instant.parse(
                     request.timestamp()
             );
         } catch (RuntimeException exception) {
@@ -205,12 +212,19 @@ public class OcppMessageProcessor {
             );
         }
 
+        var receivedAt = Instant.now();
+
         connectorStatusService.updateStatus(
                 stationId,
                 request.evseId(),
                 request.connectorId(),
                 status,
-                timestamp
+                statusUpdatedAt
+        );
+
+        connectivityService.recordActivity(
+                stationId,
+                receivedAt
         );
 
         var response =
@@ -222,10 +236,14 @@ public class OcppMessageProcessor {
                 jsonMapper.createObjectNode()
         );
 
-        return jsonMapper.writeValueAsString(response);
+        return jsonMapper.writeValueAsString(
+                response
+        );
     }
 
-    private void validateCall(JsonNode message) {
+    private void validateCall(
+            JsonNode message
+    ) {
         if (!message.isArray()
                 || message.size() != 4
                 || !message.get(0).canConvertToInt()
@@ -306,10 +324,15 @@ public class OcppMessageProcessor {
                 jsonMapper.createObjectNode()
         );
 
-        return jsonMapper.writeValueAsString(response);
+        return jsonMapper.writeValueAsString(
+                response
+        );
     }
 
-    private boolean isBlank(String value) {
-        return value == null || value.isBlank();
+    private boolean isBlank(
+            String value
+    ) {
+        return value == null
+                || value.isBlank();
     }
 }

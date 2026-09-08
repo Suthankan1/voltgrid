@@ -39,14 +39,19 @@ class StationConnectivityServiceTests {
                 "2026-09-07T15:30:00Z"
         );
 
-        when(stationReader.findById("STATION-003"))
-                .thenReturn(Optional.of(
+        when(
+                stationReader.findById(
+                        "STATION-003"
+                )
+        ).thenReturn(
+                Optional.of(
                         new ChargingStation(
                                 "STATION-003",
                                 "Galle Central",
                                 StationStatus.OFFLINE
                         )
-                ));
+                )
+        );
 
         service.markOnline(
                 "STATION-003",
@@ -64,21 +69,31 @@ class StationConnectivityServiceTests {
     }
 
     @Test
-    void shouldRecordHeartbeatWithoutChangingStatus() {
+    void shouldRecordStationActivityWithoutChangingStatus() {
+        var previousSeenAt = Instant.parse(
+                "2026-09-07T15:30:00Z"
+        );
+
         var seenAt = Instant.parse(
                 "2026-09-07T15:35:00Z"
         );
 
-        when(stationReader.findById("STATION-003"))
-                .thenReturn(Optional.of(
+        when(
+                stationReader.findById(
+                        "STATION-003"
+                )
+        ).thenReturn(
+                Optional.of(
                         new ChargingStation(
                                 "STATION-003",
                                 "Galle Central",
-                                StationStatus.ONLINE
+                                StationStatus.ONLINE,
+                                previousSeenAt
                         )
-                ));
+                )
+        );
 
-        service.recordHeartbeat(
+        service.recordActivity(
                 "STATION-003",
                 seenAt
         );
@@ -99,17 +114,24 @@ class StationConnectivityServiceTests {
                 "2026-09-07T16:00:00Z"
         );
 
-        when(stationReader.findById("STATION-003"))
-                .thenReturn(Optional.of(
+        when(
+                stationReader.findById(
+                        "STATION-003"
+                )
+        ).thenReturn(
+                Optional.of(
                         new ChargingStation(
                                 "STATION-003",
                                 "Galle Central",
                                 StationStatus.ONLINE,
                                 lastSeenAt
                         )
-                ));
+                )
+        );
 
-        service.markOffline("STATION-003");
+        service.markOffline(
+                "STATION-003"
+        );
 
         verify(stationWriter).save(
                 new ChargingStation(

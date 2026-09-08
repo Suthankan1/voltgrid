@@ -39,7 +39,7 @@ public class StationConnectivityService {
     }
 
     @Transactional
-    public void recordHeartbeat(
+    public void recordActivity(
             String stationId,
             Instant seenAt
     ) {
@@ -55,15 +55,6 @@ public class StationConnectivityService {
         );
     }
 
-    private ChargingStation findStation(String stationId) {
-        return stationReader.findById(stationId)
-                .orElseThrow(() ->
-                        new IllegalStateException(
-                                "Station not found: " + stationId
-                        )
-                );
-    }
-
     @Transactional
     public void markOffline(String stationId) {
         var station = findStation(stationId);
@@ -76,5 +67,17 @@ public class StationConnectivityService {
                         station.lastSeenAt()
                 )
         );
+    }
+
+    private ChargingStation findStation(
+            String stationId
+    ) {
+        return stationReader.findById(stationId)
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Station not found: "
+                                        + stationId
+                        )
+                );
     }
 }
