@@ -1,0 +1,48 @@
+name: Station Service CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "services/station-service/**"
+      - ".github/workflows/station-service-ci.yml"
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "services/station-service/**"
+      - ".github/workflows/station-service-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: station-service-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: services/station-service
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+          cache-dependency-path: services/station-service/pom.xml
+
+      - name: Verify with Maven
+        run: ./mvnw --batch-mode --no-transfer-progress verify
