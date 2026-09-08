@@ -1,6 +1,7 @@
 type Query {
     stations: [ChargingStation!]!
     station(id: ID!): ChargingStation
+    stationConnectors(stationId: ID!): [StationConnector!]!
 }
 
 type Mutation {
@@ -13,6 +14,13 @@ type ChargingStation {
     status: StationStatus!
 }
 
+type StationConnector {
+    evseId: Int!
+    connectorId: Int!
+    status: ConnectorStatus!
+    statusUpdatedAt: String!
+}
+
 input RegisterStationInput {
     id: ID!
     name: String!
@@ -21,4 +29,12 @@ input RegisterStationInput {
 enum StationStatus {
     ONLINE
     OFFLINE
+}
+
+enum ConnectorStatus {
+    AVAILABLE
+    OCCUPIED
+    RESERVED
+    UNAVAILABLE
+    FAULTED
 }
