@@ -1,6 +1,7 @@
 package com.voltgrid.station.application;
 
 import com.voltgrid.station.domain.ChargingTransaction;
+import com.voltgrid.station.domain.TransactionMeterSample;
 import com.voltgrid.station.domain.TransactionStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -8,11 +9,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -24,13 +28,17 @@ class StationTransactionServiceTests {
     @Mock
     private StationTransactionWriter transactionWriter;
 
+    @Mock
+    private TransactionMeterSampleWriter meterSampleWriter;
+
     private StationTransactionService service;
 
     @BeforeEach
     void setUp() {
         service = new StationTransactionService(
                 transactionReader,
-                transactionWriter
+                transactionWriter,
+                meterSampleWriter
         );
     }
 
@@ -61,10 +69,14 @@ class StationTransactionServiceTests {
                         0
                 )
         );
+
+        verifyNoInteractions(
+                meterSampleWriter
+        );
     }
 
     @Test
-    void shouldAdvanceActiveTransactionSequence() {
+    void shouldAdvanceActiveTransactionSequenceWithoutMeterSamples() {
         var startedAt = Instant.parse(
                 "2026-09-08T10:30:00Z"
         );
@@ -92,7 +104,8 @@ class StationTransactionServiceTests {
         service.updateTransaction(
                 "STATION-003",
                 "TX-001",
-                1
+                1,
+                List.of()
         );
 
         verify(transactionWriter).save(
@@ -107,6 +120,93 @@ class StationTransactionServiceTests {
                         1
                 )
         );
+
+        verifyNoInteractions(
+                meterSampleWriter
+        );
+    }
+
+    @Test
+    void shouldAdvanceTransactionAndPersistMeterSamples() {
+        var startedAt = Instant.parse(
+                "2026-09-08T10:30:00Z"
+        );
+
+        var sampledAt = Instant.parse(
+                "2026-09-08T10:35:00Z"
+        );
+
+        when(
+                transactionReader.findById(
+                        "STATION-003",
+                        "TX-001"
+                )
+        ).thenReturn(
+                Optional.of(
+                        new ChargingTransaction(
+                                "STATION-003",
+                                "TX-001",
+                                1,
+                                1,
+                                TransactionStatus.ACTIVE,
+                                startedAt,
+                                null,
+                                0
+                        )
+                )
+        );
+
+        var samples = List.of(
+                new TransactionMeterSample(
+                        "STATION-003",
+                        "TX-001",
+                        1,
+                        sampledAt,
+                        new BigDecimal("1250.5"),
+                        "Energy.Active.Import.Register",
+                        "Sample.Periodic",
+                        null,
+                        "Outlet",
+                        "Wh",
+                        0
+                ),
+                new TransactionMeterSample(
+                        "STATION-003",
+                        "TX-001",
+                        1,
+                        sampledAt,
+                        new BigDecimal("7200"),
+                        "Power.Active.Import",
+                        "Sample.Periodic",
+                        null,
+                        "Outlet",
+                        "W",
+                        0
+                )
+        );
+
+        service.updateTransaction(
+                "STATION-003",
+                "TX-001",
+                1,
+                samples
+        );
+
+        verify(transactionWriter).save(
+                new ChargingTransaction(
+                        "STATION-003",
+                        "TX-001",
+                        1,
+                        1,
+                        TransactionStatus.ACTIVE,
+                        startedAt,
+                        null,
+                        1
+                )
+        );
+
+        verify(meterSampleWriter)
+                .saveAll(samples);
     }
 
     @Test
@@ -158,6 +258,10 @@ class StationTransactionServiceTests {
                         3
                 )
         );
+
+        verifyNoInteractions(
+                meterSampleWriter
+        );
     }
 
     @Test
@@ -190,10 +294,16 @@ class StationTransactionServiceTests {
                 service.updateTransaction(
                         "STATION-003",
                         "TX-001",
-                        2
+                        2,
+                        List.of()
                 )
         ).isInstanceOf(
                 InvalidTransactionSequenceException.class
+        );
+
+        verifyNoInteractions(
+                transactionWriter,
+                meterSampleWriter
         );
     }
 
@@ -231,10 +341,16 @@ class StationTransactionServiceTests {
                 service.updateTransaction(
                         "STATION-003",
                         "TX-001",
-                        4
+                        4,
+                        List.of()
                 )
         ).isInstanceOf(
                 TransactionNotActiveException.class
+        );
+
+        verifyNoInteractions(
+                transactionWriter,
+                meterSampleWriter
         );
     }
 
@@ -279,6 +395,11 @@ class StationTransactionServiceTests {
                 )
         ).isInstanceOf(
                 TransactionNotActiveException.class
+        );
+
+        verifyNoInteractions(
+                transactionWriter,
+                meterSampleWriter
         );
     }
 }

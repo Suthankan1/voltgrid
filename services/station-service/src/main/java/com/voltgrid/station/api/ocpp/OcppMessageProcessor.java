@@ -7,12 +7,15 @@ import com.voltgrid.station.application.StationTransactionService;
 import com.voltgrid.station.application.TransactionNotActiveException;
 import com.voltgrid.station.application.TransactionNotFoundException;
 import com.voltgrid.station.domain.ConnectorStatus;
+import com.voltgrid.station.domain.TransactionMeterSample;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class OcppMessageProcessor {
@@ -309,13 +312,30 @@ public class OcppMessageProcessor {
                     );
                 }
 
-                case "Updated" ->
-                        transactionService.updateTransaction(
+                case "Updated" -> {
+                    List<TransactionMeterSample> meterSamples;
+
+                    try {
+                        meterSamples = toMeterSamples(
                                 stationId,
-                                request.transactionInfo()
-                                        .transactionId(),
-                                request.seqNo()
+                                request
                         );
+                    } catch (IllegalArgumentException exception) {
+                        return callError(
+                                messageId,
+                                "FormatViolation",
+                                exception.getMessage()
+                        );
+                    }
+
+                    transactionService.updateTransaction(
+                            stationId,
+                            request.transactionInfo()
+                                    .transactionId(),
+                            request.seqNo(),
+                            meterSamples
+                    );
+                }
 
                 case "Ended" ->
                         transactionService.endTransaction(
@@ -366,6 +386,93 @@ public class OcppMessageProcessor {
         );
     }
 
+    private List<TransactionMeterSample> toMeterSamples(
+            String stationId,
+            TransactionEventRequest request
+    ) {
+        if (request.meterValue() == null) {
+            return List.of();
+        }
+
+        var samples =
+                new ArrayList<TransactionMeterSample>();
+
+        for (var meterValue : request.meterValue()) {
+            if (meterValue == null
+                    || isBlank(meterValue.timestamp())) {
+
+                throw new IllegalArgumentException(
+                        "Invalid meter value timestamp"
+                );
+            }
+
+            Instant sampledAt;
+
+            try {
+                sampledAt = Instant.parse(
+                        meterValue.timestamp()
+                );
+            } catch (RuntimeException exception) {
+                throw new IllegalArgumentException(
+                        "Invalid meter value timestamp",
+                        exception
+                );
+            }
+
+            if (meterValue.sampledValue() == null) {
+                continue;
+            }
+
+            for (var sampledValue :
+                    meterValue.sampledValue()) {
+
+                if (sampledValue == null
+                        || sampledValue.value() == null) {
+
+                    throw new IllegalArgumentException(
+                            "Invalid sampled meter value"
+                    );
+                }
+
+                var unit =
+                        sampledValue.unitOfMeasure() == null
+                                ? null
+                                : sampledValue
+                                        .unitOfMeasure()
+                                        .unit();
+
+                var multiplier =
+                        sampledValue.unitOfMeasure() == null
+                                || sampledValue
+                                        .unitOfMeasure()
+                                        .multiplier() == null
+                                ? 0
+                                : sampledValue
+                                        .unitOfMeasure()
+                                        .multiplier();
+
+                samples.add(
+                        new TransactionMeterSample(
+                                stationId,
+                                request.transactionInfo()
+                                        .transactionId(),
+                                request.seqNo(),
+                                sampledAt,
+                                sampledValue.value(),
+                                sampledValue.measurand(),
+                                sampledValue.context(),
+                                sampledValue.phase(),
+                                sampledValue.location(),
+                                unit,
+                                multiplier
+                        )
+                );
+            }
+        }
+
+        return List.copyOf(samples);
+    }
+
     private void validateCall(
             JsonNode message
     ) {
@@ -390,11 +497,13 @@ public class OcppMessageProcessor {
                 && !isBlank(request.reason())
                 && request.chargingStation() != null
                 && !isBlank(
-                request.chargingStation().model()
-        )
+                        request.chargingStation()
+                                .model()
+                )
                 && !isBlank(
-                request.chargingStation().vendorName()
-        );
+                        request.chargingStation()
+                                .vendorName()
+                );
     }
 
     private boolean isValid(
@@ -420,9 +529,9 @@ public class OcppMessageProcessor {
                 && request.seqNo() >= 0
                 && request.transactionInfo() != null
                 && !isBlank(
-                request.transactionInfo()
-                        .transactionId()
-        );
+                        request.transactionInfo()
+                                .transactionId()
+                );
     }
 
     private boolean hasValidEvse(

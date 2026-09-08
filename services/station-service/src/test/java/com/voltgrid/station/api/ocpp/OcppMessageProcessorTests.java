@@ -7,6 +7,7 @@ import com.voltgrid.station.application.StationTransactionService;
 import com.voltgrid.station.application.TransactionNotActiveException;
 import com.voltgrid.station.application.TransactionNotFoundException;
 import com.voltgrid.station.domain.ConnectorStatus;
+import com.voltgrid.station.domain.TransactionMeterSample;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,7 +15,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -268,7 +271,7 @@ class OcppMessageProcessorTests {
     }
 
     @Test
-    void shouldHandleUpdatedTransactionEvent() {
+    void shouldHandleUpdatedTransactionEventWithoutMeterValues() {
         var response = processor.process(
                 "STATION-003",
                 """
@@ -307,7 +310,8 @@ class OcppMessageProcessorTests {
                 .updateTransaction(
                         "STATION-003",
                         "TX-001",
-                        1
+                        1,
+                        List.of()
                 );
 
         verify(connectivityService)
@@ -318,6 +322,181 @@ class OcppMessageProcessorTests {
 
         verifyNoInteractions(
                 connectorStatusService
+        );
+    }
+
+    @Test
+    void shouldHandleUpdatedTransactionEventWithMeterValues() {
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "tx-event-meter-001",
+                  "TransactionEvent",
+                  {
+                    "eventType": "Updated",
+                    "timestamp": "2026-09-08T10:35:00Z",
+                    "triggerReason": "MeterValuePeriodic",
+                    "seqNo": 1,
+                    "transactionInfo": {
+                      "transactionId": "TX-001"
+                    },
+                    "meterValue": [
+                      {
+                        "timestamp": "2026-09-08T10:35:00Z",
+                        "sampledValue": [
+                          {
+                            "value": 1250.5,
+                            "context": "Sample.Periodic",
+                            "measurand": "Energy.Active.Import.Register",
+                            "location": "Outlet",
+                            "unitOfMeasure": {
+                              "unit": "Wh",
+                              "multiplier": 0
+                            }
+                          },
+                          {
+                            "value": 7200,
+                            "context": "Sample.Periodic",
+                            "measurand": "Power.Active.Import",
+                            "location": "Outlet",
+                            "unitOfMeasure": {
+                              "unit": "W",
+                              "multiplier": 0
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(json.get(0).intValue())
+                .isEqualTo(3);
+
+        assertThat(json.get(1).stringValue())
+                .isEqualTo(
+                        "tx-event-meter-001"
+                );
+
+        assertThat(json.get(2).isObject())
+                .isTrue();
+
+        assertThat(json.get(2).size())
+                .isZero();
+
+        var expectedSamples = List.of(
+                new TransactionMeterSample(
+                        "STATION-003",
+                        "TX-001",
+                        1,
+                        Instant.parse(
+                                "2026-09-08T10:35:00Z"
+                        ),
+                        new BigDecimal("1250.5"),
+                        "Energy.Active.Import.Register",
+                        "Sample.Periodic",
+                        null,
+                        "Outlet",
+                        "Wh",
+                        0
+                ),
+                new TransactionMeterSample(
+                        "STATION-003",
+                        "TX-001",
+                        1,
+                        Instant.parse(
+                                "2026-09-08T10:35:00Z"
+                        ),
+                        new BigDecimal("7200"),
+                        "Power.Active.Import",
+                        "Sample.Periodic",
+                        null,
+                        "Outlet",
+                        "W",
+                        0
+                )
+        );
+
+        verify(transactionService)
+                .updateTransaction(
+                        "STATION-003",
+                        "TX-001",
+                        1,
+                        expectedSamples
+                );
+
+        verify(connectivityService)
+                .recordActivity(
+                        eq("STATION-003"),
+                        any(Instant.class)
+                );
+
+        verifyNoInteractions(
+                connectorStatusService
+        );
+    }
+
+    @Test
+    void shouldRejectInvalidMeterValueTimestamp() {
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "tx-event-meter-invalid",
+                  "TransactionEvent",
+                  {
+                    "eventType": "Updated",
+                    "timestamp": "2026-09-08T10:35:00Z",
+                    "triggerReason": "MeterValuePeriodic",
+                    "seqNo": 1,
+                    "transactionInfo": {
+                      "transactionId": "TX-001"
+                    },
+                    "meterValue": [
+                      {
+                        "timestamp": "not-a-timestamp",
+                        "sampledValue": [
+                          {
+                            "value": 1250.5,
+                            "measurand": "Energy.Active.Import.Register"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(json.get(0).intValue())
+                .isEqualTo(4);
+
+        assertThat(json.get(1).stringValue())
+                .isEqualTo(
+                        "tx-event-meter-invalid"
+                );
+
+        assertThat(json.get(2).stringValue())
+                .isEqualTo("FormatViolation");
+
+        assertThat(json.get(3).stringValue())
+                .isEqualTo(
+                        "Invalid meter value timestamp"
+                );
+
+        verifyNoInteractions(
+                connectivityService,
+                connectorStatusService,
+                transactionService
         );
     }
 
@@ -395,7 +574,8 @@ class OcppMessageProcessorTests {
                 .updateTransaction(
                         "STATION-003",
                         "TX-001",
-                        4
+                        4,
+                        List.of()
                 );
 
         var response = processor.process(
@@ -548,7 +728,9 @@ class OcppMessageProcessorTests {
                 .isEqualTo(4);
 
         assertThat(json.get(1).stringValue())
-                .isEqualTo("tx-event-sequence");
+                .isEqualTo(
+                        "tx-event-sequence"
+                );
 
         assertThat(json.get(2).stringValue())
                 .isEqualTo(

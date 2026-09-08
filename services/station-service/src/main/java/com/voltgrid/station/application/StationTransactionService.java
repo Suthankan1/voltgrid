@@ -1,24 +1,29 @@
 package com.voltgrid.station.application;
 
 import com.voltgrid.station.domain.ChargingTransaction;
+import com.voltgrid.station.domain.TransactionMeterSample;
 import com.voltgrid.station.domain.TransactionStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 
 @Service
 public class StationTransactionService {
 
     private final StationTransactionReader transactionReader;
     private final StationTransactionWriter transactionWriter;
+    private final TransactionMeterSampleWriter meterSampleWriter;
 
     public StationTransactionService(
             StationTransactionReader transactionReader,
-            StationTransactionWriter transactionWriter
+            StationTransactionWriter transactionWriter,
+            TransactionMeterSampleWriter meterSampleWriter
     ) {
         this.transactionReader = transactionReader;
         this.transactionWriter = transactionWriter;
+        this.meterSampleWriter = meterSampleWriter;
     }
 
     @Transactional
@@ -48,7 +53,8 @@ public class StationTransactionService {
     public void updateTransaction(
             String stationId,
             String transactionId,
-            int sequenceNumber
+            int sequenceNumber,
+            List<TransactionMeterSample> meterSamples
     ) {
         var transaction =
                 findTransaction(
@@ -75,6 +81,12 @@ public class StationTransactionService {
                         sequenceNumber
                 )
         );
+
+        if (!meterSamples.isEmpty()) {
+            meterSampleWriter.saveAll(
+                    meterSamples
+            );
+        }
     }
 
     @Transactional
