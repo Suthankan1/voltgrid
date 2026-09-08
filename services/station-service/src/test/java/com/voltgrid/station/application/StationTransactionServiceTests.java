@@ -48,6 +48,15 @@ class StationTransactionServiceTests {
                 "2026-09-08T10:30:00Z"
         );
 
+        when(
+                transactionReader.findById(
+                        "STATION-003",
+                        "TX-001"
+                )
+        ).thenReturn(
+                Optional.empty()
+        );
+
         service.startTransaction(
                 "STATION-003",
                 "TX-001",
@@ -355,7 +364,7 @@ class StationTransactionServiceTests {
     }
 
     @Test
-    void shouldRejectEndingAlreadyEndedTransaction() {
+    void shouldRejectEndingAlreadyEndedTransactionWithDifferentSequenceNumber() {
         var startedAt = Instant.parse(
                 "2026-09-08T10:30:00Z"
         );
@@ -395,6 +404,284 @@ class StationTransactionServiceTests {
                 )
         ).isInstanceOf(
                 TransactionNotActiveException.class
+        );
+
+        verifyNoInteractions(
+                transactionWriter,
+                meterSampleWriter
+        );
+    }
+
+    @Test
+    void shouldIgnoreDuplicateStartedTransaction() {
+        var startedAt = Instant.parse(
+                "2026-09-08T10:30:00Z"
+        );
+
+        when(
+                transactionReader.findById(
+                        "STATION-003",
+                        "TX-001"
+                )
+        ).thenReturn(
+                Optional.of(
+                        new ChargingTransaction(
+                                "STATION-003",
+                                "TX-001",
+                                1,
+                                1,
+                                TransactionStatus.ACTIVE,
+                                startedAt,
+                                null,
+                                0
+                        )
+                )
+        );
+
+        service.startTransaction(
+                "STATION-003",
+                "TX-001",
+                1,
+                1,
+                startedAt,
+                0
+        );
+
+        verifyNoInteractions(
+                transactionWriter,
+                meterSampleWriter
+        );
+    }
+
+    @Test
+    void shouldRejectConflictingDuplicateStartedTransaction() {
+        var startedAt = Instant.parse(
+                "2026-09-08T10:30:00Z"
+        );
+
+        when(
+                transactionReader.findById(
+                        "STATION-003",
+                        "TX-001"
+                )
+        ).thenReturn(
+                Optional.of(
+                        new ChargingTransaction(
+                                "STATION-003",
+                                "TX-001",
+                                1,
+                                1,
+                                TransactionStatus.ACTIVE,
+                                startedAt,
+                                null,
+                                0
+                        )
+                )
+        );
+
+        assertThatThrownBy(() ->
+                service.startTransaction(
+                        "STATION-003",
+                        "TX-001",
+                        2,
+                        1,
+                        startedAt,
+                        0
+                )
+        ).isInstanceOf(
+                InvalidTransactionSequenceException.class
+        );
+
+        verifyNoInteractions(
+                transactionWriter,
+                meterSampleWriter
+        );
+    }
+
+    @Test
+    void shouldIgnoreDuplicateUpdatedTransactionWithoutDuplicatingMeterSamples() {
+        var startedAt = Instant.parse(
+                "2026-09-08T10:30:00Z"
+        );
+
+        when(
+                transactionReader.findById(
+                        "STATION-003",
+                        "TX-001"
+                )
+        ).thenReturn(
+                Optional.of(
+                        new ChargingTransaction(
+                                "STATION-003",
+                                "TX-001",
+                                1,
+                                1,
+                                TransactionStatus.ACTIVE,
+                                startedAt,
+                                null,
+                                2
+                        )
+                )
+        );
+
+        var samples = List.of(
+                new TransactionMeterSample(
+                        "STATION-003",
+                        "TX-001",
+                        2,
+                        Instant.parse(
+                                "2026-09-08T10:40:00Z"
+                        ),
+                        new BigDecimal("1850.75"),
+                        "Energy.Active.Import.Register",
+                        "Sample.Periodic",
+                        null,
+                        "Outlet",
+                        "Wh",
+                        0
+                )
+        );
+
+        service.updateTransaction(
+                "STATION-003",
+                "TX-001",
+                2,
+                samples
+        );
+
+        verifyNoInteractions(
+                transactionWriter,
+                meterSampleWriter
+        );
+    }
+
+    @Test
+    void shouldIgnoreDuplicateEndedTransaction() {
+        var startedAt = Instant.parse(
+                "2026-09-08T10:30:00Z"
+        );
+
+        var endedAt = Instant.parse(
+                "2026-09-08T11:15:00Z"
+        );
+
+        when(
+                transactionReader.findById(
+                        "STATION-003",
+                        "TX-001"
+                )
+        ).thenReturn(
+                Optional.of(
+                        new ChargingTransaction(
+                                "STATION-003",
+                                "TX-001",
+                                1,
+                                1,
+                                TransactionStatus.ENDED,
+                                startedAt,
+                                endedAt,
+                                3
+                        )
+                )
+        );
+
+        service.endTransaction(
+                "STATION-003",
+                "TX-001",
+                endedAt,
+                3
+        );
+
+        verifyNoInteractions(
+                transactionWriter,
+                meterSampleWriter
+        );
+    }
+
+    @Test
+    void shouldRejectConflictingDuplicateEndedTransaction() {
+        var startedAt = Instant.parse(
+                "2026-09-08T10:30:00Z"
+        );
+
+        var endedAt = Instant.parse(
+                "2026-09-08T11:15:00Z"
+        );
+
+        when(
+                transactionReader.findById(
+                        "STATION-003",
+                        "TX-001"
+                )
+        ).thenReturn(
+                Optional.of(
+                        new ChargingTransaction(
+                                "STATION-003",
+                                "TX-001",
+                                1,
+                                1,
+                                TransactionStatus.ENDED,
+                                startedAt,
+                                endedAt,
+                                3
+                        )
+                )
+        );
+
+        assertThatThrownBy(() ->
+                service.endTransaction(
+                        "STATION-003",
+                        "TX-001",
+                        Instant.parse(
+                                "2026-09-08T11:16:00Z"
+                        ),
+                        3
+                )
+        ).isInstanceOf(
+                TransactionNotActiveException.class
+        );
+
+        verifyNoInteractions(
+                transactionWriter,
+                meterSampleWriter
+        );
+    }
+
+    @Test
+    void shouldRejectStaleUpdatedTransactionEvent() {
+        var startedAt = Instant.parse(
+                "2026-09-08T10:30:00Z"
+        );
+
+        when(
+                transactionReader.findById(
+                        "STATION-003",
+                        "TX-001"
+                )
+        ).thenReturn(
+                Optional.of(
+                        new ChargingTransaction(
+                                "STATION-003",
+                                "TX-001",
+                                1,
+                                1,
+                                TransactionStatus.ACTIVE,
+                                startedAt,
+                                null,
+                                3
+                        )
+                )
+        );
+
+        assertThatThrownBy(() ->
+                service.updateTransaction(
+                        "STATION-003",
+                        "TX-001",
+                        2,
+                        List.of()
+                )
+        ).isInstanceOf(
+                InvalidTransactionSequenceException.class
         );
 
         verifyNoInteractions(

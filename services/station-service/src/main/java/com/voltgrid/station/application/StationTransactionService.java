@@ -35,6 +35,30 @@ public class StationTransactionService {
             Instant startedAt,
             int sequenceNumber
     ) {
+        var existing = transactionReader.findById(
+                stationId,
+                transactionId
+        );
+
+        if (existing.isPresent()) {
+            var transaction = existing.get();
+
+            if (isDuplicateStart(
+                    transaction,
+                    evseId,
+                    connectorId,
+                    startedAt,
+                    sequenceNumber
+            )) {
+                return;
+            }
+
+            throw new InvalidTransactionSequenceException(
+                    transaction.lastSequenceNumber(),
+                    sequenceNumber
+            );
+        }
+
         transactionWriter.save(
                 new ChargingTransaction(
                         stationId,
@@ -61,6 +85,13 @@ public class StationTransactionService {
                         stationId,
                         transactionId
                 );
+
+        if (isDuplicateUpdate(
+                transaction,
+                sequenceNumber
+        )) {
+            return;
+        }
 
         ensureActive(transaction);
 
@@ -102,6 +133,14 @@ public class StationTransactionService {
                         transactionId
                 );
 
+        if (isDuplicateEnd(
+                transaction,
+                endedAt,
+                sequenceNumber
+        )) {
+            return;
+        }
+
         ensureActive(transaction);
 
         ensureSequenceAdvances(
@@ -138,6 +177,49 @@ public class StationTransactionService {
                                 transactionId
                         )
                 );
+    }
+
+    private boolean isDuplicateStart(
+            ChargingTransaction transaction,
+            int evseId,
+            int connectorId,
+            Instant startedAt,
+            int sequenceNumber
+    ) {
+        return transaction.status()
+                == TransactionStatus.ACTIVE
+                && transaction.lastSequenceNumber()
+                == sequenceNumber
+                && transaction.evseId()
+                == evseId
+                && transaction.connectorId()
+                == connectorId
+                && transaction.startedAt()
+                .equals(startedAt);
+    }
+
+    private boolean isDuplicateUpdate(
+            ChargingTransaction transaction,
+            int sequenceNumber
+    ) {
+        return transaction.status()
+                == TransactionStatus.ACTIVE
+                && transaction.lastSequenceNumber()
+                == sequenceNumber;
+    }
+
+    private boolean isDuplicateEnd(
+            ChargingTransaction transaction,
+            Instant endedAt,
+            int sequenceNumber
+    ) {
+        return transaction.status()
+                == TransactionStatus.ENDED
+                && transaction.lastSequenceNumber()
+                == sequenceNumber
+                && transaction.endedAt() != null
+                && transaction.endedAt()
+                .equals(endedAt);
     }
 
     private void ensureActive(
