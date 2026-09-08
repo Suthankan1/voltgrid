@@ -2,10 +2,24 @@ type Query {
     stations: [ChargingStation!]!
     station(id: ID!): ChargingStation
     stationConnectors(stationId: ID!): [StationConnector!]!
+
+    stationTransactions(stationId: ID!): [ChargingTransaction!]!
+
+    transaction(
+        stationId: ID!
+        transactionId: ID!
+    ): ChargingTransaction
+
+    transactionMeterSamples(
+        stationId: ID!
+        transactionId: ID!
+    ): [TransactionMeterSample!]!
 }
 
 type Mutation {
-    registerStation(input: RegisterStationInput!): ChargingStation!
+    registerStation(
+        input: RegisterStationInput!
+    ): ChargingStation!
 }
 
 type ChargingStation {
@@ -19,6 +33,29 @@ type StationConnector {
     connectorId: Int!
     status: ConnectorStatus!
     statusUpdatedAt: String!
+}
+
+type ChargingTransaction {
+    stationId: ID!
+    transactionId: ID!
+    evseId: Int!
+    connectorId: Int!
+    status: TransactionStatus!
+    startedAt: String!
+    endedAt: String
+    lastSequenceNumber: Int!
+}
+
+type TransactionMeterSample {
+    sequenceNumber: Int!
+    sampledAt: String!
+    value: String!
+    measurand: String
+    context: String
+    phase: String
+    location: String
+    unit: String
+    unitMultiplier: Int!
 }
 
 input RegisterStationInput {
@@ -37,4 +74,9 @@ enum ConnectorStatus {
     RESERVED
     UNAVAILABLE
     FAULTED
+}
+
+enum TransactionStatus {
+    ACTIVE
+    ENDED
 }

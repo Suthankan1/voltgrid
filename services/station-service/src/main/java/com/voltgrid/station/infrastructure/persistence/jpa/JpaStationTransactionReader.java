@@ -4,6 +4,7 @@ import com.voltgrid.station.application.StationTransactionReader;
 import com.voltgrid.station.domain.ChargingTransaction;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 
 @Component
@@ -23,14 +24,27 @@ public class JpaStationTransactionReader
             String stationId,
             String transactionId
     ) {
-        var id = new ChargingTransactionId(
-                stationId,
-                transactionId
-        );
-
         return repository
-                .findById(id)
+                .findById(
+                        new ChargingTransactionId(
+                                stationId,
+                                transactionId
+                        )
+                )
                 .map(this::toDomain);
+    }
+
+    @Override
+    public List<ChargingTransaction> findByStationId(
+            String stationId
+    ) {
+        return repository
+                .findByIdStationIdOrderByStartedAtDesc(
+                        stationId
+                )
+                .stream()
+                .map(this::toDomain)
+                .toList();
     }
 
     private ChargingTransaction toDomain(
