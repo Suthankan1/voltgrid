@@ -30,6 +30,9 @@ public class ChargingTransactionEntity {
     @Column(name = "started_at", nullable = false)
     private Instant startedAt;
 
+    @Column(name = "ended_at")
+    private Instant endedAt;
+
     @Column(
             name = "last_sequence_number",
             nullable = false
@@ -45,6 +48,7 @@ public class ChargingTransactionEntity {
             int connectorId,
             TransactionStatus status,
             Instant startedAt,
+            Instant endedAt,
             int lastSequenceNumber
     ) {
         this.id = id;
@@ -52,6 +56,7 @@ public class ChargingTransactionEntity {
         this.connectorId = connectorId;
         this.status = status;
         this.startedAt = startedAt;
+        this.endedAt = endedAt;
         this.lastSequenceNumber = lastSequenceNumber;
     }
 
@@ -73,6 +78,10 @@ public class ChargingTransactionEntity {
 
     public Instant getStartedAt() {
         return startedAt;
+    }
+
+    public Instant getEndedAt() {
+        return endedAt;
     }
 
     public int getLastSequenceNumber() {

@@ -9,6 +9,7 @@ public record ChargingTransaction(
         int connectorId,
         TransactionStatus status,
         Instant startedAt,
+        Instant endedAt,
         int lastSequenceNumber
 ) {
 }

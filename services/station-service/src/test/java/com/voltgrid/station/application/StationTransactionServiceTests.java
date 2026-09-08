@@ -9,11 +9,17 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class StationTransactionServiceTests {
+
+    @Mock
+    private StationTransactionReader transactionReader;
 
     @Mock
     private StationTransactionWriter transactionWriter;
@@ -23,6 +29,7 @@ class StationTransactionServiceTests {
     @BeforeEach
     void setUp() {
         service = new StationTransactionService(
+                transactionReader,
                 transactionWriter
         );
     }
@@ -50,8 +57,100 @@ class StationTransactionServiceTests {
                         1,
                         TransactionStatus.ACTIVE,
                         startedAt,
+                        null,
                         0
                 )
+        );
+    }
+
+    @Test
+    void shouldEndActiveTransaction() {
+        var startedAt = Instant.parse(
+                "2026-09-08T10:30:00Z"
+        );
+
+        var endedAt = Instant.parse(
+                "2026-09-08T11:15:00Z"
+        );
+
+        when(
+                transactionReader.findById(
+                        "STATION-003",
+                        "TX-001"
+                )
+        ).thenReturn(
+                Optional.of(
+                        new ChargingTransaction(
+                                "STATION-003",
+                                "TX-001",
+                                1,
+                                1,
+                                TransactionStatus.ACTIVE,
+                                startedAt,
+                                null,
+                                0
+                        )
+                )
+        );
+
+        service.endTransaction(
+                "STATION-003",
+                "TX-001",
+                endedAt,
+                1
+        );
+
+        verify(transactionWriter).save(
+                new ChargingTransaction(
+                        "STATION-003",
+                        "TX-001",
+                        1,
+                        1,
+                        TransactionStatus.ENDED,
+                        startedAt,
+                        endedAt,
+                        1
+                )
+        );
+    }
+
+    @Test
+    void shouldRejectOlderTransactionSequenceNumber() {
+        var startedAt = Instant.parse(
+                "2026-09-08T10:30:00Z"
+        );
+
+        when(
+                transactionReader.findById(
+                        "STATION-003",
+                        "TX-001"
+                )
+        ).thenReturn(
+                Optional.of(
+                        new ChargingTransaction(
+                                "STATION-003",
+                                "TX-001",
+                                1,
+                                1,
+                                TransactionStatus.ACTIVE,
+                                startedAt,
+                                null,
+                                3
+                        )
+                )
+        );
+
+        assertThatThrownBy(() ->
+                service.endTransaction(
+                        "STATION-003",
+                        "TX-001",
+                        Instant.parse(
+                                "2026-09-08T11:15:00Z"
+                        ),
+                        2
+                )
+        ).isInstanceOf(
+                InvalidTransactionSequenceException.class
         );
     }
 }

@@ -1,8 +1,10 @@
 package com.voltgrid.station.api.ocpp;
 
+import com.voltgrid.station.application.InvalidTransactionSequenceException;
 import com.voltgrid.station.application.StationConnectivityService;
 import com.voltgrid.station.application.StationConnectorStatusService;
 import com.voltgrid.station.application.StationTransactionService;
+import com.voltgrid.station.application.TransactionNotFoundException;
 import com.voltgrid.station.domain.ConnectorStatus;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
@@ -69,7 +71,7 @@ public class OcppMessageProcessor {
                                 messageId,
                                 message.get(3)
                         );
-                
+
                 case "TransactionEvent" ->
                         handleTransactionEvent(
                                 stationId,
@@ -252,6 +254,100 @@ public class OcppMessageProcessor {
         );
     }
 
+    private String handleTransactionEvent(
+            String stationId,
+            String messageId,
+            JsonNode payload
+    ) {
+        var request = jsonMapper.treeToValue(
+                payload,
+                TransactionEventRequest.class
+        );
+
+        if (!isValid(request)) {
+            return callError(
+                    messageId,
+                    "FormatViolation",
+                    "Invalid TransactionEvent payload"
+            );
+        }
+
+        Instant eventAt;
+
+        try {
+            eventAt = Instant.parse(
+                    request.timestamp()
+            );
+        } catch (RuntimeException exception) {
+            return callError(
+                    messageId,
+                    "FormatViolation",
+                    "Invalid TransactionEvent timestamp"
+            );
+        }
+
+        switch (request.eventType()) {
+            case "Started" ->
+                    transactionService.startTransaction(
+                            stationId,
+                            request.transactionInfo()
+                                    .transactionId(),
+                            request.evse().id(),
+                            request.evse().connectorId(),
+                            eventAt,
+                            request.seqNo()
+                    );
+
+            case "Ended" -> {
+                try {
+                    transactionService.endTransaction(
+                            stationId,
+                            request.transactionInfo()
+                                    .transactionId(),
+                            eventAt,
+                            request.seqNo()
+                    );
+                } catch (
+                        TransactionNotFoundException
+                        | InvalidTransactionSequenceException exception
+                ) {
+                    return callError(
+                            messageId,
+                            "OccurrenceConstraintViolation",
+                            exception.getMessage()
+                    );
+                }
+            }
+
+            default -> {
+                return callError(
+                        messageId,
+                        "NotImplemented",
+                        "TransactionEvent type not implemented: "
+                                + request.eventType()
+                );
+            }
+        }
+
+        connectivityService.recordActivity(
+                stationId,
+                Instant.now()
+        );
+
+        var response =
+                jsonMapper.createArrayNode();
+
+        response.add(CALL_RESULT);
+        response.add(messageId);
+        response.add(
+                jsonMapper.createObjectNode()
+        );
+
+        return jsonMapper.writeValueAsString(
+                response
+        );
+    }
+
     private void validateCall(
             JsonNode message
     ) {
@@ -293,6 +389,27 @@ public class OcppMessageProcessor {
                 && request.evseId() >= 0
                 && request.connectorId() != null
                 && request.connectorId() >= 0;
+    }
+
+    private boolean isValid(
+            TransactionEventRequest request
+    ) {
+        return request != null
+                && !isBlank(request.eventType())
+                && !isBlank(request.timestamp())
+                && !isBlank(request.triggerReason())
+                && request.seqNo() != null
+                && request.seqNo() >= 0
+                && request.transactionInfo() != null
+                && !isBlank(
+                        request.transactionInfo()
+                                .transactionId()
+                )
+                && request.evse() != null
+                && request.evse().id() != null
+                && request.evse().id() > 0
+                && request.evse().connectorId() != null
+                && request.evse().connectorId() > 0;
     }
 
     private ConnectorStatus toConnectorStatus(
@@ -345,95 +462,5 @@ public class OcppMessageProcessor {
     ) {
         return value == null
                 || value.isBlank();
-    }
-
-    private String handleTransactionEvent(
-            String stationId,
-            String messageId,
-            JsonNode payload
-    ) {
-        var request = jsonMapper.treeToValue(
-                payload,
-                TransactionEventRequest.class
-        );
-
-        if (!isValid(request)) {
-            return callError(
-                    messageId,
-                    "FormatViolation",
-                    "Invalid TransactionEvent payload"
-            );
-        }
-
-        if (!"Started".equals(request.eventType())) {
-            return callError(
-                    messageId,
-                    "NotImplemented",
-                    "TransactionEvent type not implemented: "
-                            + request.eventType()
-            );
-        }
-
-        Instant startedAt;
-
-        try {
-            startedAt = Instant.parse(
-                    request.timestamp()
-            );
-        } catch (RuntimeException exception) {
-            return callError(
-                    messageId,
-                    "FormatViolation",
-                    "Invalid TransactionEvent timestamp"
-            );
-        }
-
-        transactionService.startTransaction(
-                stationId,
-                request.transactionInfo().transactionId(),
-                request.evse().id(),
-                request.evse().connectorId(),
-                startedAt,
-                request.seqNo()
-        );
-
-        connectivityService.recordActivity(
-                stationId,
-                Instant.now()
-        );
-
-        var response =
-                jsonMapper.createArrayNode();
-
-        response.add(CALL_RESULT);
-        response.add(messageId);
-        response.add(
-                jsonMapper.createObjectNode()
-        );
-
-        return jsonMapper.writeValueAsString(
-                response
-        );
-    }
-
-    private boolean isValid(
-            TransactionEventRequest request
-    ) {
-        return request != null
-                && !isBlank(request.eventType())
-                && !isBlank(request.timestamp())
-                && !isBlank(request.triggerReason())
-                && request.seqNo() != null
-                && request.seqNo() >= 0
-                && request.transactionInfo() != null
-                && !isBlank(
-                request.transactionInfo()
-                        .transactionId()
-        )
-                && request.evse() != null
-                && request.evse().id() != null
-                && request.evse().id() > 0
-                && request.evse().connectorId() != null
-                && request.evse().connectorId() > 0;
     }
 }

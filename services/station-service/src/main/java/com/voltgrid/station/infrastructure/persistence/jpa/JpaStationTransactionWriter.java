@@ -30,6 +30,7 @@ public class JpaStationTransactionWriter
                         transaction.connectorId(),
                         transaction.status(),
                         transaction.startedAt(),
+                        transaction.endedAt(),
                         transaction.lastSequenceNumber()
                 )
         );
