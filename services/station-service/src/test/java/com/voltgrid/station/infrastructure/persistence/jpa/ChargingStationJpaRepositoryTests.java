@@ -1,9 +1,11 @@
 package com.voltgrid.station.infrastructure.persistence.jpa;
 
 import com.voltgrid.station.domain.StationStatus;
+import com.voltgrid.station.support.PostgresTestConfiguration;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -11,6 +13,7 @@ import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
+@Import(PostgresTestConfiguration.class)
 @Transactional
 class ChargingStationJpaRepositoryTests {
 
