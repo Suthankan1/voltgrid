@@ -1,6 +1,7 @@
 package com.voltgrid.station.api.ocpp;
 
 import com.voltgrid.station.application.StationConnectivityService;
+import com.voltgrid.station.infrastructure.lifecycle.ApplicationShutdownState;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.SubProtocolCapable;
@@ -19,13 +20,16 @@ public class OcppWebSocketHandler
 
     private final OcppMessageProcessor messageProcessor;
     private final StationConnectivityService connectivityService;
+    private final ApplicationShutdownState shutdownState;
 
     public OcppWebSocketHandler(
             OcppMessageProcessor messageProcessor,
-            StationConnectivityService connectivityService
+            StationConnectivityService connectivityService,
+            ApplicationShutdownState shutdownState
     ) {
         this.messageProcessor = messageProcessor;
         this.connectivityService = connectivityService;
+        this.shutdownState = shutdownState;
     }
 
     @Override
@@ -66,6 +70,10 @@ public class OcppWebSocketHandler
             WebSocketSession session,
             CloseStatus status
     ) {
+        if (shutdownState.isShuttingDown()) {
+            return;
+        }
+
         var stationId = (String) session
                 .getAttributes()
                 .get(OcppHandshakeInterceptor.STATION_ID_ATTRIBUTE);

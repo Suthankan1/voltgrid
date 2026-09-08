@@ -4,6 +4,7 @@ import com.voltgrid.station.application.StationConnectivityService;
 import com.voltgrid.station.application.StationReader;
 import com.voltgrid.station.domain.ChargingStation;
 import com.voltgrid.station.domain.StationStatus;
+import com.voltgrid.station.infrastructure.lifecycle.ApplicationShutdownState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,18 +14,20 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
-import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.WebSocketSession;
-
-import java.util.Map;
 
 import java.net.URI;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class OcppHandshakeInterceptorTests {
@@ -47,11 +50,16 @@ class OcppHandshakeInterceptorTests {
     @Mock
     private StationConnectivityService connectivityService;
 
+    @Mock
+    private ApplicationShutdownState shutdownState;
+
     private OcppHandshakeInterceptor interceptor;
 
     @BeforeEach
     void setUp() {
-        interceptor = new OcppHandshakeInterceptor(stationReader);
+        interceptor = new OcppHandshakeInterceptor(
+                stationReader
+        );
     }
 
     @Test
@@ -63,7 +71,8 @@ class OcppHandshakeInterceptorTests {
                 OcppWebSocketHandler.SUBPROTOCOL
         );
 
-        when(request.getHeaders()).thenReturn(headers);
+        when(request.getHeaders())
+                .thenReturn(headers);
 
         when(request.getURI())
                 .thenReturn(
@@ -83,7 +92,8 @@ class OcppHandshakeInterceptorTests {
                         )
                 );
 
-        var attributes = new HashMap<String, Object>();
+        var attributes =
+                new HashMap<String, Object>();
 
         var accepted = interceptor.beforeHandshake(
                 request,
@@ -110,7 +120,8 @@ class OcppHandshakeInterceptorTests {
                 "ocpp1.6"
         );
 
-        when(request.getHeaders()).thenReturn(headers);
+        when(request.getHeaders())
+                .thenReturn(headers);
 
         var accepted = interceptor.beforeHandshake(
                 request,
@@ -136,7 +147,8 @@ class OcppHandshakeInterceptorTests {
                 OcppWebSocketHandler.SUBPROTOCOL
         );
 
-        when(request.getHeaders()).thenReturn(headers);
+        when(request.getHeaders())
+                .thenReturn(headers);
 
         when(request.getURI())
                 .thenReturn(
@@ -166,29 +178,39 @@ class OcppHandshakeInterceptorTests {
         var websocketHandler =
                 new OcppWebSocketHandler(
                         messageProcessor,
-                        connectivityService
+                        connectivityService,
+                        shutdownState
                 );
 
-        assertThat(websocketHandler.getSubProtocols())
-                .containsExactly("ocpp2.0.1");
+        assertThat(
+                websocketHandler.getSubProtocols()
+        ).containsExactly("ocpp2.0.1");
     }
 
     @Test
     void shouldMarkStationOfflineWhenWebSocketCloses()
             throws Exception {
 
-        var session = mock(WebSocketSession.class);
+        var session =
+                mock(WebSocketSession.class);
+
+        when(shutdownState.isShuttingDown())
+                .thenReturn(false);
 
         when(session.getAttributes())
-                .thenReturn(Map.of(
-                        OcppHandshakeInterceptor.STATION_ID_ATTRIBUTE,
-                        "STATION-003"
-                ));
+                .thenReturn(
+                        Map.of(
+                                OcppHandshakeInterceptor.STATION_ID_ATTRIBUTE,
+                                "STATION-003"
+                        )
+                );
 
-        var websocketHandler = new OcppWebSocketHandler(
-                messageProcessor,
-                connectivityService
-        );
+        var websocketHandler =
+                new OcppWebSocketHandler(
+                        messageProcessor,
+                        connectivityService,
+                        shutdownState
+                );
 
         websocketHandler.afterConnectionClosed(
                 session,
@@ -197,5 +219,30 @@ class OcppHandshakeInterceptorTests {
 
         verify(connectivityService)
                 .markOffline("STATION-003");
+    }
+
+    @Test
+    void shouldNotMarkStationOfflineDuringApplicationShutdown()
+            throws Exception {
+
+        var session =
+                mock(WebSocketSession.class);
+
+        when(shutdownState.isShuttingDown())
+                .thenReturn(true);
+
+        var websocketHandler =
+                new OcppWebSocketHandler(
+                        messageProcessor,
+                        connectivityService,
+                        shutdownState
+                );
+
+        websocketHandler.afterConnectionClosed(
+                session,
+                CloseStatus.GOING_AWAY
+        );
+
+        verifyNoInteractions(connectivityService);
     }
 }
