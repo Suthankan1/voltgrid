@@ -2,6 +2,7 @@ package com.voltgrid.station.api.ocpp;
 
 import com.voltgrid.station.application.StationConnectivityService;
 import com.voltgrid.station.application.StationConnectorStatusService;
+import com.voltgrid.station.application.StationTransactionService;
 import com.voltgrid.station.domain.ConnectorStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,9 @@ class OcppMessageProcessorTests {
     @Mock
     private StationConnectorStatusService connectorStatusService;
 
+    @Mock
+    private StationTransactionService transactionService;
+
     private JsonMapper jsonMapper;
     private OcppMessageProcessor processor;
 
@@ -37,7 +41,8 @@ class OcppMessageProcessorTests {
         processor = new OcppMessageProcessor(
                 jsonMapper,
                 connectivityService,
-                connectorStatusService
+                connectorStatusService,
+                transactionService
         );
     }
 
@@ -94,7 +99,8 @@ class OcppMessageProcessorTests {
                 );
 
         verifyNoInteractions(
-                connectorStatusService
+                connectorStatusService,
+                transactionService
         );
     }
 
@@ -133,7 +139,8 @@ class OcppMessageProcessorTests {
                 );
 
         verifyNoInteractions(
-                connectorStatusService
+                connectorStatusService,
+                transactionService
         );
     }
 
@@ -186,6 +193,172 @@ class OcppMessageProcessorTests {
                         eq("STATION-003"),
                         any(Instant.class)
                 );
+
+        verifyNoInteractions(
+                transactionService
+        );
+    }
+
+    @Test
+    void shouldHandleStartedTransactionEvent() {
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "tx-event-001",
+                  "TransactionEvent",
+                  {
+                    "eventType": "Started",
+                    "timestamp": "2026-09-08T10:30:00Z",
+                    "triggerReason": "CablePluggedIn",
+                    "seqNo": 0,
+                    "transactionInfo": {
+                      "transactionId": "TX-001",
+                      "chargingState": "EVConnected"
+                    },
+                    "evse": {
+                      "id": 1,
+                      "connectorId": 1
+                    }
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(json.get(0).intValue())
+                .isEqualTo(3);
+
+        assertThat(json.get(1).stringValue())
+                .isEqualTo("tx-event-001");
+
+        assertThat(json.get(2).isObject())
+                .isTrue();
+
+        assertThat(json.get(2).size())
+                .isZero();
+
+        verify(transactionService)
+                .startTransaction(
+                        "STATION-003",
+                        "TX-001",
+                        1,
+                        1,
+                        Instant.parse(
+                                "2026-09-08T10:30:00Z"
+                        ),
+                        0
+                );
+
+        verify(connectivityService)
+                .recordActivity(
+                        eq("STATION-003"),
+                        any(Instant.class)
+                );
+
+        verifyNoInteractions(
+                connectorStatusService
+        );
+    }
+
+    @Test
+    void shouldRejectUnsupportedTransactionEventType() {
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "tx-event-002",
+                  "TransactionEvent",
+                  {
+                    "eventType": "Updated",
+                    "timestamp": "2026-09-08T10:35:00Z",
+                    "triggerReason": "MeterValuePeriodic",
+                    "seqNo": 1,
+                    "transactionInfo": {
+                      "transactionId": "TX-001"
+                    },
+                    "evse": {
+                      "id": 1,
+                      "connectorId": 1
+                    }
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(json.get(0).intValue())
+                .isEqualTo(4);
+
+        assertThat(json.get(1).stringValue())
+                .isEqualTo("tx-event-002");
+
+        assertThat(json.get(2).stringValue())
+                .isEqualTo("NotImplemented");
+
+        assertThat(json.get(3).stringValue())
+                .isEqualTo(
+                        "TransactionEvent type not implemented: Updated"
+                );
+
+        verifyNoInteractions(
+                connectivityService,
+                connectorStatusService,
+                transactionService
+        );
+    }
+
+    @Test
+    void shouldRejectInvalidTransactionEventTimestamp() {
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "tx-event-003",
+                  "TransactionEvent",
+                  {
+                    "eventType": "Started",
+                    "timestamp": "not-a-timestamp",
+                    "triggerReason": "CablePluggedIn",
+                    "seqNo": 0,
+                    "transactionInfo": {
+                      "transactionId": "TX-001"
+                    },
+                    "evse": {
+                      "id": 1,
+                      "connectorId": 1
+                    }
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(json.get(0).intValue())
+                .isEqualTo(4);
+
+        assertThat(json.get(1).stringValue())
+                .isEqualTo("tx-event-003");
+
+        assertThat(json.get(2).stringValue())
+                .isEqualTo("FormatViolation");
+
+        assertThat(json.get(3).stringValue())
+                .isEqualTo(
+                        "Invalid TransactionEvent timestamp"
+                );
+
+        verifyNoInteractions(
+                connectivityService,
+                connectorStatusService,
+                transactionService
+        );
     }
 
     @Test
@@ -225,7 +398,8 @@ class OcppMessageProcessorTests {
 
         verifyNoInteractions(
                 connectivityService,
-                connectorStatusService
+                connectorStatusService,
+                transactionService
         );
     }
 
@@ -266,7 +440,8 @@ class OcppMessageProcessorTests {
 
         verifyNoInteractions(
                 connectivityService,
-                connectorStatusService
+                connectorStatusService,
+                transactionService
         );
     }
 
@@ -278,7 +453,7 @@ class OcppMessageProcessorTests {
                 [
                   2,
                   "msg-001",
-                  "TransactionEvent",
+                  "Authorize",
                   {}
                 ]
                 """
@@ -297,12 +472,13 @@ class OcppMessageProcessorTests {
 
         assertThat(json.get(3).stringValue())
                 .isEqualTo(
-                        "Action not implemented: TransactionEvent"
+                        "Action not implemented: Authorize"
                 );
 
         verifyNoInteractions(
                 connectivityService,
-                connectorStatusService
+                connectorStatusService,
+                transactionService
         );
     }
 
@@ -343,7 +519,8 @@ class OcppMessageProcessorTests {
 
         verifyNoInteractions(
                 connectivityService,
-                connectorStatusService
+                connectorStatusService,
+                transactionService
         );
     }
 }

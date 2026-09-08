@@ -2,6 +2,7 @@ package com.voltgrid.station.api.ocpp;
 
 import com.voltgrid.station.application.StationConnectivityService;
 import com.voltgrid.station.application.StationConnectorStatusService;
+import com.voltgrid.station.application.StationTransactionService;
 import com.voltgrid.station.domain.ConnectorStatus;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
@@ -22,15 +23,18 @@ public class OcppMessageProcessor {
     private final JsonMapper jsonMapper;
     private final StationConnectivityService connectivityService;
     private final StationConnectorStatusService connectorStatusService;
+    private final StationTransactionService transactionService;
 
     public OcppMessageProcessor(
             JsonMapper jsonMapper,
             StationConnectivityService connectivityService,
-            StationConnectorStatusService connectorStatusService
+            StationConnectorStatusService connectorStatusService,
+            StationTransactionService transactionService
     ) {
         this.jsonMapper = jsonMapper;
         this.connectivityService = connectivityService;
         this.connectorStatusService = connectorStatusService;
+        this.transactionService = transactionService;
     }
 
     public String process(
@@ -61,6 +65,13 @@ public class OcppMessageProcessor {
 
                 case "StatusNotification" ->
                         handleStatusNotification(
+                                stationId,
+                                messageId,
+                                message.get(3)
+                        );
+                
+                case "TransactionEvent" ->
+                        handleTransactionEvent(
                                 stationId,
                                 messageId,
                                 message.get(3)
@@ -334,5 +345,95 @@ public class OcppMessageProcessor {
     ) {
         return value == null
                 || value.isBlank();
+    }
+
+    private String handleTransactionEvent(
+            String stationId,
+            String messageId,
+            JsonNode payload
+    ) {
+        var request = jsonMapper.treeToValue(
+                payload,
+                TransactionEventRequest.class
+        );
+
+        if (!isValid(request)) {
+            return callError(
+                    messageId,
+                    "FormatViolation",
+                    "Invalid TransactionEvent payload"
+            );
+        }
+
+        if (!"Started".equals(request.eventType())) {
+            return callError(
+                    messageId,
+                    "NotImplemented",
+                    "TransactionEvent type not implemented: "
+                            + request.eventType()
+            );
+        }
+
+        Instant startedAt;
+
+        try {
+            startedAt = Instant.parse(
+                    request.timestamp()
+            );
+        } catch (RuntimeException exception) {
+            return callError(
+                    messageId,
+                    "FormatViolation",
+                    "Invalid TransactionEvent timestamp"
+            );
+        }
+
+        transactionService.startTransaction(
+                stationId,
+                request.transactionInfo().transactionId(),
+                request.evse().id(),
+                request.evse().connectorId(),
+                startedAt,
+                request.seqNo()
+        );
+
+        connectivityService.recordActivity(
+                stationId,
+                Instant.now()
+        );
+
+        var response =
+                jsonMapper.createArrayNode();
+
+        response.add(CALL_RESULT);
+        response.add(messageId);
+        response.add(
+                jsonMapper.createObjectNode()
+        );
+
+        return jsonMapper.writeValueAsString(
+                response
+        );
+    }
+
+    private boolean isValid(
+            TransactionEventRequest request
+    ) {
+        return request != null
+                && !isBlank(request.eventType())
+                && !isBlank(request.timestamp())
+                && !isBlank(request.triggerReason())
+                && request.seqNo() != null
+                && request.seqNo() >= 0
+                && request.transactionInfo() != null
+                && !isBlank(
+                request.transactionInfo()
+                        .transactionId()
+        )
+                && request.evse() != null
+                && request.evse().id() != null
+                && request.evse().id() > 0
+                && request.evse().connectorId() != null
+                && request.evse().connectorId() > 0;
     }
 }
