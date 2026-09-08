@@ -1,6 +1,8 @@
 package com.voltgrid.station.api.ocpp;
 
 import com.voltgrid.station.application.StationConnectivityService;
+import com.voltgrid.station.application.StationConnectorStatusService;
+import com.voltgrid.station.domain.ConnectorStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +24,9 @@ class OcppMessageProcessorTests {
     @Mock
     private StationConnectivityService connectivityService;
 
+    @Mock
+    private StationConnectorStatusService connectorStatusService;
+
     private JsonMapper jsonMapper;
     private OcppMessageProcessor processor;
 
@@ -31,7 +36,8 @@ class OcppMessageProcessorTests {
 
         processor = new OcppMessageProcessor(
                 jsonMapper,
-                connectivityService
+                connectivityService,
+                connectorStatusService
         );
     }
 
@@ -86,6 +92,10 @@ class OcppMessageProcessorTests {
                         eq("STATION-003"),
                         any(Instant.class)
                 );
+
+        verifyNoInteractions(
+                connectorStatusService
+        );
     }
 
     @Test
@@ -121,6 +131,141 @@ class OcppMessageProcessorTests {
                         eq("STATION-003"),
                         any(Instant.class)
                 );
+
+        verifyNoInteractions(
+                connectorStatusService
+        );
+    }
+
+    @Test
+    void shouldHandleStatusNotification() {
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "status-001",
+                  "StatusNotification",
+                  {
+                    "timestamp": "2026-09-08T05:30:00Z",
+                    "connectorStatus": "Available",
+                    "evseId": 1,
+                    "connectorId": 1
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(json.get(0).intValue())
+                .isEqualTo(3);
+
+        assertThat(json.get(1).stringValue())
+                .isEqualTo("status-001");
+
+        assertThat(json.get(2).isObject())
+                .isTrue();
+
+        assertThat(json.get(2).size())
+                .isZero();
+
+        verify(connectorStatusService)
+                .updateStatus(
+                        "STATION-003",
+                        1,
+                        1,
+                        ConnectorStatus.AVAILABLE,
+                        Instant.parse(
+                                "2026-09-08T05:30:00Z"
+                        )
+                );
+
+        verifyNoInteractions(
+                connectivityService
+        );
+    }
+
+    @Test
+    void shouldRejectInvalidConnectorStatus() {
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "status-002",
+                  "StatusNotification",
+                  {
+                    "timestamp": "2026-09-08T05:30:00Z",
+                    "connectorStatus": "Exploded",
+                    "evseId": 1,
+                    "connectorId": 1
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(json.get(0).intValue())
+                .isEqualTo(4);
+
+        assertThat(json.get(1).stringValue())
+                .isEqualTo("status-002");
+
+        assertThat(json.get(2).stringValue())
+                .isEqualTo("FormatViolation");
+
+        assertThat(json.get(3).stringValue())
+                .isEqualTo(
+                        "Invalid connector status"
+                );
+
+        verifyNoInteractions(
+                connectivityService,
+                connectorStatusService
+        );
+    }
+
+    @Test
+    void shouldRejectInvalidStatusNotificationTimestamp() {
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "status-003",
+                  "StatusNotification",
+                  {
+                    "timestamp": "not-a-timestamp",
+                    "connectorStatus": "Available",
+                    "evseId": 1,
+                    "connectorId": 1
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(json.get(0).intValue())
+                .isEqualTo(4);
+
+        assertThat(json.get(1).stringValue())
+                .isEqualTo("status-003");
+
+        assertThat(json.get(2).stringValue())
+                .isEqualTo("FormatViolation");
+
+        assertThat(json.get(3).stringValue())
+                .isEqualTo(
+                        "Invalid StatusNotification timestamp"
+                );
+
+        verifyNoInteractions(
+                connectivityService,
+                connectorStatusService
+        );
     }
 
     @Test
@@ -131,7 +276,7 @@ class OcppMessageProcessorTests {
                 [
                   2,
                   "msg-001",
-                  "StatusNotification",
+                  "TransactionEvent",
                   {}
                 ]
                 """
@@ -150,10 +295,13 @@ class OcppMessageProcessorTests {
 
         assertThat(json.get(3).stringValue())
                 .isEqualTo(
-                        "Action not implemented: StatusNotification"
+                        "Action not implemented: TransactionEvent"
                 );
 
-        verifyNoInteractions(connectivityService);
+        verifyNoInteractions(
+                connectivityService,
+                connectorStatusService
+        );
     }
 
     @Test
@@ -191,6 +339,9 @@ class OcppMessageProcessorTests {
                         "Invalid BootNotification payload"
                 );
 
-        verifyNoInteractions(connectivityService);
+        verifyNoInteractions(
+                connectivityService,
+                connectorStatusService
+        );
     }
 }

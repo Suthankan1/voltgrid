@@ -1,6 +1,8 @@
 package com.voltgrid.station.api.ocpp;
 
 import com.voltgrid.station.application.StationConnectivityService;
+import com.voltgrid.station.application.StationConnectorStatusService;
+import com.voltgrid.station.domain.ConnectorStatus;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -19,13 +21,16 @@ public class OcppMessageProcessor {
 
     private final JsonMapper jsonMapper;
     private final StationConnectivityService connectivityService;
+    private final StationConnectorStatusService connectorStatusService;
 
     public OcppMessageProcessor(
             JsonMapper jsonMapper,
-            StationConnectivityService connectivityService
+            StationConnectivityService connectivityService,
+            StationConnectorStatusService connectorStatusService
     ) {
         this.jsonMapper = jsonMapper;
         this.connectivityService = connectivityService;
+        this.connectorStatusService = connectorStatusService;
     }
 
     public String process(String stationId, String rawMessage) {
@@ -49,6 +54,13 @@ public class OcppMessageProcessor {
                         handleHeartbeat(
                                 stationId,
                                 messageId
+                        );
+
+                case "StatusNotification" ->
+                        handleStatusNotification(
+                                stationId,
+                                messageId,
+                                message.get(3)
                         );
 
                 default ->
@@ -92,7 +104,8 @@ public class OcppMessageProcessor {
                 now
         );
 
-        var responsePayload = jsonMapper.createObjectNode();
+        var responsePayload =
+                jsonMapper.createObjectNode();
 
         responsePayload.put(
                 "currentTime",
@@ -109,7 +122,8 @@ public class OcppMessageProcessor {
                 "Accepted"
         );
 
-        var response = jsonMapper.createArrayNode();
+        var response =
+                jsonMapper.createArrayNode();
 
         response.add(CALL_RESULT);
         response.add(messageId);
@@ -129,18 +143,84 @@ public class OcppMessageProcessor {
                 now
         );
 
-        var responsePayload = jsonMapper.createObjectNode();
+        var responsePayload =
+                jsonMapper.createObjectNode();
 
         responsePayload.put(
                 "currentTime",
                 now.toString()
         );
 
-        var response = jsonMapper.createArrayNode();
+        var response =
+                jsonMapper.createArrayNode();
 
         response.add(CALL_RESULT);
         response.add(messageId);
         response.add(responsePayload);
+
+        return jsonMapper.writeValueAsString(response);
+    }
+
+    private String handleStatusNotification(
+            String stationId,
+            String messageId,
+            JsonNode payload
+    ) {
+        var request = jsonMapper.treeToValue(
+                payload,
+                StatusNotificationRequest.class
+        );
+
+        if (!isValid(request)) {
+            return callError(
+                    messageId,
+                    "FormatViolation",
+                    "Invalid StatusNotification payload"
+            );
+        }
+
+        Instant timestamp;
+
+        try {
+            timestamp = Instant.parse(
+                    request.timestamp()
+            );
+        } catch (RuntimeException exception) {
+            return callError(
+                    messageId,
+                    "FormatViolation",
+                    "Invalid StatusNotification timestamp"
+            );
+        }
+
+        var status = toConnectorStatus(
+                request.connectorStatus()
+        );
+
+        if (status == null) {
+            return callError(
+                    messageId,
+                    "FormatViolation",
+                    "Invalid connector status"
+            );
+        }
+
+        connectorStatusService.updateStatus(
+                stationId,
+                request.evseId(),
+                request.connectorId(),
+                status,
+                timestamp
+        );
+
+        var response =
+                jsonMapper.createArrayNode();
+
+        response.add(CALL_RESULT);
+        response.add(messageId);
+        response.add(
+                jsonMapper.createObjectNode()
+        );
 
         return jsonMapper.writeValueAsString(response);
     }
@@ -160,12 +240,54 @@ public class OcppMessageProcessor {
         }
     }
 
-    private boolean isValid(BootNotificationRequest request) {
+    private boolean isValid(
+            BootNotificationRequest request
+    ) {
         return request != null
                 && !isBlank(request.reason())
                 && request.chargingStation() != null
-                && !isBlank(request.chargingStation().model())
-                && !isBlank(request.chargingStation().vendorName());
+                && !isBlank(
+                        request.chargingStation().model()
+                )
+                && !isBlank(
+                        request.chargingStation().vendorName()
+                );
+    }
+
+    private boolean isValid(
+            StatusNotificationRequest request
+    ) {
+        return request != null
+                && !isBlank(request.timestamp())
+                && !isBlank(request.connectorStatus())
+                && request.evseId() != null
+                && request.evseId() >= 0
+                && request.connectorId() != null
+                && request.connectorId() >= 0;
+    }
+
+    private ConnectorStatus toConnectorStatus(
+            String value
+    ) {
+        return switch (value) {
+            case "Available" ->
+                    ConnectorStatus.AVAILABLE;
+
+            case "Occupied" ->
+                    ConnectorStatus.OCCUPIED;
+
+            case "Reserved" ->
+                    ConnectorStatus.RESERVED;
+
+            case "Unavailable" ->
+                    ConnectorStatus.UNAVAILABLE;
+
+            case "Faulted" ->
+                    ConnectorStatus.FAULTED;
+
+            default ->
+                    null;
+        };
     }
 
     private String callError(
@@ -173,13 +295,16 @@ public class OcppMessageProcessor {
             String errorCode,
             String description
     ) {
-        var response = jsonMapper.createArrayNode();
+        var response =
+                jsonMapper.createArrayNode();
 
         response.add(CALL_ERROR);
         response.add(messageId);
         response.add(errorCode);
         response.add(description);
-        response.add(jsonMapper.createObjectNode());
+        response.add(
+                jsonMapper.createObjectNode()
+        );
 
         return jsonMapper.writeValueAsString(response);
     }
