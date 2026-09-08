@@ -45,6 +45,39 @@ public class StationTransactionService {
     }
 
     @Transactional
+    public void updateTransaction(
+            String stationId,
+            String transactionId,
+            int sequenceNumber
+    ) {
+        var transaction =
+                findTransaction(
+                        stationId,
+                        transactionId
+                );
+
+        ensureActive(transaction);
+
+        ensureSequenceAdvances(
+                transaction,
+                sequenceNumber
+        );
+
+        transactionWriter.save(
+                new ChargingTransaction(
+                        transaction.stationId(),
+                        transaction.transactionId(),
+                        transaction.evseId(),
+                        transaction.connectorId(),
+                        TransactionStatus.ACTIVE,
+                        transaction.startedAt(),
+                        null,
+                        sequenceNumber
+                )
+        );
+    }
+
+    @Transactional
     public void endTransaction(
             String stationId,
             String transactionId,
@@ -52,26 +85,17 @@ public class StationTransactionService {
             int sequenceNumber
     ) {
         var transaction =
-                transactionReader
-                        .findById(
-                                stationId,
-                                transactionId
-                        )
-                        .orElseThrow(() ->
-                                new TransactionNotFoundException(
-                                        stationId,
-                                        transactionId
-                                )
-                        );
+                findTransaction(
+                        stationId,
+                        transactionId
+                );
 
-        if (sequenceNumber
-                <= transaction.lastSequenceNumber()) {
+        ensureActive(transaction);
 
-            throw new InvalidTransactionSequenceException(
-                    transaction.lastSequenceNumber(),
-                    sequenceNumber
-            );
-        }
+        ensureSequenceAdvances(
+                transaction,
+                sequenceNumber
+        );
 
         transactionWriter.save(
                 new ChargingTransaction(
@@ -85,5 +109,49 @@ public class StationTransactionService {
                         sequenceNumber
                 )
         );
+    }
+
+    private ChargingTransaction findTransaction(
+            String stationId,
+            String transactionId
+    ) {
+        return transactionReader
+                .findById(
+                        stationId,
+                        transactionId
+                )
+                .orElseThrow(() ->
+                        new TransactionNotFoundException(
+                                stationId,
+                                transactionId
+                        )
+                );
+    }
+
+    private void ensureActive(
+            ChargingTransaction transaction
+    ) {
+        if (transaction.status()
+                != TransactionStatus.ACTIVE) {
+
+            throw new TransactionNotActiveException(
+                    transaction.stationId(),
+                    transaction.transactionId()
+            );
+        }
+    }
+
+    private void ensureSequenceAdvances(
+            ChargingTransaction transaction,
+            int sequenceNumber
+    ) {
+        if (sequenceNumber
+                <= transaction.lastSequenceNumber()) {
+
+            throw new InvalidTransactionSequenceException(
+                    transaction.lastSequenceNumber(),
+                    sequenceNumber
+            );
+        }
     }
 }

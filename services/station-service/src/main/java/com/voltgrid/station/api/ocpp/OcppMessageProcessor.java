@@ -4,6 +4,7 @@ import com.voltgrid.station.application.InvalidTransactionSequenceException;
 import com.voltgrid.station.application.StationConnectivityService;
 import com.voltgrid.station.application.StationConnectorStatusService;
 import com.voltgrid.station.application.StationTransactionService;
+import com.voltgrid.station.application.TransactionNotActiveException;
 import com.voltgrid.station.application.TransactionNotFoundException;
 import com.voltgrid.station.domain.ConnectorStatus;
 import org.springframework.stereotype.Component;
@@ -286,8 +287,17 @@ public class OcppMessageProcessor {
             );
         }
 
-        switch (request.eventType()) {
-            case "Started" ->
+        try {
+            switch (request.eventType()) {
+                case "Started" -> {
+                    if (!hasValidEvse(request)) {
+                        return callError(
+                                messageId,
+                                "FormatViolation",
+                                "Started TransactionEvent requires valid EVSE information"
+                        );
+                    }
+
                     transactionService.startTransaction(
                             stationId,
                             request.transactionInfo()
@@ -297,36 +307,44 @@ public class OcppMessageProcessor {
                             eventAt,
                             request.seqNo()
                     );
+                }
 
-            case "Ended" -> {
-                try {
-                    transactionService.endTransaction(
-                            stationId,
-                            request.transactionInfo()
-                                    .transactionId(),
-                            eventAt,
-                            request.seqNo()
-                    );
-                } catch (
-                        TransactionNotFoundException
-                        | InvalidTransactionSequenceException exception
-                ) {
+                case "Updated" ->
+                        transactionService.updateTransaction(
+                                stationId,
+                                request.transactionInfo()
+                                        .transactionId(),
+                                request.seqNo()
+                        );
+
+                case "Ended" ->
+                        transactionService.endTransaction(
+                                stationId,
+                                request.transactionInfo()
+                                        .transactionId(),
+                                eventAt,
+                                request.seqNo()
+                        );
+
+                default -> {
                     return callError(
                             messageId,
-                            "OccurrenceConstraintViolation",
-                            exception.getMessage()
+                            "NotImplemented",
+                            "TransactionEvent type not implemented: "
+                                    + request.eventType()
                     );
                 }
             }
-
-            default -> {
-                return callError(
-                        messageId,
-                        "NotImplemented",
-                        "TransactionEvent type not implemented: "
-                                + request.eventType()
-                );
-            }
+        } catch (
+                TransactionNotFoundException
+                | TransactionNotActiveException
+                | InvalidTransactionSequenceException exception
+        ) {
+            return callError(
+                    messageId,
+                    "OccurrenceConstraintViolation",
+                    exception.getMessage()
+            );
         }
 
         connectivityService.recordActivity(
@@ -372,11 +390,11 @@ public class OcppMessageProcessor {
                 && !isBlank(request.reason())
                 && request.chargingStation() != null
                 && !isBlank(
-                        request.chargingStation().model()
-                )
+                request.chargingStation().model()
+        )
                 && !isBlank(
-                        request.chargingStation().vendorName()
-                );
+                request.chargingStation().vendorName()
+        );
     }
 
     private boolean isValid(
@@ -402,10 +420,15 @@ public class OcppMessageProcessor {
                 && request.seqNo() >= 0
                 && request.transactionInfo() != null
                 && !isBlank(
-                        request.transactionInfo()
-                                .transactionId()
-                )
-                && request.evse() != null
+                request.transactionInfo()
+                        .transactionId()
+        );
+    }
+
+    private boolean hasValidEvse(
+            TransactionEventRequest request
+    ) {
+        return request.evse() != null
                 && request.evse().id() != null
                 && request.evse().id() > 0
                 && request.evse().connectorId() != null

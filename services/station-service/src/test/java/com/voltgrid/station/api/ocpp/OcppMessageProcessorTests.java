@@ -4,6 +4,7 @@ import com.voltgrid.station.application.InvalidTransactionSequenceException;
 import com.voltgrid.station.application.StationConnectivityService;
 import com.voltgrid.station.application.StationConnectorStatusService;
 import com.voltgrid.station.application.StationTransactionService;
+import com.voltgrid.station.application.TransactionNotActiveException;
 import com.voltgrid.station.application.TransactionNotFoundException;
 import com.voltgrid.station.domain.ConnectorStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -237,6 +238,9 @@ class OcppMessageProcessorTests {
         assertThat(json.get(1).stringValue())
                 .isEqualTo("tx-event-001");
 
+        assertThat(json.get(2).isObject())
+                .isTrue();
+
         assertThat(json.get(2).size())
                 .isZero();
 
@@ -264,6 +268,60 @@ class OcppMessageProcessorTests {
     }
 
     @Test
+    void shouldHandleUpdatedTransactionEvent() {
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "tx-event-002",
+                  "TransactionEvent",
+                  {
+                    "eventType": "Updated",
+                    "timestamp": "2026-09-08T10:35:00Z",
+                    "triggerReason": "MeterValuePeriodic",
+                    "seqNo": 1,
+                    "transactionInfo": {
+                      "transactionId": "TX-001"
+                    }
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(json.get(0).intValue())
+                .isEqualTo(3);
+
+        assertThat(json.get(1).stringValue())
+                .isEqualTo("tx-event-002");
+
+        assertThat(json.get(2).isObject())
+                .isTrue();
+
+        assertThat(json.get(2).size())
+                .isZero();
+
+        verify(transactionService)
+                .updateTransaction(
+                        "STATION-003",
+                        "TX-001",
+                        1
+                );
+
+        verify(connectivityService)
+                .recordActivity(
+                        eq("STATION-003"),
+                        any(Instant.class)
+                );
+
+        verifyNoInteractions(
+                connectorStatusService
+        );
+    }
+
+    @Test
     void shouldHandleEndedTransactionEvent() {
         var response = processor.process(
                 "STATION-003",
@@ -276,7 +334,7 @@ class OcppMessageProcessorTests {
                     "eventType": "Ended",
                     "timestamp": "2026-09-08T11:15:00Z",
                     "triggerReason": "EVDeparted",
-                    "seqNo": 1,
+                    "seqNo": 3,
                     "transactionInfo": {
                       "transactionId": "TX-001",
                       "chargingState": "Idle",
@@ -312,7 +370,7 @@ class OcppMessageProcessorTests {
                         Instant.parse(
                                 "2026-09-08T11:15:00Z"
                         ),
-                        1
+                        3
                 );
 
         verify(connectivityService)
@@ -322,6 +380,66 @@ class OcppMessageProcessorTests {
                 );
 
         verifyNoInteractions(
+                connectorStatusService
+        );
+    }
+
+    @Test
+    void shouldRejectUpdatedEventForInvalidTransactionState() {
+        doThrow(
+                new TransactionNotActiveException(
+                        "STATION-003",
+                        "TX-001"
+                )
+        ).when(transactionService)
+                .updateTransaction(
+                        "STATION-003",
+                        "TX-001",
+                        4
+                );
+
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "tx-event-invalid-state",
+                  "TransactionEvent",
+                  {
+                    "eventType": "Updated",
+                    "timestamp": "2026-09-08T11:20:00Z",
+                    "triggerReason": "MeterValuePeriodic",
+                    "seqNo": 4,
+                    "transactionInfo": {
+                      "transactionId": "TX-001"
+                    }
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(json.get(0).intValue())
+                .isEqualTo(4);
+
+        assertThat(json.get(1).stringValue())
+                .isEqualTo(
+                        "tx-event-invalid-state"
+                );
+
+        assertThat(json.get(2).stringValue())
+                .isEqualTo(
+                        "OccurrenceConstraintViolation"
+                );
+
+        assertThat(json.get(3).stringValue())
+                .contains(
+                        "Transaction is not active"
+                );
+
+        verifyNoInteractions(
+                connectivityService,
                 connectorStatusService
         );
     }
@@ -357,10 +475,6 @@ class OcppMessageProcessorTests {
                     "seqNo": 1,
                     "transactionInfo": {
                       "transactionId": "TX-404"
-                    },
-                    "evse": {
-                      "id": 1,
-                      "connectorId": 1
                     }
                   }
                 ]
@@ -422,10 +536,6 @@ class OcppMessageProcessorTests {
                     "seqNo": 2,
                     "transactionInfo": {
                       "transactionId": "TX-001"
-                    },
-                    "evse": {
-                      "id": 1,
-                      "connectorId": 1
                     }
                   }
                 ]
@@ -463,19 +573,15 @@ class OcppMessageProcessorTests {
                 """
                 [
                   2,
-                  "tx-event-002",
+                  "tx-event-unsupported",
                   "TransactionEvent",
                   {
-                    "eventType": "Updated",
+                    "eventType": "SomethingElse",
                     "timestamp": "2026-09-08T10:35:00Z",
-                    "triggerReason": "MeterValuePeriodic",
+                    "triggerReason": "Other",
                     "seqNo": 1,
                     "transactionInfo": {
                       "transactionId": "TX-001"
-                    },
-                    "evse": {
-                      "id": 1,
-                      "connectorId": 1
                     }
                   }
                 ]
@@ -488,14 +594,16 @@ class OcppMessageProcessorTests {
                 .isEqualTo(4);
 
         assertThat(json.get(1).stringValue())
-                .isEqualTo("tx-event-002");
+                .isEqualTo(
+                        "tx-event-unsupported"
+                );
 
         assertThat(json.get(2).stringValue())
                 .isEqualTo("NotImplemented");
 
         assertThat(json.get(3).stringValue())
                 .isEqualTo(
-                        "TransactionEvent type not implemented: Updated"
+                        "TransactionEvent type not implemented: SomethingElse"
                 );
 
         verifyNoInteractions(

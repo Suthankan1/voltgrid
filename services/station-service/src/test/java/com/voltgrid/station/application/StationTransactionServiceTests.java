@@ -64,6 +64,52 @@ class StationTransactionServiceTests {
     }
 
     @Test
+    void shouldAdvanceActiveTransactionSequence() {
+        var startedAt = Instant.parse(
+                "2026-09-08T10:30:00Z"
+        );
+
+        when(
+                transactionReader.findById(
+                        "STATION-003",
+                        "TX-001"
+                )
+        ).thenReturn(
+                Optional.of(
+                        new ChargingTransaction(
+                                "STATION-003",
+                                "TX-001",
+                                1,
+                                1,
+                                TransactionStatus.ACTIVE,
+                                startedAt,
+                                null,
+                                0
+                        )
+                )
+        );
+
+        service.updateTransaction(
+                "STATION-003",
+                "TX-001",
+                1
+        );
+
+        verify(transactionWriter).save(
+                new ChargingTransaction(
+                        "STATION-003",
+                        "TX-001",
+                        1,
+                        1,
+                        TransactionStatus.ACTIVE,
+                        startedAt,
+                        null,
+                        1
+                )
+        );
+    }
+
+    @Test
     void shouldEndActiveTransaction() {
         var startedAt = Instant.parse(
                 "2026-09-08T10:30:00Z"
@@ -88,7 +134,7 @@ class StationTransactionServiceTests {
                                 TransactionStatus.ACTIVE,
                                 startedAt,
                                 null,
-                                0
+                                2
                         )
                 )
         );
@@ -97,7 +143,7 @@ class StationTransactionServiceTests {
                 "STATION-003",
                 "TX-001",
                 endedAt,
-                1
+                3
         );
 
         verify(transactionWriter).save(
@@ -109,7 +155,7 @@ class StationTransactionServiceTests {
                         TransactionStatus.ENDED,
                         startedAt,
                         endedAt,
-                        1
+                        3
                 )
         );
     }
@@ -141,16 +187,98 @@ class StationTransactionServiceTests {
         );
 
         assertThatThrownBy(() ->
-                service.endTransaction(
+                service.updateTransaction(
                         "STATION-003",
                         "TX-001",
-                        Instant.parse(
-                                "2026-09-08T11:15:00Z"
-                        ),
                         2
                 )
         ).isInstanceOf(
                 InvalidTransactionSequenceException.class
+        );
+    }
+
+    @Test
+    void shouldRejectUpdateForEndedTransaction() {
+        var startedAt = Instant.parse(
+                "2026-09-08T10:30:00Z"
+        );
+
+        var endedAt = Instant.parse(
+                "2026-09-08T11:15:00Z"
+        );
+
+        when(
+                transactionReader.findById(
+                        "STATION-003",
+                        "TX-001"
+                )
+        ).thenReturn(
+                Optional.of(
+                        new ChargingTransaction(
+                                "STATION-003",
+                                "TX-001",
+                                1,
+                                1,
+                                TransactionStatus.ENDED,
+                                startedAt,
+                                endedAt,
+                                3
+                        )
+                )
+        );
+
+        assertThatThrownBy(() ->
+                service.updateTransaction(
+                        "STATION-003",
+                        "TX-001",
+                        4
+                )
+        ).isInstanceOf(
+                TransactionNotActiveException.class
+        );
+    }
+
+    @Test
+    void shouldRejectEndingAlreadyEndedTransaction() {
+        var startedAt = Instant.parse(
+                "2026-09-08T10:30:00Z"
+        );
+
+        var endedAt = Instant.parse(
+                "2026-09-08T11:15:00Z"
+        );
+
+        when(
+                transactionReader.findById(
+                        "STATION-003",
+                        "TX-001"
+                )
+        ).thenReturn(
+                Optional.of(
+                        new ChargingTransaction(
+                                "STATION-003",
+                                "TX-001",
+                                1,
+                                1,
+                                TransactionStatus.ENDED,
+                                startedAt,
+                                endedAt,
+                                3
+                        )
+                )
+        );
+
+        assertThatThrownBy(() ->
+                service.endTransaction(
+                        "STATION-003",
+                        "TX-001",
+                        Instant.parse(
+                                "2026-09-08T11:20:00Z"
+                        ),
+                        4
+                )
+        ).isInstanceOf(
+                TransactionNotActiveException.class
         );
     }
 }
