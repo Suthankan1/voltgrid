@@ -36,6 +36,9 @@ class StationTransactionServiceTests {
     @Mock
     private TransactionEventReceiptWriter eventReceiptWriter;
 
+    @Mock
+    private TransactionEventReceiptReader eventReceiptReader;
+
     private StationTransactionService service;
 
     @BeforeEach
@@ -44,7 +47,8 @@ class StationTransactionServiceTests {
                 transactionReader,
                 transactionWriter,
                 meterSampleWriter,
-                eventReceiptWriter
+                eventReceiptWriter,
+                eventReceiptReader
         );
     }
 
@@ -125,6 +129,16 @@ class StationTransactionServiceTests {
                 )
         );
 
+        when(
+                eventReceiptReader.findById(
+                        "STATION-003",
+                        "TX-001",
+                        1
+                )
+        ).thenReturn(
+                Optional.empty()
+        );
+
         service.updateTransaction(
                 "STATION-003",
                 "TX-001",
@@ -187,6 +201,16 @@ class StationTransactionServiceTests {
                                 0
                         )
                 )
+        );
+
+        when(
+                eventReceiptReader.findById(
+                        "STATION-003",
+                        "TX-001",
+                        1
+                )
+        ).thenReturn(
+                Optional.empty()
         );
 
         var samples = List.of(
@@ -252,6 +276,264 @@ class StationTransactionServiceTests {
     }
 
     @Test
+    void shouldPersistLateUpdatedTransactionWithoutMovingLastSequenceNumber() {
+        var startedAt = Instant.parse(
+                "2026-09-08T10:30:00Z"
+        );
+
+        var endedAt = Instant.parse(
+                "2026-09-08T11:15:00Z"
+        );
+
+        when(
+                transactionReader.findById(
+                        "STATION-003",
+                        "TX-001"
+                )
+        ).thenReturn(
+                Optional.of(
+                        new ChargingTransaction(
+                                "STATION-003",
+                                "TX-001",
+                                1,
+                                1,
+                                TransactionStatus.ENDED,
+                                startedAt,
+                                endedAt,
+                                4
+                        )
+                )
+        );
+
+        when(
+                eventReceiptReader.findById(
+                        "STATION-003",
+                        "TX-001",
+                        2
+                )
+        ).thenReturn(
+                Optional.empty()
+        );
+
+        var samples = List.of(
+                new TransactionMeterSample(
+                        "STATION-003",
+                        "TX-001",
+                        2,
+                        Instant.parse(
+                                "2026-09-08T10:40:00Z"
+                        ),
+                        new BigDecimal("1850.75"),
+                        "Energy.Active.Import.Register",
+                        "Sample.Periodic",
+                        null,
+                        "Outlet",
+                        "Wh",
+                        0
+                )
+        );
+
+        service.updateTransaction(
+                "STATION-003",
+                "TX-001",
+                2,
+                samples
+        );
+
+        verifyNoInteractions(
+                transactionWriter
+        );
+
+        verify(meterSampleWriter)
+                .saveAll(samples);
+
+        verify(eventReceiptWriter).save(
+                new TransactionEventReceipt(
+                        "STATION-003",
+                        "TX-001",
+                        2,
+                        TransactionEventType.UPDATED
+                )
+        );
+    }
+
+    @Test
+    void shouldIgnoreAlreadyReceivedUpdatedTransaction() {
+        var startedAt = Instant.parse(
+                "2026-09-08T10:30:00Z"
+        );
+
+        when(
+                transactionReader.findById(
+                        "STATION-003",
+                        "TX-001"
+                )
+        ).thenReturn(
+                Optional.of(
+                        new ChargingTransaction(
+                                "STATION-003",
+                                "TX-001",
+                                1,
+                                1,
+                                TransactionStatus.ACTIVE,
+                                startedAt,
+                                null,
+                                2
+                        )
+                )
+        );
+
+        when(
+                eventReceiptReader.findById(
+                        "STATION-003",
+                        "TX-001",
+                        2
+                )
+        ).thenReturn(
+                Optional.of(
+                        new TransactionEventReceipt(
+                                "STATION-003",
+                                "TX-001",
+                                2,
+                                TransactionEventType.UPDATED
+                        )
+                )
+        );
+
+        service.updateTransaction(
+                "STATION-003",
+                "TX-001",
+                2,
+                List.of()
+        );
+
+        verifyNoInteractions(
+                transactionWriter,
+                meterSampleWriter,
+                eventReceiptWriter
+        );
+    }
+
+    @Test
+    void shouldRejectConflictingTransactionEventTypeForSameSequenceNumber() {
+        var startedAt = Instant.parse(
+                "2026-09-08T10:30:00Z"
+        );
+
+        when(
+                transactionReader.findById(
+                        "STATION-003",
+                        "TX-001"
+                )
+        ).thenReturn(
+                Optional.of(
+                        new ChargingTransaction(
+                                "STATION-003",
+                                "TX-001",
+                                1,
+                                1,
+                                TransactionStatus.ACTIVE,
+                                startedAt,
+                                null,
+                                3
+                        )
+                )
+        );
+
+        when(
+                eventReceiptReader.findById(
+                        "STATION-003",
+                        "TX-001",
+                        2
+                )
+        ).thenReturn(
+                Optional.of(
+                        new TransactionEventReceipt(
+                                "STATION-003",
+                                "TX-001",
+                                2,
+                                TransactionEventType.ENDED
+                        )
+                )
+        );
+
+        assertThatThrownBy(() ->
+                service.updateTransaction(
+                        "STATION-003",
+                        "TX-001",
+                        2,
+                        List.of()
+                )
+        ).isInstanceOf(
+                ConflictingTransactionEventException.class
+        );
+
+        verifyNoInteractions(
+                transactionWriter,
+                meterSampleWriter,
+                eventReceiptWriter
+        );
+    }
+
+    @Test
+    void shouldRejectForwardUpdateForEndedTransaction() {
+        var startedAt = Instant.parse(
+                "2026-09-08T10:30:00Z"
+        );
+
+        var endedAt = Instant.parse(
+                "2026-09-08T11:15:00Z"
+        );
+
+        when(
+                transactionReader.findById(
+                        "STATION-003",
+                        "TX-001"
+                )
+        ).thenReturn(
+                Optional.of(
+                        new ChargingTransaction(
+                                "STATION-003",
+                                "TX-001",
+                                1,
+                                1,
+                                TransactionStatus.ENDED,
+                                startedAt,
+                                endedAt,
+                                3
+                        )
+                )
+        );
+
+        when(
+                eventReceiptReader.findById(
+                        "STATION-003",
+                        "TX-001",
+                        4
+                )
+        ).thenReturn(
+                Optional.empty()
+        );
+
+        assertThatThrownBy(() ->
+                service.updateTransaction(
+                        "STATION-003",
+                        "TX-001",
+                        4,
+                        List.of()
+                )
+        ).isInstanceOf(
+                TransactionNotActiveException.class
+        );
+
+        verifyNoInteractions(
+                transactionWriter,
+                meterSampleWriter,
+                eventReceiptWriter
+        );
+    }
+
+    @Test
     void shouldEndActiveTransaction() {
         var startedAt = Instant.parse(
                 "2026-09-08T10:30:00Z"
@@ -312,98 +594,6 @@ class StationTransactionServiceTests {
 
         verifyNoInteractions(
                 meterSampleWriter
-        );
-    }
-
-    @Test
-    void shouldRejectOlderTransactionSequenceNumber() {
-        var startedAt = Instant.parse(
-                "2026-09-08T10:30:00Z"
-        );
-
-        when(
-                transactionReader.findById(
-                        "STATION-003",
-                        "TX-001"
-                )
-        ).thenReturn(
-                Optional.of(
-                        new ChargingTransaction(
-                                "STATION-003",
-                                "TX-001",
-                                1,
-                                1,
-                                TransactionStatus.ACTIVE,
-                                startedAt,
-                                null,
-                                3
-                        )
-                )
-        );
-
-        assertThatThrownBy(() ->
-                service.updateTransaction(
-                        "STATION-003",
-                        "TX-001",
-                        2,
-                        List.of()
-                )
-        ).isInstanceOf(
-                InvalidTransactionSequenceException.class
-        );
-
-        verifyNoInteractions(
-                transactionWriter,
-                meterSampleWriter,
-                eventReceiptWriter
-        );
-    }
-
-    @Test
-    void shouldRejectUpdateForEndedTransaction() {
-        var startedAt = Instant.parse(
-                "2026-09-08T10:30:00Z"
-        );
-
-        var endedAt = Instant.parse(
-                "2026-09-08T11:15:00Z"
-        );
-
-        when(
-                transactionReader.findById(
-                        "STATION-003",
-                        "TX-001"
-                )
-        ).thenReturn(
-                Optional.of(
-                        new ChargingTransaction(
-                                "STATION-003",
-                                "TX-001",
-                                1,
-                                1,
-                                TransactionStatus.ENDED,
-                                startedAt,
-                                endedAt,
-                                3
-                        )
-                )
-        );
-
-        assertThatThrownBy(() ->
-                service.updateTransaction(
-                        "STATION-003",
-                        "TX-001",
-                        4,
-                        List.of()
-                )
-        ).isInstanceOf(
-                TransactionNotActiveException.class
-        );
-
-        verifyNoInteractions(
-                transactionWriter,
-                meterSampleWriter,
-                eventReceiptWriter
         );
     }
 
@@ -546,64 +736,6 @@ class StationTransactionServiceTests {
     }
 
     @Test
-    void shouldIgnoreDuplicateUpdatedTransactionWithoutDuplicatingMeterSamples() {
-        var startedAt = Instant.parse(
-                "2026-09-08T10:30:00Z"
-        );
-
-        when(
-                transactionReader.findById(
-                        "STATION-003",
-                        "TX-001"
-                )
-        ).thenReturn(
-                Optional.of(
-                        new ChargingTransaction(
-                                "STATION-003",
-                                "TX-001",
-                                1,
-                                1,
-                                TransactionStatus.ACTIVE,
-                                startedAt,
-                                null,
-                                2
-                        )
-                )
-        );
-
-        var samples = List.of(
-                new TransactionMeterSample(
-                        "STATION-003",
-                        "TX-001",
-                        2,
-                        Instant.parse(
-                                "2026-09-08T10:40:00Z"
-                        ),
-                        new BigDecimal("1850.75"),
-                        "Energy.Active.Import.Register",
-                        "Sample.Periodic",
-                        null,
-                        "Outlet",
-                        "Wh",
-                        0
-                )
-        );
-
-        service.updateTransaction(
-                "STATION-003",
-                "TX-001",
-                2,
-                samples
-        );
-
-        verifyNoInteractions(
-                transactionWriter,
-                meterSampleWriter,
-                eventReceiptWriter
-        );
-    }
-
-    @Test
     void shouldIgnoreDuplicateEndedTransaction() {
         var startedAt = Instant.parse(
                 "2026-09-08T10:30:00Z"
@@ -688,50 +820,6 @@ class StationTransactionServiceTests {
                 )
         ).isInstanceOf(
                 TransactionNotActiveException.class
-        );
-
-        verifyNoInteractions(
-                transactionWriter,
-                meterSampleWriter,
-                eventReceiptWriter
-        );
-    }
-
-    @Test
-    void shouldRejectStaleUpdatedTransactionEvent() {
-        var startedAt = Instant.parse(
-                "2026-09-08T10:30:00Z"
-        );
-
-        when(
-                transactionReader.findById(
-                        "STATION-003",
-                        "TX-001"
-                )
-        ).thenReturn(
-                Optional.of(
-                        new ChargingTransaction(
-                                "STATION-003",
-                                "TX-001",
-                                1,
-                                1,
-                                TransactionStatus.ACTIVE,
-                                startedAt,
-                                null,
-                                3
-                        )
-                )
-        );
-
-        assertThatThrownBy(() ->
-                service.updateTransaction(
-                        "STATION-003",
-                        "TX-001",
-                        2,
-                        List.of()
-                )
-        ).isInstanceOf(
-                InvalidTransactionSequenceException.class
         );
 
         verifyNoInteractions(

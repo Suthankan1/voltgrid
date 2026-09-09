@@ -5,6 +5,7 @@ import com.voltgrid.station.domain.TransactionEventReceipt;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 
 @Component
 public class JpaTransactionEventReceiptReader
@@ -16,6 +17,23 @@ public class JpaTransactionEventReceiptReader
             TransactionEventReceiptJpaRepository repository
     ) {
         this.repository = repository;
+    }
+
+    @Override
+    public Optional<TransactionEventReceipt> findById(
+            String stationId,
+            String transactionId,
+            int sequenceNumber
+    ) {
+        return repository
+                .findById(
+                        new TransactionEventReceiptId(
+                                stationId,
+                                transactionId,
+                                sequenceNumber
+                        )
+                )
+                .map(this::toDomain);
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.voltgrid.station.api.ocpp;
 
+import com.voltgrid.station.application.ConflictingTransactionEventException;
 import com.voltgrid.station.application.InvalidTransactionSequenceException;
 import com.voltgrid.station.application.StationConnectivityService;
 import com.voltgrid.station.application.StationConnectorStatusService;
@@ -7,6 +8,7 @@ import com.voltgrid.station.application.StationTransactionService;
 import com.voltgrid.station.application.TransactionNotActiveException;
 import com.voltgrid.station.application.TransactionNotFoundException;
 import com.voltgrid.station.domain.ConnectorStatus;
+import com.voltgrid.station.domain.TransactionEventType;
 import com.voltgrid.station.domain.TransactionMeterSample;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -740,6 +742,68 @@ class OcppMessageProcessorTests {
         assertThat(json.get(3).stringValue())
                 .contains(
                         "Transaction sequence number"
+                );
+
+        verifyNoInteractions(
+                connectivityService,
+                connectorStatusService
+        );
+    }
+
+    @Test
+    void shouldReturnOccurrenceConstraintViolationForConflictingTransactionEvent() {
+        doThrow(
+                new ConflictingTransactionEventException(
+                        2,
+                        TransactionEventType.ENDED,
+                        TransactionEventType.UPDATED
+                )
+        ).when(transactionService)
+                .updateTransaction(
+                        "STATION-003",
+                        "TX-001",
+                        2,
+                        List.of()
+                );
+
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "tx-event-conflict",
+                  "TransactionEvent",
+                  {
+                    "eventType": "Updated",
+                    "timestamp": "2026-09-08T10:40:00Z",
+                    "triggerReason": "MeterValuePeriodic",
+                    "seqNo": 2,
+                    "transactionInfo": {
+                      "transactionId": "TX-001"
+                    }
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(json.get(0).intValue())
+                .isEqualTo(4);
+
+        assertThat(json.get(1).stringValue())
+                .isEqualTo(
+                        "tx-event-conflict"
+                );
+
+        assertThat(json.get(2).stringValue())
+                .isEqualTo(
+                        "OccurrenceConstraintViolation"
+                );
+
+        assertThat(json.get(3).stringValue())
+                .contains(
+                        "already received"
                 );
 
         verifyNoInteractions(

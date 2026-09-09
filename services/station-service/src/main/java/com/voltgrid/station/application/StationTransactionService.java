@@ -18,17 +18,20 @@ public class StationTransactionService {
     private final StationTransactionWriter transactionWriter;
     private final TransactionMeterSampleWriter meterSampleWriter;
     private final TransactionEventReceiptWriter eventReceiptWriter;
+    private final TransactionEventReceiptReader eventReceiptReader;
 
     public StationTransactionService(
             StationTransactionReader transactionReader,
             StationTransactionWriter transactionWriter,
             TransactionMeterSampleWriter meterSampleWriter,
-            TransactionEventReceiptWriter eventReceiptWriter
+            TransactionEventReceiptWriter eventReceiptWriter,
+            TransactionEventReceiptReader eventReceiptReader
     ) {
         this.transactionReader = transactionReader;
         this.transactionWriter = transactionWriter;
         this.meterSampleWriter = meterSampleWriter;
         this.eventReceiptWriter = eventReceiptWriter;
+        this.eventReceiptReader = eventReceiptReader;
     }
 
     @Transactional
@@ -98,32 +101,42 @@ public class StationTransactionService {
                         transactionId
                 );
 
-        if (isDuplicateUpdate(
-                transaction,
-                sequenceNumber
+        if (isAlreadyReceived(
+                stationId,
+                transactionId,
+                sequenceNumber,
+                TransactionEventType.UPDATED
         )) {
             return;
         }
 
-        ensureActive(transaction);
+        /*
+         * A sequence number greater than the current maximum is a
+         * forward event and therefore advances transaction state.
+         *
+         * A smaller sequence number with no existing receipt is a
+         * legitimate late/out-of-order event. In that case we persist
+         * its data and receipt without moving lastSequenceNumber
+         * backwards.
+         */
+        if (sequenceNumber
+                > transaction.lastSequenceNumber()) {
 
-        ensureSequenceAdvances(
-                transaction,
-                sequenceNumber
-        );
+            ensureActive(transaction);
 
-        transactionWriter.save(
-                new ChargingTransaction(
-                        transaction.stationId(),
-                        transaction.transactionId(),
-                        transaction.evseId(),
-                        transaction.connectorId(),
-                        TransactionStatus.ACTIVE,
-                        transaction.startedAt(),
-                        null,
-                        sequenceNumber
-                )
-        );
+            transactionWriter.save(
+                    new ChargingTransaction(
+                            transaction.stationId(),
+                            transaction.transactionId(),
+                            transaction.evseId(),
+                            transaction.connectorId(),
+                            TransactionStatus.ACTIVE,
+                            transaction.startedAt(),
+                            null,
+                            sequenceNumber
+                    )
+            );
+        }
 
         if (!meterSamples.isEmpty()) {
             meterSampleWriter.saveAll(
@@ -205,6 +218,38 @@ public class StationTransactionService {
                 );
     }
 
+    private boolean isAlreadyReceived(
+            String stationId,
+            String transactionId,
+            int sequenceNumber,
+            TransactionEventType receivedType
+    ) {
+        var existing =
+                eventReceiptReader.findById(
+                        stationId,
+                        transactionId,
+                        sequenceNumber
+                );
+
+        if (existing.isEmpty()) {
+            return false;
+        }
+
+        var receipt = existing.get();
+
+        if (receipt.eventType()
+                != receivedType) {
+
+            throw new ConflictingTransactionEventException(
+                    sequenceNumber,
+                    receipt.eventType(),
+                    receivedType
+            );
+        }
+
+        return true;
+    }
+
     private void recordReceipt(
             String stationId,
             String transactionId,
@@ -238,16 +283,6 @@ public class StationTransactionService {
                 == connectorId
                 && transaction.startedAt()
                 .equals(startedAt);
-    }
-
-    private boolean isDuplicateUpdate(
-            ChargingTransaction transaction,
-            int sequenceNumber
-    ) {
-        return transaction.status()
-                == TransactionStatus.ACTIVE
-                && transaction.lastSequenceNumber()
-                == sequenceNumber;
     }
 
     private boolean isDuplicateEnd(

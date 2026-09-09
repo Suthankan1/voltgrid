@@ -1,5 +1,6 @@
 package com.voltgrid.station.api.ocpp;
 
+import com.voltgrid.station.application.ConflictingTransactionEventException;
 import com.voltgrid.station.application.InvalidTransactionSequenceException;
 import com.voltgrid.station.application.StationConnectivityService;
 import com.voltgrid.station.application.StationConnectorStatusService;
@@ -358,7 +359,8 @@ public class OcppMessageProcessor {
         } catch (
                 TransactionNotFoundException
                 | TransactionNotActiveException
-                | InvalidTransactionSequenceException exception
+                | InvalidTransactionSequenceException
+                | ConflictingTransactionEventException exception
         ) {
             return callError(
                     messageId,
