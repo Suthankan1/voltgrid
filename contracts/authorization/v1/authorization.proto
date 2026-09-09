@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package voltgrid.authorization.v1;
+
+option java_package = "com.voltgrid.contracts.authorization.v1";
+option java_multiple_files = true;
+option java_outer_classname = "AuthorizationProto";
+
+service AuthorizationService {
+  rpc Authorize(AuthorizeRequest) returns (AuthorizeResponse);
+}
+
+message AuthorizeRequest {
+  string station_id = 1;
+  string id_token = 2;
+}
+
+message AuthorizeResponse {
+  AuthorizationDecision decision = 1;
+  AuthorizationReason reason = 2;
+}
+
+enum AuthorizationDecision {
+  AUTHORIZATION_DECISION_UNSPECIFIED = 0;
+  AUTHORIZATION_DECISION_ACCEPTED = 1;
+  AUTHORIZATION_DECISION_REJECTED = 2;
+}
+
+enum AuthorizationReason {
+  AUTHORIZATION_REASON_UNSPECIFIED = 0;
+  AUTHORIZATION_REASON_ALLOWED = 1;
+  AUTHORIZATION_REASON_UNKNOWN_TOKEN = 2;
+  AUTHORIZATION_REASON_INACTIVE_TOKEN = 3;
+  AUTHORIZATION_REASON_STATION_NOT_ALLOWED = 4;
+}
