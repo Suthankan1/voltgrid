@@ -1,6 +1,8 @@
 package com.voltgrid.station.application;
 
 import com.voltgrid.station.domain.ChargingTransaction;
+import com.voltgrid.station.domain.TransactionEventReceipt;
+import com.voltgrid.station.domain.TransactionEventType;
 import com.voltgrid.station.domain.TransactionMeterSample;
 import com.voltgrid.station.domain.TransactionStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +33,9 @@ class StationTransactionServiceTests {
     @Mock
     private TransactionMeterSampleWriter meterSampleWriter;
 
+    @Mock
+    private TransactionEventReceiptWriter eventReceiptWriter;
+
     private StationTransactionService service;
 
     @BeforeEach
@@ -38,7 +43,8 @@ class StationTransactionServiceTests {
         service = new StationTransactionService(
                 transactionReader,
                 transactionWriter,
-                meterSampleWriter
+                meterSampleWriter,
+                eventReceiptWriter
         );
     }
 
@@ -76,6 +82,15 @@ class StationTransactionServiceTests {
                         startedAt,
                         null,
                         0
+                )
+        );
+
+        verify(eventReceiptWriter).save(
+                new TransactionEventReceipt(
+                        "STATION-003",
+                        "TX-001",
+                        0,
+                        TransactionEventType.STARTED
                 )
         );
 
@@ -127,6 +142,15 @@ class StationTransactionServiceTests {
                         startedAt,
                         null,
                         1
+                )
+        );
+
+        verify(eventReceiptWriter).save(
+                new TransactionEventReceipt(
+                        "STATION-003",
+                        "TX-001",
+                        1,
+                        TransactionEventType.UPDATED
                 )
         );
 
@@ -216,6 +240,15 @@ class StationTransactionServiceTests {
 
         verify(meterSampleWriter)
                 .saveAll(samples);
+
+        verify(eventReceiptWriter).save(
+                new TransactionEventReceipt(
+                        "STATION-003",
+                        "TX-001",
+                        1,
+                        TransactionEventType.UPDATED
+                )
+        );
     }
 
     @Test
@@ -268,6 +301,15 @@ class StationTransactionServiceTests {
                 )
         );
 
+        verify(eventReceiptWriter).save(
+                new TransactionEventReceipt(
+                        "STATION-003",
+                        "TX-001",
+                        3,
+                        TransactionEventType.ENDED
+                )
+        );
+
         verifyNoInteractions(
                 meterSampleWriter
         );
@@ -312,7 +354,8 @@ class StationTransactionServiceTests {
 
         verifyNoInteractions(
                 transactionWriter,
-                meterSampleWriter
+                meterSampleWriter,
+                eventReceiptWriter
         );
     }
 
@@ -359,7 +402,8 @@ class StationTransactionServiceTests {
 
         verifyNoInteractions(
                 transactionWriter,
-                meterSampleWriter
+                meterSampleWriter,
+                eventReceiptWriter
         );
     }
 
@@ -408,7 +452,8 @@ class StationTransactionServiceTests {
 
         verifyNoInteractions(
                 transactionWriter,
-                meterSampleWriter
+                meterSampleWriter,
+                eventReceiptWriter
         );
     }
 
@@ -449,7 +494,8 @@ class StationTransactionServiceTests {
 
         verifyNoInteractions(
                 transactionWriter,
-                meterSampleWriter
+                meterSampleWriter,
+                eventReceiptWriter
         );
     }
 
@@ -494,7 +540,8 @@ class StationTransactionServiceTests {
 
         verifyNoInteractions(
                 transactionWriter,
-                meterSampleWriter
+                meterSampleWriter,
+                eventReceiptWriter
         );
     }
 
@@ -551,7 +598,8 @@ class StationTransactionServiceTests {
 
         verifyNoInteractions(
                 transactionWriter,
-                meterSampleWriter
+                meterSampleWriter,
+                eventReceiptWriter
         );
     }
 
@@ -594,7 +642,8 @@ class StationTransactionServiceTests {
 
         verifyNoInteractions(
                 transactionWriter,
-                meterSampleWriter
+                meterSampleWriter,
+                eventReceiptWriter
         );
     }
 
@@ -643,7 +692,8 @@ class StationTransactionServiceTests {
 
         verifyNoInteractions(
                 transactionWriter,
-                meterSampleWriter
+                meterSampleWriter,
+                eventReceiptWriter
         );
     }
 
@@ -686,7 +736,8 @@ class StationTransactionServiceTests {
 
         verifyNoInteractions(
                 transactionWriter,
-                meterSampleWriter
+                meterSampleWriter,
+                eventReceiptWriter
         );
     }
 }

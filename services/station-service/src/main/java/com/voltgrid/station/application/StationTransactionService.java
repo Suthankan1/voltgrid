@@ -1,6 +1,8 @@
 package com.voltgrid.station.application;
 
 import com.voltgrid.station.domain.ChargingTransaction;
+import com.voltgrid.station.domain.TransactionEventReceipt;
+import com.voltgrid.station.domain.TransactionEventType;
 import com.voltgrid.station.domain.TransactionMeterSample;
 import com.voltgrid.station.domain.TransactionStatus;
 import org.springframework.stereotype.Service;
@@ -15,15 +17,18 @@ public class StationTransactionService {
     private final StationTransactionReader transactionReader;
     private final StationTransactionWriter transactionWriter;
     private final TransactionMeterSampleWriter meterSampleWriter;
+    private final TransactionEventReceiptWriter eventReceiptWriter;
 
     public StationTransactionService(
             StationTransactionReader transactionReader,
             StationTransactionWriter transactionWriter,
-            TransactionMeterSampleWriter meterSampleWriter
+            TransactionMeterSampleWriter meterSampleWriter,
+            TransactionEventReceiptWriter eventReceiptWriter
     ) {
         this.transactionReader = transactionReader;
         this.transactionWriter = transactionWriter;
         this.meterSampleWriter = meterSampleWriter;
+        this.eventReceiptWriter = eventReceiptWriter;
     }
 
     @Transactional
@@ -70,6 +75,13 @@ public class StationTransactionService {
                         null,
                         sequenceNumber
                 )
+        );
+
+        recordReceipt(
+                stationId,
+                transactionId,
+                sequenceNumber,
+                TransactionEventType.STARTED
         );
     }
 
@@ -118,6 +130,13 @@ public class StationTransactionService {
                     meterSamples
             );
         }
+
+        recordReceipt(
+                stationId,
+                transactionId,
+                sequenceNumber,
+                TransactionEventType.UPDATED
+        );
     }
 
     @Transactional
@@ -160,6 +179,13 @@ public class StationTransactionService {
                         sequenceNumber
                 )
         );
+
+        recordReceipt(
+                stationId,
+                transactionId,
+                sequenceNumber,
+                TransactionEventType.ENDED
+        );
     }
 
     private ChargingTransaction findTransaction(
@@ -177,6 +203,22 @@ public class StationTransactionService {
                                 transactionId
                         )
                 );
+    }
+
+    private void recordReceipt(
+            String stationId,
+            String transactionId,
+            int sequenceNumber,
+            TransactionEventType eventType
+    ) {
+        eventReceiptWriter.save(
+                new TransactionEventReceipt(
+                        stationId,
+                        transactionId,
+                        sequenceNumber,
+                        eventType
+                )
+        );
     }
 
     private boolean isDuplicateStart(
