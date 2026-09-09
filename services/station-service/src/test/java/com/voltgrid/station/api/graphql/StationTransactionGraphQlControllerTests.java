@@ -1,7 +1,10 @@
 package com.voltgrid.station.api.graphql;
 
 import com.voltgrid.station.application.StationTransactionQueryService;
+import com.voltgrid.station.application.TransactionCompletenessService;
 import com.voltgrid.station.domain.ChargingTransaction;
+import com.voltgrid.station.domain.TransactionCompleteness;
+import com.voltgrid.station.domain.TransactionDataStatus;
 import com.voltgrid.station.domain.TransactionMeterSample;
 import com.voltgrid.station.domain.TransactionStatus;
 import org.junit.jupiter.api.Test;
@@ -27,6 +30,9 @@ class StationTransactionGraphQlControllerTests {
 
     @MockitoBean
     private StationTransactionQueryService queryService;
+
+    @MockitoBean
+    private TransactionCompletenessService completenessService;
 
     @Test
     void shouldQueryStationTransactions() {
@@ -342,5 +348,62 @@ class StationTransactionGraphQlControllerTests {
                 .isEqualTo(
                         "Power.Active.Import"
                 );
+    }
+
+    @Test
+    void shouldQueryTransactionCompleteness() {
+        when(
+                completenessService.calculate(
+                        "STATION-003",
+                        "TX-0101"
+                )
+        ).thenReturn(
+                new TransactionCompleteness(
+                        "STATION-003",
+                        "TX-0101",
+                        TransactionDataStatus.INCOMPLETE,
+                        0,
+                        4,
+                        List.of(2)
+                )
+        );
+
+        graphQlTester
+                .document(
+                        """
+                        query {
+                          transactionCompleteness(
+                            stationId: "STATION-003"
+                            transactionId: "TX-0101"
+                          ) {
+                            status
+                            firstSequenceNumber
+                            lastSequenceNumber
+                            missingSequenceNumbers
+                          }
+                        }
+                        """
+                )
+                .execute()
+                .path(
+                        "transactionCompleteness.status"
+                )
+                .entity(String.class)
+                .isEqualTo("INCOMPLETE")
+                .path(
+                        "transactionCompleteness.firstSequenceNumber"
+                )
+                .entity(Integer.class)
+                .isEqualTo(0)
+                .path(
+                        "transactionCompleteness.lastSequenceNumber"
+                )
+                .entity(Integer.class)
+                .isEqualTo(4)
+                .path(
+                        "transactionCompleteness.missingSequenceNumbers"
+                )
+                .entityList(Integer.class)
+                .containsExactly(2);
     }
 }

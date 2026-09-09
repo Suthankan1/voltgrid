@@ -14,6 +14,11 @@ type Query {
         stationId: ID!
         transactionId: ID!
     ): [TransactionMeterSample!]!
+
+    transactionCompleteness(
+        stationId: ID!
+        transactionId: ID!
+    ): TransactionCompleteness!
 }
 
 type Mutation {
@@ -58,6 +63,13 @@ type TransactionMeterSample {
     unitMultiplier: Int!
 }
 
+type TransactionCompleteness {
+    status: TransactionDataStatus!
+    firstSequenceNumber: Int
+    lastSequenceNumber: Int!
+    missingSequenceNumbers: [Int!]!
+}
+
 input RegisterStationInput {
     id: ID!
     name: String!
@@ -79,4 +91,11 @@ enum ConnectorStatus {
 enum TransactionStatus {
     ACTIVE
     ENDED
+}
+
+enum TransactionDataStatus {
+    IN_PROGRESS
+    COMPLETE
+    INCOMPLETE
+    UNKNOWN
 }
