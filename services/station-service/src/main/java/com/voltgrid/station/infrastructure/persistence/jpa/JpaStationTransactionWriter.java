@@ -17,6 +17,23 @@ public class JpaStationTransactionWriter
     }
 
     @Override
+    public boolean createIfAbsent(
+            ChargingTransaction transaction
+    ) {
+        var inserted = repository.insertIfAbsent(
+                transaction.stationId(),
+                transaction.transactionId(),
+                transaction.evseId(),
+                transaction.connectorId(),
+                transaction.status().name(),
+                transaction.startedAt(),
+                transaction.lastSequenceNumber()
+        );
+
+        return inserted == 1;
+    }
+
+    @Override
     public void save(
             ChargingTransaction transaction
     ) {

@@ -4,5 +4,11 @@ import com.voltgrid.station.domain.ChargingTransaction;
 
 public interface StationTransactionWriter {
 
-    void save(ChargingTransaction transaction);
+    boolean createIfAbsent(
+            ChargingTransaction transaction
+    );
+
+    void save(
+            ChargingTransaction transaction
+    );
 }

@@ -43,31 +43,7 @@ public class StationTransactionService {
             Instant startedAt,
             int sequenceNumber
     ) {
-        var existing = transactionReader.findById(
-                stationId,
-                transactionId
-        );
-
-        if (existing.isPresent()) {
-            var transaction = existing.get();
-
-            if (isDuplicateStart(
-                    transaction,
-                    evseId,
-                    connectorId,
-                    startedAt,
-                    sequenceNumber
-            )) {
-                return;
-            }
-
-            throw new InvalidTransactionSequenceException(
-                    transaction.lastSequenceNumber(),
-                    sequenceNumber
-            );
-        }
-
-        transactionWriter.save(
+        var candidate =
                 new ChargingTransaction(
                         stationId,
                         transactionId,
@@ -77,14 +53,53 @@ public class StationTransactionService {
                         startedAt,
                         null,
                         sequenceNumber
-                )
-        );
+                );
 
-        recordReceipt(
-                stationId,
-                transactionId,
-                sequenceNumber,
-                TransactionEventType.STARTED
+        if (transactionWriter.createIfAbsent(
+                candidate
+        )) {
+            recordReceipt(
+                    stationId,
+                    transactionId,
+                    sequenceNumber,
+                    TransactionEventType.STARTED
+            );
+
+            return;
+        }
+
+        /*
+         * Another request, or an earlier request, already created
+         * this transaction.
+         *
+         * PostgreSQL ON CONFLICT handles the creation race. We now
+         * inspect the winning row to determine whether this event is
+         * an exact retransmission or conflicting data.
+         */
+        var existing = transactionReader
+                .findById(
+                        stationId,
+                        transactionId
+                )
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Transaction creation conflict could not be resolved"
+                        )
+                );
+
+        if (isDuplicateStart(
+                existing,
+                evseId,
+                connectorId,
+                startedAt,
+                sequenceNumber
+        )) {
+            return;
+        }
+
+        throw new InvalidTransactionSequenceException(
+                existing.lastSequenceNumber(),
+                sequenceNumber
         );
     }
 
@@ -96,7 +111,7 @@ public class StationTransactionService {
             List<TransactionMeterSample> meterSamples
     ) {
         var transaction =
-                findTransaction(
+                findTransactionForUpdate(
                         stationId,
                         transactionId
                 );
@@ -111,12 +126,11 @@ public class StationTransactionService {
         }
 
         /*
-         * A sequence number greater than the current maximum is a
-         * forward event and therefore advances transaction state.
+         * A forward event advances lastSequenceNumber.
          *
          * A smaller sequence number with no existing receipt is a
-         * legitimate late/out-of-order event. In that case we persist
-         * its data and receipt without moving lastSequenceNumber
+         * legitimate late/out-of-order event. Its receipt and meter
+         * samples are persisted without moving lastSequenceNumber
          * backwards.
          */
         if (sequenceNumber
@@ -160,7 +174,7 @@ public class StationTransactionService {
             int sequenceNumber
     ) {
         var transaction =
-                findTransaction(
+                findTransactionForUpdate(
                         stationId,
                         transactionId
                 );
@@ -201,12 +215,12 @@ public class StationTransactionService {
         );
     }
 
-    private ChargingTransaction findTransaction(
+    private ChargingTransaction findTransactionForUpdate(
             String stationId,
             String transactionId
     ) {
         return transactionReader
-                .findById(
+                .findByIdForUpdate(
                         stationId,
                         transactionId
                 )

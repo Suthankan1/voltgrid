@@ -35,6 +35,19 @@ public class JpaStationTransactionReader
     }
 
     @Override
+    public Optional<ChargingTransaction> findByIdForUpdate(
+            String stationId,
+            String transactionId
+    ) {
+        return repository
+                .findByIdForUpdate(
+                        stationId,
+                        transactionId
+                )
+                .map(this::toDomain);
+    }
+
+    @Override
     public List<ChargingTransaction> findByStationId(
             String stationId
     ) {

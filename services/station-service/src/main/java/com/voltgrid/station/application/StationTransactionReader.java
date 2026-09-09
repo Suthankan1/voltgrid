@@ -12,6 +12,11 @@ public interface StationTransactionReader {
             String transactionId
     );
 
+    Optional<ChargingTransaction> findByIdForUpdate(
+            String stationId,
+            String transactionId
+    );
+
     List<ChargingTransaction> findByStationId(
             String stationId
     );

@@ -58,14 +58,23 @@ class StationTransactionServiceTests {
                 "2026-09-08T10:30:00Z"
         );
 
-        when(
-                transactionReader.findById(
+        var transaction =
+                new ChargingTransaction(
                         "STATION-003",
-                        "TX-001"
+                        "TX-001",
+                        1,
+                        1,
+                        TransactionStatus.ACTIVE,
+                        startedAt,
+                        null,
+                        0
+                );
+
+        when(
+                transactionWriter.createIfAbsent(
+                        transaction
                 )
-        ).thenReturn(
-                Optional.empty()
-        );
+        ).thenReturn(true);
 
         service.startTransaction(
                 "STATION-003",
@@ -76,18 +85,10 @@ class StationTransactionServiceTests {
                 0
         );
 
-        verify(transactionWriter).save(
-                new ChargingTransaction(
-                        "STATION-003",
-                        "TX-001",
-                        1,
-                        1,
-                        TransactionStatus.ACTIVE,
-                        startedAt,
-                        null,
-                        0
-                )
-        );
+        verify(transactionWriter)
+                .createIfAbsent(
+                        transaction
+                );
 
         verify(eventReceiptWriter).save(
                 new TransactionEventReceipt(
@@ -99,7 +100,9 @@ class StationTransactionServiceTests {
         );
 
         verifyNoInteractions(
-                meterSampleWriter
+                transactionReader,
+                meterSampleWriter,
+                eventReceiptReader
         );
     }
 
@@ -110,7 +113,7 @@ class StationTransactionServiceTests {
         );
 
         when(
-                transactionReader.findById(
+                transactionReader.findByIdForUpdate(
                         "STATION-003",
                         "TX-001"
                 )
@@ -184,7 +187,7 @@ class StationTransactionServiceTests {
         );
 
         when(
-                transactionReader.findById(
+                transactionReader.findByIdForUpdate(
                         "STATION-003",
                         "TX-001"
                 )
@@ -286,7 +289,7 @@ class StationTransactionServiceTests {
         );
 
         when(
-                transactionReader.findById(
+                transactionReader.findByIdForUpdate(
                         "STATION-003",
                         "TX-001"
                 )
@@ -364,7 +367,7 @@ class StationTransactionServiceTests {
         );
 
         when(
-                transactionReader.findById(
+                transactionReader.findByIdForUpdate(
                         "STATION-003",
                         "TX-001"
                 )
@@ -421,7 +424,7 @@ class StationTransactionServiceTests {
         );
 
         when(
-                transactionReader.findById(
+                transactionReader.findByIdForUpdate(
                         "STATION-003",
                         "TX-001"
                 )
@@ -486,7 +489,7 @@ class StationTransactionServiceTests {
         );
 
         when(
-                transactionReader.findById(
+                transactionReader.findByIdForUpdate(
                         "STATION-003",
                         "TX-001"
                 )
@@ -544,7 +547,7 @@ class StationTransactionServiceTests {
         );
 
         when(
-                transactionReader.findById(
+                transactionReader.findByIdForUpdate(
                         "STATION-003",
                         "TX-001"
                 )
@@ -608,7 +611,7 @@ class StationTransactionServiceTests {
         );
 
         when(
-                transactionReader.findById(
+                transactionReader.findByIdForUpdate(
                         "STATION-003",
                         "TX-001"
                 )
@@ -653,24 +656,31 @@ class StationTransactionServiceTests {
                 "2026-09-08T10:30:00Z"
         );
 
+        var candidate =
+                new ChargingTransaction(
+                        "STATION-003",
+                        "TX-001",
+                        1,
+                        1,
+                        TransactionStatus.ACTIVE,
+                        startedAt,
+                        null,
+                        0
+                );
+
+        when(
+                transactionWriter.createIfAbsent(
+                        candidate
+                )
+        ).thenReturn(false);
+
         when(
                 transactionReader.findById(
                         "STATION-003",
                         "TX-001"
                 )
         ).thenReturn(
-                Optional.of(
-                        new ChargingTransaction(
-                                "STATION-003",
-                                "TX-001",
-                                1,
-                                1,
-                                TransactionStatus.ACTIVE,
-                                startedAt,
-                                null,
-                                0
-                        )
-                )
+                Optional.of(candidate)
         );
 
         service.startTransaction(
@@ -682,10 +692,15 @@ class StationTransactionServiceTests {
                 0
         );
 
+        verify(transactionWriter)
+                .createIfAbsent(
+                        candidate
+                );
+
         verifyNoInteractions(
-                transactionWriter,
                 meterSampleWriter,
-                eventReceiptWriter
+                eventReceiptWriter,
+                eventReceiptReader
         );
     }
 
@@ -694,6 +709,24 @@ class StationTransactionServiceTests {
         var startedAt = Instant.parse(
                 "2026-09-08T10:30:00Z"
         );
+
+        var candidate =
+                new ChargingTransaction(
+                        "STATION-003",
+                        "TX-001",
+                        2,
+                        1,
+                        TransactionStatus.ACTIVE,
+                        startedAt,
+                        null,
+                        0
+                );
+
+        when(
+                transactionWriter.createIfAbsent(
+                        candidate
+                )
+        ).thenReturn(false);
 
         when(
                 transactionReader.findById(
@@ -728,10 +761,15 @@ class StationTransactionServiceTests {
                 InvalidTransactionSequenceException.class
         );
 
+        verify(transactionWriter)
+                .createIfAbsent(
+                        candidate
+                );
+
         verifyNoInteractions(
-                transactionWriter,
                 meterSampleWriter,
-                eventReceiptWriter
+                eventReceiptWriter,
+                eventReceiptReader
         );
     }
 
@@ -746,7 +784,7 @@ class StationTransactionServiceTests {
         );
 
         when(
-                transactionReader.findById(
+                transactionReader.findByIdForUpdate(
                         "STATION-003",
                         "TX-001"
                 )
@@ -790,7 +828,7 @@ class StationTransactionServiceTests {
         );
 
         when(
-                transactionReader.findById(
+                transactionReader.findByIdForUpdate(
                         "STATION-003",
                         "TX-001"
                 )
