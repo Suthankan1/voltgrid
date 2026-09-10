@@ -1425,4 +1425,45 @@ class OcppMessageProcessorTests {
                 authorizationClient
         );
     }
+
+    @Test
+    void shouldReturnExpiredForExpiredToken() {
+        when(
+                authorizationClient.authorize(
+                        "STATION-003",
+                        "EXPIRED"
+                )
+        ).thenReturn(
+                new AuthorizationResult(
+                        AuthorizationOutcome.REJECTED,
+                        AuthorizationReasonCode.EXPIRED_TOKEN
+                )
+        );
+
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "auth-expired",
+                  "Authorize",
+                  {
+                    "idToken": {
+                      "idToken": "EXPIRED",
+                      "type": "ISO14443"
+                    }
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(
+                json.get(2)
+                        .get("idTokenInfo")
+                        .get("status")
+                        .stringValue()
+        ).isEqualTo("Expired");
+    }
 }

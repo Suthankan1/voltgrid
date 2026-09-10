@@ -5,5 +5,6 @@ public enum AuthorizationReasonCode {
     UNKNOWN_TOKEN,
     INACTIVE_TOKEN,
     STATION_NOT_ALLOWED,
+    EXPIRED_TOKEN,
     UNSPECIFIED
 }

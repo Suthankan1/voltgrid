@@ -678,6 +678,9 @@ public class OcppMessageProcessor {
             case INACTIVE_TOKEN ->
                     "Blocked";
 
+            case EXPIRED_TOKEN ->
+                    "Expired";
+
             case STATION_NOT_ALLOWED ->
                     "NotAtThisLocation";
 

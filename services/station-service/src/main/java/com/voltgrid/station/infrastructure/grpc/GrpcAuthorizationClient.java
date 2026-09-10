@@ -83,6 +83,9 @@ public class GrpcAuthorizationClient
             case AUTHORIZATION_REASON_STATION_NOT_ALLOWED ->
                     AuthorizationReasonCode.STATION_NOT_ALLOWED;
 
+            case AUTHORIZATION_REASON_EXPIRED_TOKEN ->
+                    AuthorizationReasonCode.EXPIRED_TOKEN;
+
             case AUTHORIZATION_REASON_UNSPECIFIED,
                  UNRECOGNIZED ->
                     AuthorizationReasonCode.UNSPECIFIED;
