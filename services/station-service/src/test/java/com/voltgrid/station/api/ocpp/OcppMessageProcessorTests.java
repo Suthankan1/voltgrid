@@ -1,5 +1,9 @@
 package com.voltgrid.station.api.ocpp;
 
+import com.voltgrid.station.application.AuthorizationClient;
+import com.voltgrid.station.application.AuthorizationOutcome;
+import com.voltgrid.station.application.AuthorizationReasonCode;
+import com.voltgrid.station.application.AuthorizationResult;
 import com.voltgrid.station.application.ConflictingTransactionEventException;
 import com.voltgrid.station.application.InvalidTransactionSequenceException;
 import com.voltgrid.station.application.StationConnectivityService;
@@ -27,6 +31,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class OcppMessageProcessorTests {
@@ -40,6 +45,9 @@ class OcppMessageProcessorTests {
     @Mock
     private StationTransactionService transactionService;
 
+    @Mock
+    private AuthorizationClient authorizationClient;
+
     private JsonMapper jsonMapper;
     private OcppMessageProcessor processor;
 
@@ -51,7 +59,8 @@ class OcppMessageProcessorTests {
                 jsonMapper,
                 connectivityService,
                 connectorStatusService,
-                transactionService
+                transactionService,
+                authorizationClient
         );
     }
 
@@ -109,7 +118,8 @@ class OcppMessageProcessorTests {
 
         verifyNoInteractions(
                 connectorStatusService,
-                transactionService
+                transactionService,
+                authorizationClient
         );
     }
 
@@ -149,7 +159,8 @@ class OcppMessageProcessorTests {
 
         verifyNoInteractions(
                 connectorStatusService,
-                transactionService
+                transactionService,
+                authorizationClient
         );
     }
 
@@ -204,7 +215,336 @@ class OcppMessageProcessorTests {
                 );
 
         verifyNoInteractions(
+                transactionService,
+                authorizationClient
+        );
+    }
+
+    @Test
+    void shouldAuthorizeToken() {
+        when(
+                authorizationClient.authorize(
+                        "STATION-003",
+                        "RFID-123"
+                )
+        ).thenReturn(
+                new AuthorizationResult(
+                        AuthorizationOutcome.ACCEPTED,
+                        AuthorizationReasonCode.ALLOWED
+                )
+        );
+
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "auth-001",
+                  "Authorize",
+                  {
+                    "idToken": {
+                      "idToken": "RFID-123",
+                      "type": "ISO14443"
+                    }
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(json.get(0).intValue())
+                .isEqualTo(3);
+
+        assertThat(json.get(1).stringValue())
+                .isEqualTo("auth-001");
+
+        assertThat(
+                json.get(2)
+                        .get("idTokenInfo")
+                        .get("status")
+                        .stringValue()
+        ).isEqualTo("Accepted");
+
+        verify(authorizationClient)
+                .authorize(
+                        "STATION-003",
+                        "RFID-123"
+                );
+
+        verify(connectivityService)
+                .recordActivity(
+                        eq("STATION-003"),
+                        any(Instant.class)
+                );
+
+        verifyNoInteractions(
+                connectorStatusService,
                 transactionService
+        );
+    }
+
+    @Test
+    void shouldReturnInvalidForUnknownToken() {
+        when(
+                authorizationClient.authorize(
+                        "STATION-003",
+                        "UNKNOWN"
+                )
+        ).thenReturn(
+                new AuthorizationResult(
+                        AuthorizationOutcome.REJECTED,
+                        AuthorizationReasonCode.UNKNOWN_TOKEN
+                )
+        );
+
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "auth-002",
+                  "Authorize",
+                  {
+                    "idToken": {
+                      "idToken": "UNKNOWN",
+                      "type": "ISO14443"
+                    }
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(json.get(0).intValue())
+                .isEqualTo(3);
+
+        assertThat(json.get(1).stringValue())
+                .isEqualTo("auth-002");
+
+        assertThat(
+                json.get(2)
+                        .get("idTokenInfo")
+                        .get("status")
+                        .stringValue()
+        ).isEqualTo("Invalid");
+
+        verify(authorizationClient)
+                .authorize(
+                        "STATION-003",
+                        "UNKNOWN"
+                );
+
+        verify(connectivityService)
+                .recordActivity(
+                        eq("STATION-003"),
+                        any(Instant.class)
+                );
+
+        verifyNoInteractions(
+                connectorStatusService,
+                transactionService
+        );
+    }
+
+    @Test
+    void shouldReturnBlockedForInactiveToken() {
+        when(
+                authorizationClient.authorize(
+                        "STATION-003",
+                        "INACTIVE"
+                )
+        ).thenReturn(
+                new AuthorizationResult(
+                        AuthorizationOutcome.REJECTED,
+                        AuthorizationReasonCode.INACTIVE_TOKEN
+                )
+        );
+
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "auth-003",
+                  "Authorize",
+                  {
+                    "idToken": {
+                      "idToken": "INACTIVE",
+                      "type": "ISO14443"
+                    }
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(
+                json.get(2)
+                        .get("idTokenInfo")
+                        .get("status")
+                        .stringValue()
+        ).isEqualTo("Blocked");
+
+        verify(authorizationClient)
+                .authorize(
+                        "STATION-003",
+                        "INACTIVE"
+                );
+    }
+
+    @Test
+    void shouldReturnNotAtThisLocationWhenStationIsNotAllowed() {
+        when(
+                authorizationClient.authorize(
+                        "STATION-003",
+                        "RFID-RESTRICTED"
+                )
+        ).thenReturn(
+                new AuthorizationResult(
+                        AuthorizationOutcome.REJECTED,
+                        AuthorizationReasonCode.STATION_NOT_ALLOWED
+                )
+        );
+
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "auth-004",
+                  "Authorize",
+                  {
+                    "idToken": {
+                      "idToken": "RFID-RESTRICTED",
+                      "type": "ISO14443"
+                    }
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(
+                json.get(2)
+                        .get("idTokenInfo")
+                        .get("status")
+                        .stringValue()
+        ).isEqualTo("NotAtThisLocation");
+
+        verify(authorizationClient)
+                .authorize(
+                        "STATION-003",
+                        "RFID-RESTRICTED"
+                );
+    }
+
+    @Test
+    void shouldRejectAuthorizeWithoutIdToken() {
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "auth-invalid",
+                  "Authorize",
+                  {}
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(json.get(0).intValue())
+                .isEqualTo(4);
+
+        assertThat(json.get(1).stringValue())
+                .isEqualTo("auth-invalid");
+
+        assertThat(json.get(2).stringValue())
+                .isEqualTo("FormatViolation");
+
+        assertThat(json.get(3).stringValue())
+                .isEqualTo("Invalid Authorize payload");
+
+        verifyNoInteractions(
+                connectivityService,
+                connectorStatusService,
+                transactionService,
+                authorizationClient
+        );
+    }
+
+    @Test
+    void shouldRejectAuthorizeWithBlankIdToken() {
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "auth-blank",
+                  "Authorize",
+                  {
+                    "idToken": {
+                      "idToken": "",
+                      "type": "ISO14443"
+                    }
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(json.get(0).intValue())
+                .isEqualTo(4);
+
+        assertThat(json.get(2).stringValue())
+                .isEqualTo("FormatViolation");
+
+        verifyNoInteractions(
+                connectivityService,
+                connectorStatusService,
+                transactionService,
+                authorizationClient
+        );
+    }
+
+    @Test
+    void shouldRejectAuthorizeWithUnsupportedIdTokenType() {
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "auth-invalid-type",
+                  "Authorize",
+                  {
+                    "idToken": {
+                      "idToken": "RFID-123",
+                      "type": "SomethingElse"
+                    }
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(json.get(0).intValue())
+                .isEqualTo(4);
+
+        assertThat(json.get(2).stringValue())
+                .isEqualTo("FormatViolation");
+
+        verifyNoInteractions(
+                connectivityService,
+                connectorStatusService,
+                transactionService,
+                authorizationClient
         );
     }
 
@@ -268,7 +608,8 @@ class OcppMessageProcessorTests {
                 );
 
         verifyNoInteractions(
-                connectorStatusService
+                connectorStatusService,
+                authorizationClient
         );
     }
 
@@ -323,7 +664,8 @@ class OcppMessageProcessorTests {
                 );
 
         verifyNoInteractions(
-                connectorStatusService
+                connectorStatusService,
+                authorizationClient
         );
     }
 
@@ -440,7 +782,8 @@ class OcppMessageProcessorTests {
                 );
 
         verifyNoInteractions(
-                connectorStatusService
+                connectorStatusService,
+                authorizationClient
         );
     }
 
@@ -498,7 +841,8 @@ class OcppMessageProcessorTests {
         verifyNoInteractions(
                 connectivityService,
                 connectorStatusService,
-                transactionService
+                transactionService,
+                authorizationClient
         );
     }
 
@@ -561,7 +905,8 @@ class OcppMessageProcessorTests {
                 );
 
         verifyNoInteractions(
-                connectorStatusService
+                connectorStatusService,
+                authorizationClient
         );
     }
 
@@ -622,7 +967,8 @@ class OcppMessageProcessorTests {
 
         verifyNoInteractions(
                 connectivityService,
-                connectorStatusService
+                connectorStatusService,
+                authorizationClient
         );
     }
 
@@ -683,7 +1029,8 @@ class OcppMessageProcessorTests {
 
         verifyNoInteractions(
                 connectivityService,
-                connectorStatusService
+                connectorStatusService,
+                authorizationClient
         );
     }
 
@@ -746,7 +1093,8 @@ class OcppMessageProcessorTests {
 
         verifyNoInteractions(
                 connectivityService,
-                connectorStatusService
+                connectorStatusService,
+                authorizationClient
         );
     }
 
@@ -808,7 +1156,8 @@ class OcppMessageProcessorTests {
 
         verifyNoInteractions(
                 connectivityService,
-                connectorStatusService
+                connectorStatusService,
+                authorizationClient
         );
     }
 
@@ -855,7 +1204,8 @@ class OcppMessageProcessorTests {
         verifyNoInteractions(
                 connectivityService,
                 connectorStatusService,
-                transactionService
+                transactionService,
+                authorizationClient
         );
     }
 
@@ -904,7 +1254,8 @@ class OcppMessageProcessorTests {
         verifyNoInteractions(
                 connectivityService,
                 connectorStatusService,
-                transactionService
+                transactionService,
+                authorizationClient
         );
     }
 
@@ -946,7 +1297,8 @@ class OcppMessageProcessorTests {
         verifyNoInteractions(
                 connectivityService,
                 connectorStatusService,
-                transactionService
+                transactionService,
+                authorizationClient
         );
     }
 
@@ -988,7 +1340,8 @@ class OcppMessageProcessorTests {
         verifyNoInteractions(
                 connectivityService,
                 connectorStatusService,
-                transactionService
+                transactionService,
+                authorizationClient
         );
     }
 
@@ -1000,7 +1353,7 @@ class OcppMessageProcessorTests {
                 [
                   2,
                   "msg-001",
-                  "Authorize",
+                  "FirmwareStatusNotification",
                   {}
                 ]
                 """
@@ -1019,13 +1372,14 @@ class OcppMessageProcessorTests {
 
         assertThat(json.get(3).stringValue())
                 .isEqualTo(
-                        "Action not implemented: Authorize"
+                        "Action not implemented: FirmwareStatusNotification"
                 );
 
         verifyNoInteractions(
                 connectivityService,
                 connectorStatusService,
-                transactionService
+                transactionService,
+                authorizationClient
         );
     }
 
@@ -1067,7 +1421,8 @@ class OcppMessageProcessorTests {
         verifyNoInteractions(
                 connectivityService,
                 connectorStatusService,
-                transactionService
+                transactionService,
+                authorizationClient
         );
     }
 }

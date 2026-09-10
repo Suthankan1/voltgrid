@@ -1,5 +1,8 @@
 package com.voltgrid.station.api.ocpp;
 
+import com.voltgrid.station.application.AuthorizationClient;
+import com.voltgrid.station.application.AuthorizationOutcome;
+import com.voltgrid.station.application.AuthorizationReasonCode;
 import com.voltgrid.station.application.ConflictingTransactionEventException;
 import com.voltgrid.station.application.InvalidTransactionSequenceException;
 import com.voltgrid.station.application.StationConnectivityService;
@@ -31,17 +34,20 @@ public class OcppMessageProcessor {
     private final StationConnectivityService connectivityService;
     private final StationConnectorStatusService connectorStatusService;
     private final StationTransactionService transactionService;
+    private final AuthorizationClient authorizationClient;
 
     public OcppMessageProcessor(
             JsonMapper jsonMapper,
             StationConnectivityService connectivityService,
             StationConnectorStatusService connectorStatusService,
-            StationTransactionService transactionService
+            StationTransactionService transactionService,
+            AuthorizationClient authorizationClient
     ) {
         this.jsonMapper = jsonMapper;
         this.connectivityService = connectivityService;
         this.connectorStatusService = connectorStatusService;
         this.transactionService = transactionService;
+        this.authorizationClient = authorizationClient;
     }
 
     public String process(
@@ -72,6 +78,13 @@ public class OcppMessageProcessor {
 
                 case "StatusNotification" ->
                         handleStatusNotification(
+                                stationId,
+                                messageId,
+                                message.get(3)
+                        );
+
+                case "Authorize" ->
+                        handleAuthorize(
                                 stationId,
                                 messageId,
                                 message.get(3)
@@ -253,6 +266,93 @@ public class OcppMessageProcessor {
         response.add(
                 jsonMapper.createObjectNode()
         );
+
+        return jsonMapper.writeValueAsString(
+                response
+        );
+    }
+
+    private String handleAuthorize(
+            String stationId,
+            String messageId,
+            JsonNode payload
+    ) {
+        var idToken =
+                payload.get("idToken");
+
+        if (idToken == null
+                || !idToken.isObject()) {
+
+            return callError(
+                    messageId,
+                    "FormatViolation",
+                    "Invalid Authorize payload"
+            );
+        }
+
+        var idTokenValueNode =
+                idToken.get("idToken");
+
+        var idTokenTypeNode =
+                idToken.get("type");
+
+        if (idTokenValueNode == null
+                || !idTokenValueNode.isString()
+                || isBlank(
+                        idTokenValueNode.stringValue()
+                )
+                || idTokenValueNode
+                        .stringValue()
+                        .length() > 36
+                || idTokenTypeNode == null
+                || !idTokenTypeNode.isString()
+                || !isValidIdTokenType(
+                        idTokenTypeNode.stringValue()
+                )) {
+
+            return callError(
+                    messageId,
+                    "FormatViolation",
+                    "Invalid Authorize payload"
+            );
+        }
+
+        var result =
+                authorizationClient.authorize(
+                        stationId,
+                        idTokenValueNode.stringValue()
+                );
+
+        var idTokenInfo =
+                jsonMapper.createObjectNode();
+
+        idTokenInfo.put(
+                "status",
+                toOcppAuthorizationStatus(
+                        result.outcome(),
+                        result.reason()
+                )
+        );
+
+        var responsePayload =
+                jsonMapper.createObjectNode();
+
+        responsePayload.set(
+                "idTokenInfo",
+                idTokenInfo
+        );
+
+        connectivityService.recordActivity(
+                stationId,
+                Instant.now()
+        );
+
+        var response =
+                jsonMapper.createArrayNode();
+
+        response.add(CALL_RESULT);
+        response.add(messageId);
+        response.add(responsePayload);
 
         return jsonMapper.writeValueAsString(
                 response
@@ -544,6 +644,47 @@ public class OcppMessageProcessor {
                 && request.evse().id() > 0
                 && request.evse().connectorId() != null
                 && request.evse().connectorId() > 0;
+    }
+
+    private boolean isValidIdTokenType(
+            String type
+    ) {
+        return switch (type) {
+            case "Central",
+                 "eMAID",
+                 "ISO14443",
+                 "ISO15693",
+                 "KeyCode",
+                 "Local",
+                 "MacAddress",
+                 "NoAuthorization" -> true;
+
+            default -> false;
+        };
+    }
+
+    private String toOcppAuthorizationStatus(
+            AuthorizationOutcome outcome,
+            AuthorizationReasonCode reason
+    ) {
+        if (outcome == AuthorizationOutcome.ACCEPTED) {
+            return "Accepted";
+        }
+
+        return switch (reason) {
+            case UNKNOWN_TOKEN ->
+                    "Invalid";
+
+            case INACTIVE_TOKEN ->
+                    "Blocked";
+
+            case STATION_NOT_ALLOWED ->
+                    "NotAtThisLocation";
+
+            case ALLOWED,
+                 UNSPECIFIED ->
+                    "Unknown";
+        };
     }
 
     private ConnectorStatus toConnectorStatus(
