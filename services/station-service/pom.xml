@@ -105,6 +105,11 @@
 			<artifactId>testcontainers-junit-jupiter</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-grpc-client</artifactId>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -112,6 +117,19 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+
+			<plugin>
+				<groupId>io.github.ascopes</groupId>
+				<artifactId>protobuf-maven-plugin</artifactId>
+
+				<configuration>
+					<sourceDirectories>
+						<sourceDirectory>
+							${project.basedir}/../../contracts/authorization/v1
+						</sourceDirectory>
+					</sourceDirectories>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
