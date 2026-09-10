@@ -1,27 +1,27 @@
-name: Station Service CI
+name: Authorization Service CI
 
 on:
   push:
     branches:
       - main
     paths:
-      - "services/station-service/**"
+      - "services/authorization-service/**"
       - "contracts/authorization/**"
-      - ".github/workflows/station-service-ci.yml"
+      - ".github/workflows/authorization-service-ci.yml"
 
   pull_request:
     branches:
       - main
     paths:
-      - "services/station-service/**"
+      - "services/authorization-service/**"
       - "contracts/authorization/**"
-      - ".github/workflows/station-service-ci.yml"
+      - ".github/workflows/authorization-service-ci.yml"
 
 permissions:
   contents: read
 
 concurrency:
-  group: station-service-ci-${{ github.ref }}
+  group: authorization-service-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -32,7 +32,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: services/station-service
+        working-directory: services/authorization-service
 
     steps:
       - name: Checkout repository
@@ -44,7 +44,7 @@ jobs:
           distribution: temurin
           java-version: "25"
           cache: maven
-          cache-dependency-path: services/station-service/pom.xml
+          cache-dependency-path: services/authorization-service/pom.xml
 
       - name: Verify with Maven
         run: ./mvnw --batch-mode --no-transfer-progress verify
