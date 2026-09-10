@@ -9,6 +9,7 @@ import io.grpc.netty.NettyChannelBuilder;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.grpc.test.autoconfigure.LocalGrpcServerPort;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 
 import java.util.concurrent.TimeUnit;
 
@@ -17,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(
         properties = "spring.grpc.server.port=0"
 )
+@Import(PostgresTestConfiguration.class)
 class AuthorizationGrpcIntegrationTests {
 
     @LocalGrpcServerPort
