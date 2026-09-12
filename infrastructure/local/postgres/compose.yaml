@@ -39,6 +39,11 @@ services:
       timeout: 5s
       retries: 5
 
+  kafka:
+    image: apache/kafka:4.2.1
+    ports:
+      - "9092:9092"
+
 volumes:
   station-postgres-data:
   authorization-postgres-data:
