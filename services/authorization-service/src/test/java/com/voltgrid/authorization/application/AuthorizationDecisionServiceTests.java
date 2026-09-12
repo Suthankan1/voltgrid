@@ -8,6 +8,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataAccessResourceFailureException;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -182,5 +185,40 @@ class AuthorizationDecisionServiceTests {
                 now,
                 now
         );
+    }
+
+    @Test
+    void shouldReportBackendUnavailableWhenRepositoryFails() {
+        var rawToken =
+                "RFID-123";
+
+        when(
+                repository.findByTokenFingerprint(
+                        fingerprintService.fingerprint(
+                                rawToken
+                        )
+                )
+        ).thenThrow(
+                new DataAccessResourceFailureException(
+                        "database unavailable"
+                )
+        );
+
+        assertThatThrownBy(
+                () ->
+                        service.authorize(
+                                "STATION-001",
+                                rawToken
+                        )
+        )
+                .isInstanceOf(
+                        AuthorizationBackendUnavailableException.class
+                )
+                .hasMessage(
+                        "Authorization backend unavailable"
+                )
+                .hasCauseInstanceOf(
+                        DataAccessResourceFailureException.class
+                );
     }
 }

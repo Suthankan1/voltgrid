@@ -3,6 +3,7 @@ package com.voltgrid.authorization.application;
 import com.voltgrid.authorization.domain.AuthorizationTokenStatus;
 import com.voltgrid.authorization.infrastructure.persistence.AuthorizationTokenEntity;
 import com.voltgrid.authorization.infrastructure.persistence.AuthorizationTokenRepository;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -30,14 +31,22 @@ public class AuthorizationDecisionService {
                         rawToken
                 );
 
-        return tokenRepository
-                .findByTokenFingerprint(
-                        fingerprint
-                )
-                .map(this::evaluate)
-                .orElse(
-                        TokenAuthorizationDecision.UNKNOWN_TOKEN
-                );
+        try {
+            return tokenRepository
+                    .findByTokenFingerprint(
+                            fingerprint
+                    )
+                    .map(this::evaluate)
+                    .orElse(
+                            TokenAuthorizationDecision.UNKNOWN_TOKEN
+                    );
+
+        } catch (DataAccessException exception) {
+            throw new AuthorizationBackendUnavailableException(
+                    "Authorization backend unavailable",
+                    exception
+            );
+        }
     }
 
     private TokenAuthorizationDecision evaluate(

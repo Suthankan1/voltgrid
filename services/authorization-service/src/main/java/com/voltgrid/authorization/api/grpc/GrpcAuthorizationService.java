@@ -1,12 +1,13 @@
 package com.voltgrid.authorization.api.grpc;
 
+import com.voltgrid.authorization.application.AuthorizationBackendUnavailableException;
 import com.voltgrid.authorization.application.AuthorizationDecisionService;
-import com.voltgrid.authorization.application.TokenAuthorizationDecision;
 import com.voltgrid.contracts.authorization.v1.AuthorizationDecision;
 import com.voltgrid.contracts.authorization.v1.AuthorizationReason;
 import com.voltgrid.contracts.authorization.v1.AuthorizationServiceGrpc;
 import com.voltgrid.contracts.authorization.v1.AuthorizeRequest;
 import com.voltgrid.contracts.authorization.v1.AuthorizeResponse;
+import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import org.springframework.stereotype.Service;
 
@@ -28,13 +29,26 @@ public class GrpcAuthorizationService
             AuthorizeRequest request,
             StreamObserver<AuthorizeResponse> responseObserver
     ) {
-        var response =
-                buildAuthorizationResponse(
-                        request
-                );
+        try {
+            var response =
+                    buildAuthorizationResponse(
+                            request
+                    );
 
-        responseObserver.onNext(response);
-        responseObserver.onCompleted();
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+
+        } catch (
+                AuthorizationBackendUnavailableException exception
+        ) {
+            responseObserver.onError(
+                    Status.UNAVAILABLE
+                            .withDescription(
+                                    "Authorization backend unavailable"
+                            )
+                            .asRuntimeException()
+            );
+        }
     }
 
     private AuthorizeResponse buildAuthorizationResponse(

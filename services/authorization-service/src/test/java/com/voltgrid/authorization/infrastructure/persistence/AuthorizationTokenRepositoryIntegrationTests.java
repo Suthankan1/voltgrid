@@ -13,7 +13,9 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
+@SpringBootTest (
+        properties = "spring.grpc.server.port=0"
+)
 @Import(PostgresTestConfiguration.class)
 @Transactional
 class AuthorizationTokenRepositoryIntegrationTests {
