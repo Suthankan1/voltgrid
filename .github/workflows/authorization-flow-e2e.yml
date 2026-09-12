@@ -1,0 +1,50 @@
+name: Authorization Flow E2E
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "integration-tests/authorization-flow/**"
+      - "services/station-service/**"
+      - "services/authorization-service/**"
+      - "contracts/authorization/**"
+      - ".github/workflows/authorization-flow-e2e.yml"
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "integration-tests/authorization-flow/**"
+      - "services/station-service/**"
+      - "services/authorization-service/**"
+      - "contracts/authorization/**"
+      - ".github/workflows/authorization-flow-e2e.yml"
+
+jobs:
+  authorization-flow-e2e:
+    name: Authorization Flow E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Show Java version
+        run: java --version
+
+      - name: Run authorization flow integration tests
+        working-directory: integration-tests/authorization-flow
+        run: |
+          mvn \
+            --batch-mode \
+            --no-transfer-progress \
+            clean test
