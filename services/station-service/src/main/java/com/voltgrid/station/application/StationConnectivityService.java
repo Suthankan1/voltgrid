@@ -2,23 +2,30 @@ package com.voltgrid.station.application;
 
 import com.voltgrid.station.domain.ChargingStation;
 import com.voltgrid.station.domain.StationStatus;
+import com.voltgrid.station.messaging.event.StationStatusChangedEvent;
+import com.voltgrid.station.messaging.outbox.StationStatusOutboxWriter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Service
 public class StationConnectivityService {
 
     private final StationReader stationReader;
     private final StationWriter stationWriter;
+    private final StationStatusOutboxWriter stationStatusOutboxWriter;
 
     public StationConnectivityService(
             StationReader stationReader,
-            StationWriter stationWriter
+            StationWriter stationWriter,
+            StationStatusOutboxWriter stationStatusOutboxWriter
     ) {
         this.stationReader = stationReader;
         this.stationWriter = stationWriter;
+        this.stationStatusOutboxWriter =
+                stationStatusOutboxWriter;
     }
 
     @Transactional
@@ -26,7 +33,13 @@ public class StationConnectivityService {
             String stationId,
             Instant seenAt
     ) {
-        var station = findStation(stationId);
+        var station =
+                findStation(
+                        stationId
+                );
+
+        var previousStatus =
+                station.status();
 
         stationWriter.save(
                 new ChargingStation(
@@ -36,6 +49,19 @@ public class StationConnectivityService {
                         seenAt
                 )
         );
+
+        if (previousStatus != StationStatus.ONLINE) {
+            stationStatusOutboxWriter.save(
+                    new StationStatusChangedEvent(
+                            UUID.randomUUID(),
+                            station.id(),
+                            previousStatus.name(),
+                            StationStatus.ONLINE.name(),
+                            seenAt
+                    ),
+                    seenAt
+            );
+        }
     }
 
     @Transactional
@@ -43,7 +69,10 @@ public class StationConnectivityService {
             String stationId,
             Instant seenAt
     ) {
-        var station = findStation(stationId);
+        var station =
+                findStation(
+                        stationId
+                );
 
         stationWriter.save(
                 new ChargingStation(
@@ -56,8 +85,13 @@ public class StationConnectivityService {
     }
 
     @Transactional
-    public void markOffline(String stationId) {
-        var station = findStation(stationId);
+    public void markOffline(
+            String stationId
+    ) {
+        var station =
+                findStation(
+                        stationId
+                );
 
         stationWriter.save(
                 new ChargingStation(
@@ -72,12 +106,16 @@ public class StationConnectivityService {
     private ChargingStation findStation(
             String stationId
     ) {
-        return stationReader.findById(stationId)
-                .orElseThrow(() ->
-                        new IllegalStateException(
-                                "Station not found: "
-                                        + stationId
-                        )
+        return stationReader
+                .findById(
+                        stationId
+                )
+                .orElseThrow(
+                        () ->
+                                new IllegalStateException(
+                                        "Station not found: "
+                                                + stationId
+                                )
                 );
     }
 }
