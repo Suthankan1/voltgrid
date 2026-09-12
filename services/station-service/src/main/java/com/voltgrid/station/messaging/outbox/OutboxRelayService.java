@@ -48,14 +48,16 @@ public class OutboxRelayService {
     public boolean relayNext() {
         var event =
                 outboxEventRepository
-                        .findFirstByPublishedAtIsNullOrderByCreatedAtAsc()
+                        .findNextUnpublishedForUpdate()
                         .orElse(null);
 
         if (event == null) {
             return false;
         }
 
-        publish(event);
+        publish(
+                event
+        );
 
         event.markPublished(
                 Instant.now()

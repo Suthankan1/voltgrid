@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -52,7 +53,7 @@ class OutboxRelayServiceTests {
     void shouldReturnFalseWhenNoUnpublishedEventExists() {
         when(
                 outboxEventRepository
-                        .findFirstByPublishedAtIsNullOrderByCreatedAtAsc()
+                        .findNextUnpublishedForUpdate()
         ).thenReturn(
                 Optional.empty()
         );
@@ -68,9 +69,9 @@ class OutboxRelayServiceTests {
                 kafkaTemplate,
                 never()
         ).send(
-                org.mockito.ArgumentMatchers.anyString(),
-                org.mockito.ArgumentMatchers.anyString(),
-                org.mockito.ArgumentMatchers.anyString()
+                anyString(),
+                anyString(),
+                anyString()
         );
     }
 
@@ -81,7 +82,7 @@ class OutboxRelayServiceTests {
 
         when(
                 outboxEventRepository
-                        .findFirstByPublishedAtIsNullOrderByCreatedAtAsc()
+                        .findNextUnpublishedForUpdate()
         ).thenReturn(
                 Optional.of(
                         event
@@ -135,7 +136,7 @@ class OutboxRelayServiceTests {
 
         when(
                 outboxEventRepository
-                        .findFirstByPublishedAtIsNullOrderByCreatedAtAsc()
+                        .findNextUnpublishedForUpdate()
         ).thenReturn(
                 Optional.of(
                         event
