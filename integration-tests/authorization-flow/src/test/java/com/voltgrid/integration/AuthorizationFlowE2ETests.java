@@ -9,7 +9,11 @@ import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.nio.charset.StandardCharsets;
 import java.sql.DriverManager;
+import java.sql.Types;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.HexFormat;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
@@ -27,7 +31,7 @@ class AuthorizationFlowE2ETests {
             Duration.ofSeconds(5);
 
     @Test
-    void shouldAuthorizeActiveTokenThroughFullOcppFlow()
+    void shouldAuthorizeTokenStatesThroughFullOcppFlow()
             throws Exception {
 
         try (
@@ -42,9 +46,26 @@ class AuthorizationFlowE2ETests {
                     "STATION-E2E"
             );
 
-            seedActiveToken(
+            seedToken(
                     environment,
-                    "ACTIVE-RFID"
+                    "ACTIVE-RFID",
+                    "ACTIVE",
+                    null
+            );
+
+            seedToken(
+                    environment,
+                    "BLOCKED-RFID",
+                    "BLOCKED",
+                    null
+            );
+
+            seedToken(
+                    environment,
+                    "EXPIRED-RFID",
+                    "ACTIVE",
+                    Instant.now()
+                            .minusSeconds(60)
             );
 
             var listener =
@@ -101,32 +122,36 @@ class AuthorizationFlowE2ETests {
                         "Accepted"
                 );
 
-                send(
+                assertAuthorizationStatus(
                         webSocket,
-                        """
-                        [
-                          2,
-                          "auth-e2e-active-001",
-                          "Authorize",
-                          {
-                            "idToken": {
-                              "idToken": "ACTIVE-RFID",
-                              "type": "ISO14443"
-                            }
-                          }
-                        ]
-                        """
+                        listener,
+                        "auth-e2e-active-001",
+                        "ACTIVE-RFID",
+                        "Accepted"
                 );
 
-                var authorizationResponse =
-                        listener.awaitMessage(
-                                RESPONSE_TIMEOUT
-                        );
+                assertAuthorizationStatus(
+                        webSocket,
+                        listener,
+                        "auth-e2e-blocked-001",
+                        "BLOCKED-RFID",
+                        "Blocked"
+                );
 
-                assertCallResultStatus(
-                        authorizationResponse,
-                        "auth-e2e-active-001",
-                        "Accepted"
+                assertAuthorizationStatus(
+                        webSocket,
+                        listener,
+                        "auth-e2e-expired-001",
+                        "EXPIRED-RFID",
+                        "Expired"
+                );
+
+                assertAuthorizationStatus(
+                        webSocket,
+                        listener,
+                        "auth-e2e-unknown-001",
+                        "UNKNOWN-RFID",
+                        "Invalid"
                 );
 
             } finally {
@@ -136,6 +161,47 @@ class AuthorizationFlowE2ETests {
                 ).join();
             }
         }
+    }
+
+    private void assertAuthorizationStatus(
+            WebSocket webSocket,
+            QueueingWebSocketListener listener,
+            String messageId,
+            String rawToken,
+            String expectedStatus
+    ) throws InterruptedException {
+
+        send(
+                webSocket,
+                """
+                [
+                  2,
+                  "%s",
+                  "Authorize",
+                  {
+                    "idToken": {
+                      "idToken": "%s",
+                      "type": "ISO14443"
+                    }
+                  }
+                ]
+                """
+                        .formatted(
+                                messageId,
+                                rawToken
+                        )
+        );
+
+        var response =
+                listener.awaitMessage(
+                        RESPONSE_TIMEOUT
+                );
+
+        assertCallResultStatus(
+                response,
+                messageId,
+                expectedStatus
+        );
     }
 
     private void seedStation(
@@ -189,9 +255,11 @@ class AuthorizationFlowE2ETests {
         }
     }
 
-    private void seedActiveToken(
+    private void seedToken(
             AuthorizationFlowTestEnvironment environment,
-            String rawToken
+            String rawToken,
+            String status,
+            Instant expiresAt
     ) throws Exception {
 
         var postgres =
@@ -210,8 +278,8 @@ class AuthorizationFlowE2ETests {
                 VALUES (
                     ?,
                     ?,
-                    'ACTIVE',
-                    NULL,
+                    ?,
+                    ?,
                     CURRENT_TIMESTAMP,
                     CURRENT_TIMESTAMP
                 )
@@ -241,6 +309,26 @@ class AuthorizationFlowE2ETests {
                             rawToken
                     )
             );
+
+            statement.setString(
+                    3,
+                    status
+            );
+
+            if (expiresAt == null) {
+                statement.setNull(
+                        4,
+                        Types.TIMESTAMP_WITH_TIMEZONE
+                );
+            } else {
+                statement.setObject(
+                        4,
+                        OffsetDateTime.ofInstant(
+                                expiresAt,
+                                ZoneOffset.UTC
+                        )
+                );
+            }
 
             statement.executeUpdate();
         }
