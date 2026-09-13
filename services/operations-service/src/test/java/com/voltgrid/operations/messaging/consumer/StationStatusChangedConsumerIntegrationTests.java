@@ -1,7 +1,9 @@
 package com.voltgrid.operations.messaging.consumer;
 
+import com.voltgrid.operations.PostgresTestConfiguration;
 import com.voltgrid.operations.application.StationStatusChangedHandler;
 import com.voltgrid.operations.messaging.event.StationStatusChangedEvent;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -14,7 +16,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.kafka.config.TopicBuilder;
-import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.junit.jupiter.Container;
@@ -34,10 +35,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @Testcontainers
-@Import(
+@Import({
+        PostgresTestConfiguration.class,
         StationStatusChangedConsumerIntegrationTests
                 .TestHandlerConfiguration.class
-)
+})
 class StationStatusChangedConsumerIntegrationTests {
 
     private static final String TOPIC =
