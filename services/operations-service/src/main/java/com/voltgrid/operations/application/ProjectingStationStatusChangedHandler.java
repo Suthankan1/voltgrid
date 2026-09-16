@@ -1,6 +1,7 @@
 package com.voltgrid.operations.application;
 
 import com.voltgrid.operations.messaging.event.StationStatusChangedEvent;
+import com.voltgrid.operations.messaging.idempotency.ProcessedEventReceiptRepository;
 import com.voltgrid.operations.projection.station.StationStatusProjectionEntity;
 import com.voltgrid.operations.projection.station.StationStatusProjectionRepository;
 import org.springframework.stereotype.Component;
@@ -12,12 +13,18 @@ import java.time.Instant;
 public class ProjectingStationStatusChangedHandler
         implements StationStatusChangedHandler {
 
-    private final StationStatusProjectionRepository repository;
+    private static final String EVENT_TYPE =
+            "StationStatusChanged";
+
+    private final StationStatusProjectionRepository projectionRepository;
+    private final ProcessedEventReceiptRepository receiptRepository;
 
     public ProjectingStationStatusChangedHandler(
-            StationStatusProjectionRepository repository
+            StationStatusProjectionRepository projectionRepository,
+            ProcessedEventReceiptRepository receiptRepository
     ) {
-        this.repository = repository;
+        this.projectionRepository = projectionRepository;
+        this.receiptRepository = receiptRepository;
     }
 
     @Override
@@ -25,22 +32,33 @@ public class ProjectingStationStatusChangedHandler
     public void handle(
             StationStatusChangedEvent event
     ) {
-        var updatedAt =
+        var processedAt =
                 Instant.now();
 
+        var receiptInserted =
+                receiptRepository.insertIfAbsent(
+                        event.eventId(),
+                        EVENT_TYPE,
+                        processedAt
+                );
+
+        if (receiptInserted == 0) {
+            return;
+        }
+
         var existing =
-                repository.findById(
+                projectionRepository.findById(
                         event.stationId()
                 );
 
         if (existing.isEmpty()) {
-            repository.save(
+            projectionRepository.save(
                     new StationStatusProjectionEntity(
                             event.stationId(),
                             event.currentStatus(),
                             event.eventId(),
                             event.occurredAt(),
-                            updatedAt
+                            processedAt
                     )
             );
 
@@ -54,9 +72,9 @@ public class ProjectingStationStatusChangedHandler
                 event.eventId(),
                 event.currentStatus(),
                 event.occurredAt(),
-                updatedAt
+                processedAt
         )) {
-            repository.save(
+            projectionRepository.save(
                     projection
             );
         }

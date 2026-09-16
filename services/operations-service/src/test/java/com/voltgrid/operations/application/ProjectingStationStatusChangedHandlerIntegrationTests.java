@@ -2,6 +2,7 @@ package com.voltgrid.operations.application;
 
 import com.voltgrid.operations.PostgresTestConfiguration;
 import com.voltgrid.operations.messaging.event.StationStatusChangedEvent;
+import com.voltgrid.operations.messaging.idempotency.ProcessedEventReceiptRepository;
 import com.voltgrid.operations.projection.station.StationStatusProjectionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,8 +29,12 @@ class ProjectingStationStatusChangedHandlerIntegrationTests {
     @Autowired
     private StationStatusProjectionRepository repository;
 
+    @Autowired
+    private ProcessedEventReceiptRepository receiptRepository;
+
     @BeforeEach
     void cleanDatabase() {
+        receiptRepository.deleteAll();
         repository.deleteAll();
     }
 
@@ -79,6 +84,23 @@ class ProjectingStationStatusChangedHandlerIntegrationTests {
 
         assertThat(
                 projection.getUpdatedAt()
+        ).isNotNull();
+
+        var receipt =
+                receiptRepository
+                        .findById(
+                                eventId
+                        )
+                        .orElseThrow();
+
+        assertThat(
+                receipt.getEventType()
+        ).isEqualTo(
+                "StationStatusChanged"
+        );
+
+        assertThat(
+                receipt.getProcessedAt()
         ).isNotNull();
     }
 
@@ -143,6 +165,12 @@ class ProjectingStationStatusChangedHandlerIntegrationTests {
         ).isEqualTo(
                 1
         );
+
+        assertThat(
+                receiptRepository.count()
+        ).isEqualTo(
+                2
+        );
     }
 
     @Test
@@ -200,6 +228,12 @@ class ProjectingStationStatusChangedHandlerIntegrationTests {
                         "2026-09-14T03:10:00Z"
                 )
         );
+
+        assertThat(
+                receiptRepository.count()
+        ).isEqualTo(
+                2
+        );
     }
 
     @Test
@@ -235,6 +269,12 @@ class ProjectingStationStatusChangedHandlerIntegrationTests {
 
         assertThat(
                 repository.count()
+        ).isEqualTo(
+                1
+        );
+
+        assertThat(
+                receiptRepository.count()
         ).isEqualTo(
                 1
         );
