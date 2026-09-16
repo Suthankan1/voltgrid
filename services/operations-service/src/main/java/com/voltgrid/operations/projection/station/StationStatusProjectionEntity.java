@@ -85,6 +85,49 @@ public class StationStatusProjectionEntity {
         );
     }
 
+    public boolean apply(
+            UUID eventId,
+            String currentStatus,
+            Instant statusChangedAt,
+            Instant updatedAt
+    ) {
+        Objects.requireNonNull(
+                eventId,
+                "eventId must not be null"
+        );
+
+        Objects.requireNonNull(
+                statusChangedAt,
+                "statusChangedAt must not be null"
+        );
+
+        Objects.requireNonNull(
+                updatedAt,
+                "updatedAt must not be null"
+        );
+
+        if (currentStatus == null || currentStatus.isBlank()) {
+            throw new IllegalArgumentException(
+                    "currentStatus must not be blank"
+            );
+        }
+
+        if (eventId.equals(lastEventId)) {
+            return false;
+        }
+
+        if (!statusChangedAt.isAfter(this.statusChangedAt)) {
+            return false;
+        }
+
+        this.currentStatus = currentStatus;
+        this.lastEventId = eventId;
+        this.statusChangedAt = statusChangedAt;
+        this.updatedAt = updatedAt;
+
+        return true;
+    }
+
     public String getStationId() {
         return stationId;
     }
