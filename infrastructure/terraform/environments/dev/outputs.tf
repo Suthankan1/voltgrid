@@ -48,3 +48,18 @@ output "github_actions_ecr_role_arn" {
   description = "IAM role assumed by GitHub Actions when publishing VoltGrid images to ECR."
   value       = aws_iam_role.github_actions_ecr.arn
 }
+
+output "ecs_cluster_name" {
+  description = "Name of the VoltGrid ECS cluster."
+  value       = aws_ecs_cluster.main.name
+}
+
+output "ecs_cluster_arn" {
+  description = "ARN of the VoltGrid ECS cluster."
+  value       = aws_ecs_cluster.main.arn
+}
+
+output "ecs_task_execution_role_arn" {
+  description = "IAM role used by ECS to pull images and publish container logs."
+  value       = aws_iam_role.ecs_task_execution.arn
+}
