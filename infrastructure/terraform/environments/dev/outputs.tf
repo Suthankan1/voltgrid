@@ -77,3 +77,18 @@ output "authorization_task_definition_arn" {
   description = "Authorization Service ECS task definition ARN."
   value       = aws_ecs_task_definition.authorization.arn
 }
+
+output "service_discovery_namespace_id" {
+  description = "AWS Cloud Map private DNS namespace ID."
+  value       = aws_service_discovery_private_dns_namespace.internal.id
+}
+
+output "authorization_discovery_service_arn" {
+  description = "AWS Cloud Map service ARN for Authorization Service."
+  value       = aws_service_discovery_service.authorization.arn
+}
+
+output "authorization_discovery_dns_name" {
+  description = "Internal DNS name for Authorization Service."
+  value       = "authorization.${aws_service_discovery_private_dns_namespace.internal.name}"
+}
