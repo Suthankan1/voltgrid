@@ -166,6 +166,134 @@ class StationStatusProjectionE2EIntegrationTests {
         );
     }
 
+    @Test
+    void shouldProcessDuplicateKafkaDeliveryIdempotently()
+            throws Exception {
+
+        var eventId =
+                UUID.randomUUID();
+
+        var duplicatePayload =
+                """
+                {
+                  "eventId": "%s",
+                  "stationId": "STATION-E2E-DUPLICATE",
+                  "previousStatus": "OFFLINE",
+                  "currentStatus": "ONLINE",
+                  "occurredAt": "2026-09-17T04:00:00Z"
+                }
+                """
+                        .formatted(
+                                eventId
+                        );
+
+        var sentinelEventId =
+                UUID.randomUUID();
+
+        var sentinelPayload =
+                """
+                {
+                  "eventId": "%s",
+                  "stationId": "STATION-E2E-SENTINEL",
+                  "previousStatus": "OFFLINE",
+                  "currentStatus": "ONLINE",
+                  "occurredAt": "2026-09-17T04:01:00Z"
+                }
+                """
+                        .formatted(
+                                sentinelEventId
+                        );
+
+        try (
+                var producer =
+                        createProducer()
+        ) {
+            var partitionKey =
+                    "IDEMPOTENCY-PROBE";
+
+            producer.send(
+                    new ProducerRecord<>(
+                            TOPIC,
+                            partitionKey,
+                            duplicatePayload
+                    )
+            ).get();
+
+            producer.send(
+                    new ProducerRecord<>(
+                            TOPIC,
+                            partitionKey,
+                            duplicatePayload
+                    )
+            ).get();
+
+            producer.send(
+                    new ProducerRecord<>(
+                            TOPIC,
+                            partitionKey,
+                            sentinelPayload
+                    )
+            ).get();
+        }
+
+        awaitReceipt(
+                sentinelEventId,
+                Duration.ofSeconds(10)
+        );
+
+        var duplicateReceipt =
+                receiptRepository
+                        .findById(
+                                eventId
+                        )
+                        .orElseThrow();
+
+        assertThat(
+                duplicateReceipt.getEventType()
+        ).isEqualTo(
+                "StationStatusChanged"
+        );
+
+        var projection =
+                projectionRepository
+                        .findById(
+                                "STATION-E2E-DUPLICATE"
+                        )
+                        .orElseThrow();
+
+        assertThat(
+                projection.getCurrentStatus()
+        ).isEqualTo(
+                "ONLINE"
+        );
+
+        assertThat(
+                projection.getLastEventId()
+        ).isEqualTo(
+                eventId
+        );
+
+        assertThat(
+                projection.getStatusChangedAt()
+        ).isEqualTo(
+                Instant.parse(
+                        "2026-09-17T04:00:00Z"
+                )
+        );
+
+        assertThat(
+                receiptRepository.count()
+        ).isEqualTo(
+                2
+        );
+
+        assertThat(
+                projectionRepository.count()
+        ).isEqualTo(
+                2
+        );
+    }
+
     private KafkaProducer<String, String> createProducer() {
         var properties =
                 new HashMap<String, Object>();
@@ -238,5 +366,31 @@ class StationStatusProjectionE2EIntegrationTests {
                     )
                     .build();
         }
+    }
+
+    private void awaitReceipt(
+            UUID eventId,
+            Duration timeout
+    ) throws InterruptedException {
+
+        var deadline =
+                System.nanoTime()
+                        + timeout.toNanos();
+
+        while (System.nanoTime() < deadline) {
+            if (receiptRepository.existsById(
+                    eventId
+            )) {
+                return;
+            }
+
+            Thread.sleep(
+                    100
+            );
+        }
+
+        fail(
+                "Timed out waiting for processed event receipt"
+        );
     }
 }
