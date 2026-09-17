@@ -1,0 +1,15 @@
+**
+
+!services/
+!services/authorization-service/
+!services/authorization-service/.mvn/
+!services/authorization-service/.mvn/**
+!services/authorization-service/mvnw
+!services/authorization-service/pom.xml
+!services/authorization-service/src/
+!services/authorization-service/src/**
+
+!contracts/
+!contracts/authorization/
+!contracts/authorization/v1/
+!contracts/authorization/v1/**
