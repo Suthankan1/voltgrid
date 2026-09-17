@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -44,6 +45,7 @@ class OutboxRelayServiceTests {
                 new OutboxRelayService(
                         outboxEventRepository,
                         kafkaTemplate,
+                        JsonMapper.builder().build(),
                         TOPIC,
                         Duration.ofSeconds(5)
                 );

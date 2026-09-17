@@ -1,11 +1,16 @@
 package com.voltgrid.station.messaging.outbox;
 
 import com.voltgrid.station.messaging.event.StationStatusChangedEvent;
+import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
+import io.opentelemetry.context.Context;
+import io.opentelemetry.context.propagation.TextMapSetter;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 
 @Component
@@ -16,6 +21,14 @@ public class StationStatusOutboxWriter {
 
     private static final String EVENT_TYPE =
             "StationStatusChanged";
+
+    private static final TextMapSetter<Map<String, String>>
+            TRACE_CONTEXT_SETTER =
+            (carrier, key, value) ->
+                    carrier.put(
+                            key,
+                            value
+                    );
 
     private final OutboxEventRepository outboxEventRepository;
     private final JsonMapper jsonMapper;
@@ -46,7 +59,12 @@ public class StationStatusOutboxWriter {
         );
 
         var payload =
-                serialize(event);
+                serializeEvent(
+                        event
+                );
+
+        var traceContext =
+                captureTraceContext();
 
         outboxEventRepository.save(
                 new OutboxEventEntity(
@@ -56,12 +74,13 @@ public class StationStatusOutboxWriter {
                         EVENT_TYPE,
                         payload,
                         event.occurredAt(),
-                        createdAt
+                        createdAt,
+                        traceContext
                 )
         );
     }
 
-    private String serialize(
+    private String serializeEvent(
             StationStatusChangedEvent event
     ) {
         try {
@@ -72,6 +91,35 @@ public class StationStatusOutboxWriter {
         } catch (JacksonException exception) {
             throw new IllegalStateException(
                     "Failed to serialize station status event",
+                    exception
+            );
+        }
+    }
+
+    private String captureTraceContext() {
+        var carrier =
+                new LinkedHashMap<String, String>();
+
+        W3CTraceContextPropagator
+                .getInstance()
+                .inject(
+                        Context.current(),
+                        carrier,
+                        TRACE_CONTEXT_SETTER
+                );
+
+        if (carrier.isEmpty()) {
+            return null;
+        }
+
+        try {
+            return jsonMapper.writeValueAsString(
+                    carrier
+            );
+
+        } catch (JacksonException exception) {
+            throw new IllegalStateException(
+                    "Failed to serialize outbox trace context",
                     exception
             );
         }

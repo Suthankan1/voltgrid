@@ -64,6 +64,13 @@ public class OutboxEventEntity {
     )
     private Instant publishedAt;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(
+            name = "trace_context",
+            columnDefinition = "jsonb"
+    )
+    private String traceContext;
+
     protected OutboxEventEntity() {
     }
 
@@ -75,6 +82,28 @@ public class OutboxEventEntity {
             String payload,
             Instant occurredAt,
             Instant createdAt
+    ) {
+        this(
+                id,
+                aggregateType,
+                aggregateId,
+                eventType,
+                payload,
+                occurredAt,
+                createdAt,
+                null
+        );
+    }
+
+    public OutboxEventEntity(
+            UUID id,
+            String aggregateType,
+            String aggregateId,
+            String eventType,
+            String payload,
+            Instant occurredAt,
+            Instant createdAt,
+            String traceContext
     ) {
         this.id =
                 Objects.requireNonNull(
@@ -117,6 +146,11 @@ public class OutboxEventEntity {
                         createdAt,
                         "createdAt must not be null"
                 );
+
+        this.traceContext =
+                normalizeOptionalText(
+                        traceContext
+                );
     }
 
     public UUID getId() {
@@ -151,6 +185,10 @@ public class OutboxEventEntity {
         return publishedAt;
     }
 
+    public String getTraceContext() {
+        return traceContext;
+    }
+
     public void markPublished(
             Instant publishedAt
     ) {
@@ -169,6 +207,16 @@ public class OutboxEventEntity {
             throw new IllegalArgumentException(
                     fieldName + " must not be blank"
             );
+        }
+
+        return value;
+    }
+
+    private static String normalizeOptionalText(
+            String value
+    ) {
+        if (value == null || value.isBlank()) {
+            return null;
         }
 
         return value;
