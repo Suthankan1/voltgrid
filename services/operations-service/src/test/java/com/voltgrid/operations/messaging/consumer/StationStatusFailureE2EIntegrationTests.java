@@ -1,6 +1,8 @@
 package com.voltgrid.operations.messaging.consumer;
 
 import com.voltgrid.operations.PostgresTestConfiguration;
+import com.voltgrid.operations.application.StationStatusChangedHandler;
+import com.voltgrid.operations.messaging.event.StationStatusChangedEvent;
 import com.voltgrid.operations.messaging.idempotency.ProcessedEventReceiptRepository;
 import com.voltgrid.operations.projection.station.StationStatusProjectionRepository;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -18,6 +20,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -29,6 +32,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -38,7 +42,9 @@ import static org.junit.jupiter.api.Assertions.fail;
 @Import({
         PostgresTestConfiguration.class,
         StationStatusFailureE2EIntegrationTests
-                .TopicConfiguration.class
+                .TopicConfiguration.class,
+        StationStatusFailureE2EIntegrationTests
+                .FailureHandlerConfiguration.class
 })
 class StationStatusFailureE2EIntegrationTests {
 
@@ -70,10 +76,14 @@ class StationStatusFailureE2EIntegrationTests {
     @Autowired
     private ProcessedEventReceiptRepository receiptRepository;
 
+    @Autowired
+    private RetryProbeHandler retryProbeHandler;
+
     @BeforeEach
     void cleanDatabase() {
         receiptRepository.deleteAll();
         projectionRepository.deleteAll();
+        retryProbeHandler.reset();
     }
 
     @Test
@@ -117,6 +127,7 @@ class StationStatusFailureE2EIntegrationTests {
             var record =
                     awaitRecord(
                             consumer,
+                            "STATION-DLT-001",
                             Duration.ofSeconds(10)
                     );
 
@@ -132,6 +143,89 @@ class StationStatusFailureE2EIntegrationTests {
                     malformedPayload
             );
         }
+
+        assertThat(
+                retryProbeHandler.attempts()
+        ).isZero();
+
+        assertThat(
+                receiptRepository.count()
+        ).isZero();
+
+        assertThat(
+                projectionRepository.count()
+        ).isZero();
+    }
+
+    @Test
+    void shouldRetryProcessingFailureTwiceBeforeDeadLettering()
+            throws Exception {
+
+        var eventId =
+                UUID.randomUUID();
+
+        var payload =
+                """
+                {
+                  "eventId": "%s",
+                  "stationId": "STATION-RETRY-001",
+                  "previousStatus": "OFFLINE",
+                  "currentStatus": "ONLINE",
+                  "occurredAt": "2026-09-17T04:30:00Z"
+                }
+                """
+                        .formatted(
+                                eventId
+                        );
+
+        try (
+                var producer =
+                        createProducer()
+        ) {
+            producer.send(
+                    new ProducerRecord<>(
+                            TOPIC,
+                            "STATION-RETRY-001",
+                            payload
+                    )
+            ).get();
+        }
+
+        try (
+                var consumer =
+                        createConsumer()
+        ) {
+            consumer.subscribe(
+                    List.of(
+                            DLT
+                    )
+            );
+
+            var record =
+                    awaitRecord(
+                            consumer,
+                            "STATION-RETRY-001",
+                            Duration.ofSeconds(10)
+                    );
+
+            assertThat(
+                    record.key()
+            ).isEqualTo(
+                    "STATION-RETRY-001"
+            );
+
+            assertThat(
+                    record.value()
+            ).isEqualTo(
+                    payload
+            );
+        }
+
+        assertThat(
+                retryProbeHandler.attempts()
+        ).isEqualTo(
+                3
+        );
 
         assertThat(
                 receiptRepository.count()
@@ -216,6 +310,7 @@ class StationStatusFailureE2EIntegrationTests {
             String
             > awaitRecord(
             KafkaConsumer<String, String> consumer,
+            String expectedKey,
             Duration timeout
     ) {
         var deadline =
@@ -228,15 +323,18 @@ class StationStatusFailureE2EIntegrationTests {
                             Duration.ofMillis(250)
                     );
 
-            if (!records.isEmpty()) {
-                return records
-                        .iterator()
-                        .next();
+            for (var record : records) {
+                if (expectedKey.equals(
+                        record.key()
+                )) {
+                    return record;
+                }
             }
         }
 
         fail(
-                "Timed out waiting for dead-letter record"
+                "Timed out waiting for dead-letter record with key "
+                        + expectedKey
         );
 
         return null;
@@ -273,6 +371,44 @@ class StationStatusFailureE2EIntegrationTests {
                             1
                     )
                     .build();
+        }
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class FailureHandlerConfiguration {
+
+        @Bean
+        @Primary
+        RetryProbeHandler retryProbeHandler() {
+            return new RetryProbeHandler();
+        }
+    }
+
+    static class RetryProbeHandler
+            implements StationStatusChangedHandler {
+
+        private final AtomicInteger attempts =
+                new AtomicInteger();
+
+        @Override
+        public void handle(
+                StationStatusChangedEvent event
+        ) {
+            attempts.incrementAndGet();
+
+            throw new IllegalStateException(
+                    "Synthetic retryable processing failure"
+            );
+        }
+
+        int attempts() {
+            return attempts.get();
+        }
+
+        void reset() {
+            attempts.set(
+                    0
+            );
         }
     }
 }
