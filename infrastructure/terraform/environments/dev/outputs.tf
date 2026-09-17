@@ -92,3 +92,13 @@ output "authorization_discovery_dns_name" {
   description = "Internal DNS name for Authorization Service."
   value       = "authorization.${aws_service_discovery_private_dns_namespace.internal.name}"
 }
+
+output "authorization_ecs_service_name" {
+  description = "Authorization Service ECS service name."
+  value       = aws_ecs_service.authorization.name
+}
+
+output "authorization_ecs_service_id" {
+  description = "Authorization Service ECS service ID."
+  value       = aws_ecs_service.authorization.id
+}
