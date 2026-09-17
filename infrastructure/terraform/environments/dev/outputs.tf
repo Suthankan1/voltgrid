@@ -117,3 +117,8 @@ output "station_ecs_service_id" {
   description = "Station Service ECS service ID."
   value       = aws_ecs_service.station.id
 }
+
+output "operations_task_definition_arn" {
+  description = "Operations Service ECS task definition ARN."
+  value       = aws_ecs_task_definition.operations.arn
+}

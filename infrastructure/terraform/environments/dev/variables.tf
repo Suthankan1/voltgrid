@@ -48,3 +48,10 @@ variable "station_image_tag" {
 
   default = "289000de57ff695af034fc10e278a545e3587569"
 }
+
+variable "operations_image_tag" {
+  description = "Immutable ECR image tag deployed by the Operations Service task definition."
+  type        = string
+
+  default = "bd698ad89cb3e92c81b4308f296af1662eab08a9"
+}
