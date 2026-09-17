@@ -9,6 +9,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -289,6 +292,87 @@ class ProjectingStationStatusChangedHandlerIntegrationTests {
                 projection.getCurrentStatus()
         ).isEqualTo(
                 "ONLINE"
+        );
+    }
+
+    @Test
+    void shouldRollbackReceiptWhenProjectionPersistenceFails() {
+        var initialEventId =
+                UUID.randomUUID();
+
+        handler.handle(
+                new StationStatusChangedEvent(
+                        initialEventId,
+                        "STATION-ROLLBACK-001",
+                        "OFFLINE",
+                        "ONLINE",
+                        Instant.parse(
+                                "2026-09-17T05:00:00Z"
+                        )
+                )
+        );
+
+        var failedEventId =
+                UUID.randomUUID();
+
+        var statusTooLongForDatabaseColumn =
+                "X".repeat(
+                        33
+                );
+
+        assertThatThrownBy(
+                () -> handler.handle(
+                        new StationStatusChangedEvent(
+                                failedEventId,
+                                "STATION-ROLLBACK-001",
+                                "ONLINE",
+                                statusTooLongForDatabaseColumn,
+                                Instant.parse(
+                                        "2026-09-17T05:05:00Z"
+                                )
+                        )
+                )
+        ).isInstanceOf(
+                DataIntegrityViolationException.class
+        );
+
+        assertThat(
+                receiptRepository.existsById(
+                        failedEventId
+                )
+        ).isFalse();
+
+        assertThat(
+                receiptRepository.count()
+        ).isEqualTo(
+                1
+        );
+
+        var projection =
+                repository
+                        .findById(
+                                "STATION-ROLLBACK-001"
+                        )
+                        .orElseThrow();
+
+        assertThat(
+                projection.getCurrentStatus()
+        ).isEqualTo(
+                "ONLINE"
+        );
+
+        assertThat(
+                projection.getLastEventId()
+        ).isEqualTo(
+                initialEventId
+        );
+
+        assertThat(
+                projection.getStatusChangedAt()
+        ).isEqualTo(
+                Instant.parse(
+                        "2026-09-17T05:00:00Z"
+                )
         );
     }
 }
