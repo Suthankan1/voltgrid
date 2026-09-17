@@ -12,6 +12,8 @@ import com.voltgrid.station.application.TransactionNotActiveException;
 import com.voltgrid.station.application.TransactionNotFoundException;
 import com.voltgrid.station.domain.ConnectorStatus;
 import com.voltgrid.station.domain.TransactionMeterSample;
+import io.opentelemetry.instrumentation.annotations.SpanAttribute;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -50,8 +52,9 @@ public class OcppMessageProcessor {
         this.authorizationClient = authorizationClient;
     }
 
+    @WithSpan("ocpp.message")
     public String process(
-            String stationId,
+            @SpanAttribute("station.id") String stationId,
             String rawMessage
     ) {
         try {
@@ -299,16 +302,16 @@ public class OcppMessageProcessor {
         if (idTokenValueNode == null
                 || !idTokenValueNode.isString()
                 || isBlank(
-                        idTokenValueNode.stringValue()
-                )
+                idTokenValueNode.stringValue()
+        )
                 || idTokenValueNode
-                        .stringValue()
-                        .length() > 36
+                .stringValue()
+                .length() > 36
                 || idTokenTypeNode == null
                 || !idTokenTypeNode.isString()
                 || !isValidIdTokenType(
-                        idTokenTypeNode.stringValue()
-                )) {
+                idTokenTypeNode.stringValue()
+        )) {
 
             return callError(
                     messageId,
@@ -540,18 +543,18 @@ public class OcppMessageProcessor {
                         sampledValue.unitOfMeasure() == null
                                 ? null
                                 : sampledValue
-                                        .unitOfMeasure()
-                                        .unit();
+                                .unitOfMeasure()
+                                .unit();
 
                 var multiplier =
                         sampledValue.unitOfMeasure() == null
                                 || sampledValue
-                                        .unitOfMeasure()
-                                        .multiplier() == null
+                                .unitOfMeasure()
+                                .multiplier() == null
                                 ? 0
                                 : sampledValue
-                                        .unitOfMeasure()
-                                        .multiplier();
+                                .unitOfMeasure()
+                                .multiplier();
 
                 samples.add(
                         new TransactionMeterSample(
@@ -599,13 +602,13 @@ public class OcppMessageProcessor {
                 && !isBlank(request.reason())
                 && request.chargingStation() != null
                 && !isBlank(
-                        request.chargingStation()
-                                .model()
-                )
+                request.chargingStation()
+                        .model()
+        )
                 && !isBlank(
-                        request.chargingStation()
-                                .vendorName()
-                );
+                request.chargingStation()
+                        .vendorName()
+        );
     }
 
     private boolean isValid(
@@ -631,9 +634,9 @@ public class OcppMessageProcessor {
                 && request.seqNo() >= 0
                 && request.transactionInfo() != null
                 && !isBlank(
-                        request.transactionInfo()
-                                .transactionId()
-                );
+                request.transactionInfo()
+                        .transactionId()
+        );
     }
 
     private boolean hasValidEvse(
