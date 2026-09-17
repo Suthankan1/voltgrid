@@ -1,5 +1,10 @@
 type Query {
     stationStatus(stationId: ID!): StationStatus
+
+    stationStatuses(
+        first: Int
+        after: String
+    ): StationStatusConnection!
 }
 
 type StationStatus {

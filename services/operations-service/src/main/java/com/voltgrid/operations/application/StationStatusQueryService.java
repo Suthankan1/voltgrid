@@ -1,12 +1,19 @@
 package com.voltgrid.operations.application;
 
 import com.voltgrid.operations.api.graphql.StationStatusView;
+import com.voltgrid.operations.projection.station.StationStatusProjectionEntity;
 import com.voltgrid.operations.projection.station.StationStatusProjectionRepository;
+import org.springframework.data.domain.Limit;
+import org.springframework.data.domain.ScrollPosition;
+import org.springframework.data.domain.Window;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class StationStatusQueryService {
+
+    private static final int MAX_PAGE_SIZE =
+            100;
 
     private final StationStatusProjectionRepository repository;
 
@@ -21,19 +28,54 @@ public class StationStatusQueryService {
             String stationId
     ) {
         return repository
-                .findById(stationId)
+                .findById(
+                        stationId
+                )
                 .map(
-                        projection ->
-                                new StationStatusView(
-                                        projection.getStationId(),
-                                        projection.getCurrentStatus(),
-                                        projection.getLastEventId().toString(),
-                                        projection.getStatusChangedAt().toString(),
-                                        projection.getUpdatedAt().toString()
-                                )
+                        this::toView
                 )
                 .orElse(
                         null
                 );
+    }
+
+    @Transactional(readOnly = true)
+    public Window<StationStatusView> findAll(
+            ScrollPosition position,
+            int count
+    ) {
+        if (count < 1
+                || count > MAX_PAGE_SIZE) {
+            throw new IllegalArgumentException(
+                    "Station status page size must be between 1 and "
+                            + MAX_PAGE_SIZE
+            );
+        }
+
+        return repository
+                .findAllByOrderByStationIdAsc(
+                        position,
+                        Limit.of(
+                                count
+                        )
+                )
+                .map(
+                        this::toView
+                );
+    }
+
+    private StationStatusView toView(
+            StationStatusProjectionEntity projection
+    ) {
+        return new StationStatusView(
+                projection.getStationId(),
+                projection.getCurrentStatus(),
+                projection.getLastEventId()
+                        .toString(),
+                projection.getStatusChangedAt()
+                        .toString(),
+                projection.getUpdatedAt()
+                        .toString()
+        );
     }
 }
