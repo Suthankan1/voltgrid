@@ -34,3 +34,12 @@ output "postgres_master_secret_arn" {
   value       = aws_db_instance.postgres.master_user_secret[0].secret_arn
   sensitive   = true
 }
+
+output "ecr_repository_urls" {
+  description = "ECR repository URLs for VoltGrid services."
+
+  value = {
+    for service, repository in aws_ecr_repository.service :
+    service => repository.repository_url
+  }
+}
