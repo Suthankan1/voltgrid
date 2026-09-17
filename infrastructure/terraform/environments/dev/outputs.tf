@@ -102,3 +102,8 @@ output "authorization_ecs_service_id" {
   description = "Authorization Service ECS service ID."
   value       = aws_ecs_service.authorization.id
 }
+
+output "station_task_definition_arn" {
+  description = "Station Service ECS task definition ARN."
+  value       = aws_ecs_task_definition.station.arn
+}

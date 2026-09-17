@@ -41,3 +41,10 @@ variable "authorization_image_tag" {
 
   default = "bd698ad89cb3e92c81b4308f296af1662eab08a9"
 }
+
+variable "station_image_tag" {
+  description = "Immutable ECR image tag deployed by the Station Service task definition."
+  type        = string
+
+  default = "289000de57ff695af034fc10e278a545e3587569"
+}
