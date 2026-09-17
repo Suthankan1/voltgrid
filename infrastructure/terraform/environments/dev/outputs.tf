@@ -18,3 +18,19 @@ output "private_subnet_ids" {
     az => subnet.id
   }
 }
+
+output "postgres_endpoint" {
+  description = "Private endpoint of the VoltGrid development PostgreSQL instance."
+  value       = aws_db_instance.postgres.address
+}
+
+output "postgres_port" {
+  description = "Port of the VoltGrid development PostgreSQL instance."
+  value       = aws_db_instance.postgres.port
+}
+
+output "postgres_master_secret_arn" {
+  description = "Secrets Manager ARN containing the RDS master credentials."
+  value       = aws_db_instance.postgres.master_user_secret[0].secret_arn
+  sensitive   = true
+}
