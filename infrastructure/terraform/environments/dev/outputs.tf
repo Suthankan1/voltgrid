@@ -72,3 +72,8 @@ output "database_service_secret_arns" {
     service => secret.arn
   }
 }
+
+output "authorization_task_definition_arn" {
+  description = "Authorization Service ECS task definition ARN."
+  value       = aws_ecs_task_definition.authorization.arn
+}

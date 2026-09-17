@@ -34,3 +34,10 @@ variable "vpc_cidr" {
   type        = string
   default     = "10.20.0.0/16"
 }
+
+variable "authorization_image_tag" {
+  description = "Immutable ECR image tag deployed by the Authorization Service task definition."
+  type        = string
+
+  default = "bd698ad89cb3e92c81b4308f296af1662eab08a9"
+}
