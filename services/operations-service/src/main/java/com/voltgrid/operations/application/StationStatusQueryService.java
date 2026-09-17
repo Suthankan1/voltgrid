@@ -13,6 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class StationStatusQueryService {
 
+    private static final int MIN_PAGE_SIZE =
+            1;
+
     private static final int MAX_PAGE_SIZE =
             100;
 
@@ -77,11 +80,11 @@ public class StationStatusQueryService {
     private void validatePageSize(
             int count
     ) {
-        if (count < 1
+        if (count < MIN_PAGE_SIZE
                 || count > MAX_PAGE_SIZE) {
-            throw new IllegalArgumentException(
-                    "Station status page size must be between 1 and "
-                            + MAX_PAGE_SIZE
+            throw new InvalidStationStatusPageSizeException(
+                    MIN_PAGE_SIZE,
+                    MAX_PAGE_SIZE
             );
         }
     }
