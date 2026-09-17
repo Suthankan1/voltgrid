@@ -1,0 +1,10 @@
+**
+
+!services/
+!services/operations-service/
+!services/operations-service/.mvn/
+!services/operations-service/.mvn/**
+!services/operations-service/mvnw
+!services/operations-service/pom.xml
+!services/operations-service/src/
+!services/operations-service/src/**

@@ -1,14 +1,19 @@
 services:
+
   postgres:
     image: postgres:18.6
+
     environment:
       POSTGRES_DB: voltgrid_station
       POSTGRES_USER: voltgrid
       POSTGRES_PASSWORD: voltgrid_dev
+
     ports:
       - "5434:5432"
+
     volumes:
       - station-postgres-data:/var/lib/postgresql
+
     healthcheck:
       test:
         [
@@ -21,14 +26,18 @@ services:
 
   authorization-postgres:
     image: postgres:18.6
+
     environment:
       POSTGRES_DB: voltgrid_authorization
       POSTGRES_USER: voltgrid
       POSTGRES_PASSWORD: voltgrid_dev
+
     ports:
       - "5435:5432"
+
     volumes:
       - authorization-postgres-data:/var/lib/postgresql
+
     healthcheck:
       test:
         [
@@ -41,14 +50,18 @@ services:
 
   operations-postgres:
     image: postgres:18.6
+
     environment:
       POSTGRES_DB: voltgrid_operations
       POSTGRES_USER: voltgrid
       POSTGRES_PASSWORD: voltgrid_dev
+
     ports:
       - "5436:5432"
+
     volumes:
       - operations-postgres-data:/var/lib/postgresql
+
     healthcheck:
       test:
         [
@@ -61,8 +74,44 @@ services:
 
   kafka:
     image: apache/kafka:4.2.1
+    hostname: kafka
+
     ports:
       - "9092:9092"
+      - "29092:29092"
+
+    environment:
+      KAFKA_NODE_ID: 1
+
+      KAFKA_PROCESS_ROLES: broker,controller
+
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: >
+        CONTROLLER:PLAINTEXT,
+        PLAINTEXT:PLAINTEXT,
+        DOCKER:PLAINTEXT
+
+      KAFKA_LISTENERS: >
+        CONTROLLER://:29093,
+        PLAINTEXT://:9092,
+        DOCKER://:29092
+
+      KAFKA_ADVERTISED_LISTENERS: >
+        PLAINTEXT://localhost:9092,
+        DOCKER://host.docker.internal:29092
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+      KAFKA_SHARE_COORDINATOR_STATE_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_SHARE_COORDINATOR_STATE_TOPIC_MIN_ISR: 1
 
 volumes:
   station-postgres-data:
