@@ -1,5 +1,6 @@
 package com.voltgrid.operations.application;
 
+import com.voltgrid.operations.api.graphql.StationOperationalStatus;
 import com.voltgrid.operations.api.graphql.StationStatusView;
 import com.voltgrid.operations.projection.station.StationStatusProjectionEntity;
 import com.voltgrid.operations.projection.station.StationStatusProjectionRepository;
@@ -42,6 +43,38 @@ public class StationStatusQueryService {
     @Transactional(readOnly = true)
     public Window<StationStatusView> findAll(
             ScrollPosition position,
+            int count,
+            StationOperationalStatus status
+    ) {
+        validatePageSize(
+                count
+        );
+
+        var limit =
+                Limit.of(
+                        count
+                );
+
+        var projections =
+                status == null
+                        ? repository
+                                .findAllByOrderByStationIdAsc(
+                                        position,
+                                        limit
+                                )
+                        : repository
+                                .findByCurrentStatusOrderByStationIdAsc(
+                                        status.name(),
+                                        position,
+                                        limit
+                                );
+
+        return projections.map(
+                this::toView
+        );
+    }
+
+    private void validatePageSize(
             int count
     ) {
         if (count < 1
@@ -51,17 +84,6 @@ public class StationStatusQueryService {
                             + MAX_PAGE_SIZE
             );
         }
-
-        return repository
-                .findAllByOrderByStationIdAsc(
-                        position,
-                        Limit.of(
-                                count
-                        )
-                )
-                .map(
-                        this::toView
-                );
     }
 
     private StationStatusView toView(

@@ -33,6 +33,8 @@ public class StationStatusGraphQlController {
 
     @QueryMapping
     public Window<StationStatusView> stationStatuses(
+            @Argument("status")
+            StationOperationalStatus status,
             ScrollSubrange subrange
     ) {
         var position =
@@ -51,7 +53,8 @@ public class StationStatusGraphQlController {
 
         return queryService.findAll(
                 position,
-                count
+                count,
+                status
         );
     }
 }

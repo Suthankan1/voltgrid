@@ -16,4 +16,11 @@ public interface StationStatusProjectionRepository
             ScrollPosition position,
             Limit limit
     );
+
+    Window<StationStatusProjectionEntity>
+    findByCurrentStatusOrderByStationIdAsc(
+            String currentStatus,
+            ScrollPosition position,
+            Limit limit
+    );
 }

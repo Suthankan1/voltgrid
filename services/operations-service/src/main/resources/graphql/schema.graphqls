@@ -4,7 +4,14 @@ type Query {
     stationStatuses(
         first: Int
         after: String
+        status: StationOperationalStatus
     ): StationStatusConnection!
+}
+
+enum StationOperationalStatus {
+    ONLINE
+    OFFLINE
+    UNAVAILABLE
 }
 
 type StationStatus {
