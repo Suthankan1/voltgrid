@@ -43,3 +43,8 @@ output "ecr_repository_urls" {
     service => repository.repository_url
   }
 }
+
+output "github_actions_ecr_role_arn" {
+  description = "IAM role assumed by GitHub Actions when publishing VoltGrid images to ECR."
+  value       = aws_iam_role.github_actions_ecr.arn
+}
