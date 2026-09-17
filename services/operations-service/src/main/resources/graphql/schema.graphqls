@@ -1,0 +1,11 @@
+type Query {
+    stationStatus(stationId: ID!): StationStatus
+}
+
+type StationStatus {
+    stationId: ID!
+    currentStatus: String!
+    lastEventId: ID!
+    statusChangedAt: String!
+    updatedAt: String!
+}
