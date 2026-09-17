@@ -14,6 +14,8 @@ import com.voltgrid.station.domain.ConnectorStatus;
 import com.voltgrid.station.domain.TransactionMeterSample;
 import io.opentelemetry.instrumentation.annotations.SpanAttribute;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -25,6 +27,11 @@ import java.util.List;
 
 @Component
 public class OcppMessageProcessor {
+
+    private static final Logger LOGGER =
+            LoggerFactory.getLogger(
+                    OcppMessageProcessor.class
+            );
 
     private static final int CALL = 2;
     private static final int CALL_RESULT = 3;
@@ -64,6 +71,12 @@ public class OcppMessageProcessor {
 
             var messageId = message.get(1).stringValue();
             var action = message.get(2).stringValue();
+
+            LOGGER.debug(
+                    "Processing OCPP message action={} stationId={}",
+                    action,
+                    stationId
+            );
 
             return switch (action) {
                 case "BootNotification" ->
@@ -302,16 +315,16 @@ public class OcppMessageProcessor {
         if (idTokenValueNode == null
                 || !idTokenValueNode.isString()
                 || isBlank(
-                idTokenValueNode.stringValue()
-        )
+                        idTokenValueNode.stringValue()
+                )
                 || idTokenValueNode
-                .stringValue()
-                .length() > 36
+                        .stringValue()
+                        .length() > 36
                 || idTokenTypeNode == null
                 || !idTokenTypeNode.isString()
                 || !isValidIdTokenType(
-                idTokenTypeNode.stringValue()
-        )) {
+                        idTokenTypeNode.stringValue()
+                )) {
 
             return callError(
                     messageId,
@@ -543,18 +556,18 @@ public class OcppMessageProcessor {
                         sampledValue.unitOfMeasure() == null
                                 ? null
                                 : sampledValue
-                                .unitOfMeasure()
-                                .unit();
+                                        .unitOfMeasure()
+                                        .unit();
 
                 var multiplier =
                         sampledValue.unitOfMeasure() == null
                                 || sampledValue
-                                .unitOfMeasure()
-                                .multiplier() == null
+                                        .unitOfMeasure()
+                                        .multiplier() == null
                                 ? 0
                                 : sampledValue
-                                .unitOfMeasure()
-                                .multiplier();
+                                        .unitOfMeasure()
+                                        .multiplier();
 
                 samples.add(
                         new TransactionMeterSample(
@@ -602,13 +615,13 @@ public class OcppMessageProcessor {
                 && !isBlank(request.reason())
                 && request.chargingStation() != null
                 && !isBlank(
-                request.chargingStation()
-                        .model()
-        )
+                        request.chargingStation()
+                                .model()
+                )
                 && !isBlank(
-                request.chargingStation()
-                        .vendorName()
-        );
+                        request.chargingStation()
+                                .vendorName()
+                );
     }
 
     private boolean isValid(
@@ -634,9 +647,9 @@ public class OcppMessageProcessor {
                 && request.seqNo() >= 0
                 && request.transactionInfo() != null
                 && !isBlank(
-                request.transactionInfo()
-                        .transactionId()
-        );
+                        request.transactionInfo()
+                                .transactionId()
+                );
     }
 
     private boolean hasValidEvse(
