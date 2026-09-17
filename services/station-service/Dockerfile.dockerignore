@@ -1,0 +1,15 @@
+**
+
+!services/
+!services/station-service/
+!services/station-service/.mvn/
+!services/station-service/.mvn/**
+!services/station-service/mvnw
+!services/station-service/pom.xml
+!services/station-service/src/
+!services/station-service/src/**
+
+!contracts/
+!contracts/authorization/
+!contracts/authorization/v1/
+!contracts/authorization/v1/**
