@@ -63,3 +63,12 @@ output "ecs_task_execution_role_arn" {
   description = "IAM role used by ECS to pull images and publish container logs."
   value       = aws_iam_role.ecs_task_execution.arn
 }
+
+output "database_service_secret_arns" {
+  description = "Secrets Manager ARNs containing service PostgreSQL credentials."
+
+  value = {
+    for service, secret in aws_secretsmanager_secret.database_service :
+    service => secret.arn
+  }
+}
