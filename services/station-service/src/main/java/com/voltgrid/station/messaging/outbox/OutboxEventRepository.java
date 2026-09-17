@@ -26,4 +26,6 @@ public interface OutboxEventRepository
     )
     Optional<OutboxEventEntity>
     findNextUnpublishedForUpdate();
+
+    long countByPublishedAtIsNull();
 }
