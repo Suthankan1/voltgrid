@@ -15,3 +15,18 @@ services:
       - "4318:4318"
     depends_on:
       - jaeger
+
+  prometheus:
+    image: prom/prometheus:v3.13.3
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+
+volumes:
+  prometheus-data:
