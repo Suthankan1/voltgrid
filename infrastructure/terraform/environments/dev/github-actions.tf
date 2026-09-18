@@ -85,6 +85,58 @@ data "aws_iam_policy_document" "github_actions_ecr" {
       repository.arn
     ]
   }
+
+  # ECS task-definition registration APIs do not support useful
+  # resource-level scoping, so these actions require "*".
+  statement {
+    sid = "RegisterStationTaskDefinition"
+
+    actions = [
+      "ecs:DescribeTaskDefinition",
+      "ecs:RegisterTaskDefinition"
+    ]
+
+    resources = [
+      "*"
+    ]
+  }
+
+  # GitHub Actions may update only the Station ECS service.
+  statement {
+    sid = "DeployStationService"
+
+    actions = [
+      "ecs:DescribeServices",
+      "ecs:UpdateService"
+    ]
+
+    resources = [
+      aws_ecs_service.station.id
+    ]
+  }
+
+  # Registering a task definition references the Station task execution role.
+  # Allow GitHub Actions to pass only that role and only to ECS tasks.
+  statement {
+    sid = "PassStationTaskExecutionRole"
+
+    actions = [
+      "iam:PassRole"
+    ]
+
+    resources = [
+      aws_iam_role.station_task_execution.arn
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+
+      values = [
+        "ecs-tasks.amazonaws.com"
+      ]
+    }
+  }
 }
 
 
