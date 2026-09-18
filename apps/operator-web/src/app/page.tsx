@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { getStationSnapshot } from "@/lib/station-api";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +38,7 @@ export default async function Home() {
               <p className="text-[15px] font-semibold tracking-[-0.02em]">
                 VoltGrid
               </p>
+
               <p className="text-[11px] uppercase tracking-[0.16em] text-[#6d706f]">
                 Network operations
               </p>
@@ -107,6 +110,7 @@ export default async function Home() {
                   <p className="font-mono text-2xl tracking-[-0.04em]">
                     {availability}%
                   </p>
+
                   <p className="mt-1 text-xs uppercase tracking-[0.12em] text-[#777a78]">
                     availability
                   </p>
@@ -222,9 +226,12 @@ export default async function Home() {
                       #{String(index + 1).padStart(2, "0")}
                     </span>
 
-                    <span className="text-sm font-medium text-[#2457ff]">
+                    <Link
+                      href={`/stations/${encodeURIComponent(station.id)}`}
+                      className="text-sm font-medium text-[#2457ff] transition-opacity hover:opacity-60"
+                    >
                       Inspect →
-                    </span>
+                    </Link>
                   </div>
                 </article>
               ))}
@@ -290,7 +297,9 @@ function ServiceCell({
   return (
     <div
       className={`flex min-h-36 flex-col justify-between p-5 ${
-        last ? "" : "border-b border-[#17191c]/20 md:border-r md:border-b-0"
+        last
+          ? ""
+          : "border-b border-[#17191c]/20 md:border-r md:border-b-0"
       }`}
     >
       <div className="flex items-center justify-between">
@@ -306,7 +315,9 @@ function ServiceCell({
       </div>
 
       <div>
-        <p className="text-lg font-medium tracking-[-0.025em]">{name}</p>
+        <p className="text-lg font-medium tracking-[-0.025em]">
+          {name}
+        </p>
 
         <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[#7d807d]">
           {detail}
