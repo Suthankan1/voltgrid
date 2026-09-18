@@ -240,3 +240,221 @@ export async function getStationDetail(
     };
   }
 }
+
+export type TransactionDataStatus =
+  | "IN_PROGRESS"
+  | "COMPLETE"
+  | "INCOMPLETE"
+  | "UNKNOWN";
+
+export type TransactionCompleteness = {
+  status: TransactionDataStatus;
+  firstSequenceNumber: number | null;
+  lastSequenceNumber: number;
+  missingSequenceNumbers: number[];
+};
+
+export type TransactionMeterSample = {
+  sequenceNumber: number;
+  sampledAt: string;
+  value: string;
+  measurand: string | null;
+  context: string | null;
+  phase: string | null;
+  location: string | null;
+  unit: string | null;
+  unitMultiplier: number;
+};
+
+type TransactionLookupResponse = {
+  data?: {
+    transaction: ChargingTransaction | null;
+  };
+  errors?: Array<{
+    message: string;
+  }>;
+};
+
+type TransactionDataResponse = {
+  data?: {
+    transactionCompleteness: TransactionCompleteness;
+    transactionMeterSamples: TransactionMeterSample[];
+  };
+  errors?: Array<{
+    message: string;
+  }>;
+};
+
+export type TransactionInspectorSnapshot =
+  | {
+      state: "live";
+      transaction: ChargingTransaction;
+      completeness: TransactionCompleteness;
+      meterSamples: TransactionMeterSample[];
+    }
+  | {
+      state: "not-found";
+    }
+  | {
+      state: "unavailable";
+      message: string;
+    };
+
+const TRANSACTION_LOOKUP_QUERY = `
+  query OperatorTransaction(
+    $stationId: ID!
+    $transactionId: ID!
+  ) {
+    transaction(
+      stationId: $stationId
+      transactionId: $transactionId
+    ) {
+      stationId
+      transactionId
+      evseId
+      connectorId
+      status
+      startedAt
+      endedAt
+      lastSequenceNumber
+    }
+  }
+`;
+
+const TRANSACTION_DATA_QUERY = `
+  query OperatorTransactionData(
+    $stationId: ID!
+    $transactionId: ID!
+  ) {
+    transactionCompleteness(
+      stationId: $stationId
+      transactionId: $transactionId
+    ) {
+      status
+      firstSequenceNumber
+      lastSequenceNumber
+      missingSequenceNumbers
+    }
+
+    transactionMeterSamples(
+      stationId: $stationId
+      transactionId: $transactionId
+    ) {
+      sequenceNumber
+      sampledAt
+      value
+      measurand
+      context
+      phase
+      location
+      unit
+      unitMultiplier
+    }
+  }
+`;
+
+export async function getTransactionInspector(
+  stationId: string,
+  transactionId: string,
+): Promise<TransactionInspectorSnapshot> {
+  const endpoint = process.env.STATION_GRAPHQL_URL;
+
+  if (!endpoint) {
+    return {
+      state: "unavailable",
+      message: "Station API is not configured.",
+    };
+  }
+
+  const variables = {
+    stationId,
+    transactionId,
+  };
+
+  try {
+    const lookupResponse = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query: TRANSACTION_LOOKUP_QUERY,
+        variables,
+      }),
+      cache: "no-store",
+    });
+
+    if (!lookupResponse.ok) {
+      return {
+        state: "unavailable",
+        message: `Station API returned HTTP ${lookupResponse.status}.`,
+      };
+    }
+
+    const lookupPayload =
+      (await lookupResponse.json()) as TransactionLookupResponse;
+
+    if (lookupPayload.errors?.length) {
+      return {
+        state: "unavailable",
+        message: lookupPayload.errors[0].message,
+      };
+    }
+
+    const transaction = lookupPayload.data?.transaction ?? null;
+
+    if (!transaction) {
+      return {
+        state: "not-found",
+      };
+    }
+
+    const dataResponse = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query: TRANSACTION_DATA_QUERY,
+        variables,
+      }),
+      cache: "no-store",
+    });
+
+    if (!dataResponse.ok) {
+      return {
+        state: "unavailable",
+        message: `Station API returned HTTP ${dataResponse.status}.`,
+      };
+    }
+
+    const dataPayload =
+      (await dataResponse.json()) as TransactionDataResponse;
+
+    if (dataPayload.errors?.length) {
+      return {
+        state: "unavailable",
+        message: dataPayload.errors[0].message,
+      };
+    }
+
+    if (!dataPayload.data) {
+      return {
+        state: "unavailable",
+        message: "Transaction operational data was not returned.",
+      };
+    }
+
+    return {
+      state: "live",
+      transaction,
+      completeness: dataPayload.data.transactionCompleteness,
+      meterSamples: dataPayload.data.transactionMeterSamples ?? [],
+    };
+  } catch {
+    return {
+      state: "unavailable",
+      message: "Station API could not be reached.",
+    };
+  }
+}

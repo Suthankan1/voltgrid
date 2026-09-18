@@ -141,16 +141,11 @@ export default async function StationPage({
 
               <dl className="mt-7 divide-y divide-[#17191c]/15 border-y border-[#17191c]/15">
                 <DataRow label="Station ID" value={station.id} />
-
                 <DataRow
                   label="OCPP route"
                   value={`/ocpp/${station.id}`}
                 />
-
-                <DataRow
-                  label="Protocol"
-                  value="OCPP 2.0.1"
-                />
+                <DataRow label="Protocol" value="OCPP 2.0.1" />
               </dl>
             </div>
 
@@ -264,7 +259,7 @@ export default async function StationPage({
 
           {orderedTransactions.length > 0 ? (
             <div>
-              <div className="hidden grid-cols-[130px_1fr_100px_120px_170px] border-b border-[#17191c]/20 px-3 py-3 font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783] md:grid">
+              <div className="hidden grid-cols-[130px_1fr_100px_120px_190px] border-b border-[#17191c]/20 px-3 py-3 font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783] md:grid">
                 <span>State</span>
                 <span>Transaction</span>
                 <span>EVSE / Port</span>
@@ -275,7 +270,7 @@ export default async function StationPage({
               {orderedTransactions.map((transaction) => (
                 <article
                   key={transaction.transactionId}
-                  className="group grid gap-5 border-b border-[#17191c]/15 px-3 py-6 transition-colors hover:bg-white/65 md:grid-cols-[130px_1fr_100px_120px_170px] md:items-center"
+                  className="group grid gap-5 border-b border-[#17191c]/15 px-3 py-6 transition-colors hover:bg-white/65 md:grid-cols-[130px_1fr_100px_120px_190px] md:items-center"
                 >
                   <div className="flex items-center gap-3">
                     <span
@@ -292,9 +287,22 @@ export default async function StationPage({
                   </div>
 
                   <div className="min-w-0">
-                    <p className="truncate font-mono text-sm tracking-[-0.02em]">
-                      {transaction.transactionId}
-                    </p>
+                    <Link
+                      href={`/stations/${encodeURIComponent(
+                        station.id,
+                      )}/transactions/${encodeURIComponent(
+                        transaction.transactionId,
+                      )}`}
+                      className="group/link inline-flex max-w-full items-center gap-3"
+                    >
+                      <span className="truncate font-mono text-sm tracking-[-0.02em] group-hover/link:text-[#2457ff]">
+                        {transaction.transactionId}
+                      </span>
+
+                      <span className="shrink-0 text-xs text-[#2457ff] transition-transform group-hover/link:translate-x-1">
+                        →
+                      </span>
+                    </Link>
 
                     <p className="mt-1 text-xs text-[#858783] md:hidden">
                       EVSE {transaction.evseId} / connector{" "}
@@ -305,9 +313,7 @@ export default async function StationPage({
                   <p className="hidden font-mono text-xs md:block">
                     {String(transaction.evseId).padStart(2, "0")}
 
-                    <span className="mx-1 text-[#aaa9a3]">
-                      /
-                    </span>
+                    <span className="mx-1 text-[#aaa9a3]">/</span>
 
                     {String(transaction.connectorId).padStart(2, "0")}
                   </p>
