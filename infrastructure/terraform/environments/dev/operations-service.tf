@@ -54,6 +54,14 @@ resource "aws_ecs_service" "operations" {
     Service = "operations-service"
   }
 
+  # GitHub Actions manages new task-definition revisions.
+  # Terraform continues to own the ECS service infrastructure itself.
+  lifecycle {
+    ignore_changes = [
+      task_definition
+    ]
+  }
+
   depends_on = [
     aws_iam_role_policy.operations_task_execution_secrets,
     aws_lb_listener_rule.operations

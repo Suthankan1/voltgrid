@@ -86,10 +86,11 @@ data "aws_iam_policy_document" "github_actions_ecr" {
     ]
   }
 
-  # ECS task-definition registration APIs do not support useful
-  # resource-level scoping, so these actions require "*".
+  # Task-definition registration APIs require account-level access.
+  # DescribeTaskDefinition is used by the CI workflow to copy the
+  # currently deployed definition before replacing only the image.
   statement {
-    sid = "RegisterStationTaskDefinition"
+    sid = "RegisterServiceTaskDefinitions"
 
     actions = [
       "ecs:DescribeTaskDefinition",
@@ -101,9 +102,9 @@ data "aws_iam_policy_document" "github_actions_ecr" {
     ]
   }
 
-  # GitHub Actions may update only the Station ECS service.
+  # GitHub Actions may deploy only VoltGrid's three ECS services.
   statement {
-    sid = "DeployStationService"
+    sid = "DeployServices"
 
     actions = [
       "ecs:DescribeServices",
@@ -111,21 +112,25 @@ data "aws_iam_policy_document" "github_actions_ecr" {
     ]
 
     resources = [
-      aws_ecs_service.station.id
+      aws_ecs_service.station.id,
+      aws_ecs_service.authorization.id,
+      aws_ecs_service.operations.id
     ]
   }
 
-  # Registering a task definition references the Station task execution role.
-  # Allow GitHub Actions to pass only that role and only to ECS tasks.
+  # CI may pass only the execution roles referenced by our three
+  # ECS task definitions, and only to ECS tasks.
   statement {
-    sid = "PassStationTaskExecutionRole"
+    sid = "PassServiceTaskExecutionRoles"
 
     actions = [
       "iam:PassRole"
     ]
 
     resources = [
-      aws_iam_role.station_task_execution.arn
+      aws_iam_role.station_task_execution.arn,
+      aws_iam_role.authorization_task_execution.arn,
+      aws_iam_role.operations_task_execution.arn
     ]
 
     condition {

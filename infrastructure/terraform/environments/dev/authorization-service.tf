@@ -53,6 +53,14 @@ resource "aws_ecs_service" "authorization" {
     Service = "authorization-service"
   }
 
+  # GitHub Actions manages new task-definition revisions.
+  # Terraform continues to own the ECS service infrastructure itself.
+  lifecycle {
+    ignore_changes = [
+      task_definition
+    ]
+  }
+
   depends_on = [
     aws_iam_role_policy.authorization_task_execution_secrets
   ]
