@@ -102,6 +102,12 @@ resource "aws_ecs_task_definition" "operations" {
           value = "8081"
         },
         {
+          # Namespace Operations behind the shared ALB so its /graphql route
+          # does not collide with Station Service's /graphql route.
+          name  = "SERVER_SERVLET_CONTEXT_PATH"
+          value = "/operations"
+        },
+        {
           name  = "OPERATIONS_DB_URL"
           value = "jdbc:postgresql://${aws_db_instance.postgres.address}:${aws_db_instance.postgres.port}/voltgrid_operations"
         },
