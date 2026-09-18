@@ -54,6 +54,15 @@ resource "aws_ecs_service" "station" {
     Service = "station-service"
   }
 
+  # GitHub Actions will register and deploy new immutable task-definition
+  # revisions. Terraform continues to own the ECS service infrastructure,
+  # but should not revert task-definition revisions deployed by CI/CD.
+  lifecycle {
+    ignore_changes = [
+      task_definition
+    ]
+  }
+
   depends_on = [
     aws_iam_role_policy.station_task_execution_secrets,
     aws_ecs_service.authorization,
