@@ -9,6 +9,8 @@ on:
       - ".github/workflows/operations-service.yml"
 
   pull_request:
+    branches:
+      - main
     paths:
       - "services/operations-service/**"
       - ".github/workflows/operations-service.yml"
@@ -61,9 +63,9 @@ jobs:
             clean test
 
   publish:
-    name: Publish ARM64 Image to ECR
+    name: Publish and Deploy Operations Service
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     needs:
       - test
@@ -77,6 +79,11 @@ jobs:
     env:
       AWS_REGION: ap-southeast-1
       ECR_REPOSITORY: voltgrid/operations-service
+
+      ECS_CLUSTER: voltgrid-dev-cluster
+      ECS_SERVICE: voltgrid-dev-operations-service
+      ECS_TASK_DEFINITION: voltgrid-dev-operations-service
+      ECS_CONTAINER_NAME: operations-service
 
     steps:
       - name: Check out repository
@@ -110,3 +117,27 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+
+      - name: Download current Operations task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition "$ECS_TASK_DEFINITION" \
+            --region "$AWS_REGION" \
+            --query taskDefinition \
+            > operations-task-definition.json
+
+      - name: Render Operations task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: operations-task-definition.json
+          container-name: ${{ env.ECS_CONTAINER_NAME }}
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+
+      - name: Deploy Operations Service to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true

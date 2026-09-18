@@ -50,9 +50,9 @@ jobs:
         run: ./mvnw --batch-mode --no-transfer-progress verify
 
   publish:
-    name: Publish ARM64 Image to ECR
+    name: Publish and Deploy Authorization Service
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     needs:
       - build
@@ -66,6 +66,11 @@ jobs:
     env:
       AWS_REGION: ap-southeast-1
       ECR_REPOSITORY: voltgrid/authorization-service
+
+      ECS_CLUSTER: voltgrid-dev-cluster
+      ECS_SERVICE: voltgrid-dev-authorization-service
+      ECS_TASK_DEFINITION: voltgrid-dev-authorization-service
+      ECS_CONTAINER_NAME: authorization-service
 
     steps:
       - name: Checkout repository
@@ -99,3 +104,27 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+
+      - name: Download current Authorization task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition "$ECS_TASK_DEFINITION" \
+            --region "$AWS_REGION" \
+            --query taskDefinition \
+            > authorization-task-definition.json
+
+      - name: Render Authorization task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: authorization-task-definition.json
+          container-name: ${{ env.ECS_CONTAINER_NAME }}
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+
+      - name: Deploy Authorization Service to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
