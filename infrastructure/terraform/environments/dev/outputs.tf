@@ -122,3 +122,13 @@ output "operations_task_definition_arn" {
   description = "Operations Service ECS task definition ARN."
   value       = aws_ecs_task_definition.operations.arn
 }
+
+output "operations_ecs_service_name" {
+  description = "Operations Service ECS service name."
+  value       = aws_ecs_service.operations.name
+}
+
+output "operations_ecs_service_id" {
+  description = "Operations Service ECS service ID."
+  value       = aws_ecs_service.operations.id
+}
