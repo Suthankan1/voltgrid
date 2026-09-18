@@ -146,7 +146,7 @@ export default async function TransactionPage({
               />
 
               <Metric
-                label="Data"
+                label="Integrity"
                 value={formatCompletenessLabel(completeness.status)}
                 status={completeness.status}
               />
@@ -233,6 +233,13 @@ export default async function TransactionPage({
 
                       const missing = missingSequences.has(sequence);
 
+                      const nextSequence =
+                        sequenceRail[index + 1];
+
+                      const nextMissing =
+                        typeof nextSequence === "number" &&
+                        missingSequences.has(nextSequence);
+
                       return (
                         <div
                           key={sequence}
@@ -242,8 +249,8 @@ export default async function TransactionPage({
                             sequenceRail[index + 1] !== "ellipsis" && (
                               <span
                                 className={`absolute left-1/2 top-[17px] h-px w-full ${
-                                  missing
-                                    ? "bg-[#df4c35]/35"
+                                  missing || nextMissing
+                                    ? "bg-[#df4c35]/40"
                                     : "bg-[#17191c]/25"
                                 }`}
                               />
@@ -259,15 +266,23 @@ export default async function TransactionPage({
                             {missing ? "×" : sequence}
                           </div>
 
-                          <p
-                            className={`mt-2 font-mono text-[9px] ${
-                              missing
-                                ? "text-[#df4c35]"
-                                : "text-[#858783]"
-                            }`}
-                          >
-                            #{sequence}
-                          </p>
+                          <div className="mt-2 text-center">
+                            <p
+                              className={`font-mono text-[9px] ${
+                                missing
+                                  ? "text-[#df4c35]"
+                                  : "text-[#858783]"
+                              }`}
+                            >
+                              #{sequence}
+                            </p>
+
+                            {missing && (
+                              <p className="mt-1 font-mono text-[8px] uppercase tracking-[0.1em] text-[#df4c35]">
+                                missing
+                              </p>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
@@ -276,17 +291,17 @@ export default async function TransactionPage({
 
                 <div className="mt-7 grid gap-6 border-y border-[#17191c]/15 py-5 sm:grid-cols-3">
                   <SequenceMetric
-                    label="First received"
+                    label="First event"
                     value={`#${completeness.firstSequenceNumber}`}
                   />
 
                   <SequenceMetric
-                    label="Latest received"
+                    label="Latest event"
                     value={`#${completeness.lastSequenceNumber}`}
                   />
 
                   <SequenceMetric
-                    label="Missing"
+                    label="Sequence gaps"
                     value={String(
                       completeness.missingSequenceNumbers.length,
                     )}
@@ -299,7 +314,7 @@ export default async function TransactionPage({
                 {completeness.missingSequenceNumbers.length > 0 && (
                   <div className="mt-5 flex flex-wrap items-baseline gap-3">
                     <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#a14a39]">
-                      Missing receipts
+                      Missing event receipts
                     </span>
 
                     <span className="font-mono text-xs text-[#df4c35]">
@@ -333,7 +348,7 @@ export default async function TransactionPage({
 
           {meterSamples.length > 0 ? (
             <div>
-              <div className="hidden grid-cols-[170px_110px_1fr_180px_180px] border-b border-[#17191c]/20 px-3 py-3 font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783] lg:grid">
+              <div className="hidden grid-cols-[190px_110px_1fr_180px_180px] border-b border-[#17191c]/20 px-3 py-3 font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783] lg:grid">
                 <span>Sampled</span>
                 <span>Sequence</span>
                 <span>Measurement</span>
@@ -431,7 +446,9 @@ function CompletenessStatus({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className={`h-2.5 w-2.5 ${completenessColor(status)}`} />
+      <span
+        className={`h-2.5 w-2.5 ${completenessColor(status)}`}
+      />
 
       <span className="font-mono text-[10px] uppercase tracking-[0.14em]">
         {formatCompletenessLabel(status)}
@@ -446,7 +463,7 @@ function MeterSampleRow({
   sample: TransactionMeterSample;
 }) {
   return (
-    <article className="grid gap-5 border-b border-[#17191c]/15 px-3 py-5 lg:grid-cols-[170px_110px_1fr_180px_180px] lg:items-center">
+    <article className="grid gap-5 border-b border-[#17191c]/15 px-3 py-5 lg:grid-cols-[190px_110px_1fr_180px_180px] lg:items-center">
       <div>
         <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-[#969894] lg:hidden">
           Sampled
@@ -469,12 +486,21 @@ function MeterSampleRow({
 
       <div>
         <p className="font-medium tracking-[-0.02em]">
-          {sample.measurand ?? "Measurement"}
+          {formatMeasurand(sample.measurand)}
         </p>
 
-        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[9px] uppercase tracking-[0.1em] text-[#8b8d89]">
-          {sample.phase && <span>{sample.phase}</span>}
-          {sample.location && <span>{sample.location}</span>}
+        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[9px] uppercase tracking-[0.08em] text-[#8b8d89]">
+          {sample.measurand && (
+            <span>{sample.measurand}</span>
+          )}
+
+          {sample.phase && (
+            <span>{sample.phase}</span>
+          )}
+
+          {sample.location && (
+            <span>{sample.location}</span>
+          )}
         </div>
       </div>
 
@@ -585,15 +611,45 @@ function buildSequenceRail(
   return [...start, "ellipsis", ...end];
 }
 
+function formatMeasurand(measurand: string | null) {
+  switch (measurand) {
+    case "Energy.Active.Import.Register":
+      return "Imported energy";
+
+    case "Power.Active.Import":
+      return "Active power";
+
+    default:
+      return measurand ?? "Measurement";
+  }
+}
+
 function formatMeterReading(sample: TransactionMeterSample) {
+  const value = trimDecimal(sample.value);
+
   const multiplier =
     sample.unitMultiplier === 0
       ? ""
-      : ` ×10^${sample.unitMultiplier}`;
+      : ` × 10^${sample.unitMultiplier}`;
 
-  const unit = sample.unit ? ` ${sample.unit}` : "";
+  const unit = sample.unit
+    ? ` ${sample.unit}`
+    : "";
 
-  return `${sample.value}${multiplier}${unit}`;
+  return `${value}${multiplier}${unit}`;
+}
+
+function trimDecimal(value: string) {
+  if (!value.includes(".")) {
+    return value;
+  }
+
+  const [integer, fraction] = value.split(".");
+  const trimmedFraction = fraction.replace(/0+$/, "");
+
+  return trimmedFraction
+    ? `${integer}.${trimmedFraction}`
+    : integer;
 }
 
 function formatTimestamp(value: string) {
@@ -604,8 +660,13 @@ function formatTimestamp(value: string) {
   }
 
   return new Intl.DateTimeFormat("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
     timeZone: "UTC",
+    timeZoneName: "short",
   }).format(date);
 }
