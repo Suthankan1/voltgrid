@@ -1,3 +1,6 @@
 aws_region   = "ap-southeast-1"
 environment  = "dev"
 project_name = "voltgrid"
+
+# Set to 0 when the AWS dev backend is not being demonstrated or tested.
+services_desired_count = 1

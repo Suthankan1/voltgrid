@@ -8,7 +8,7 @@ resource "aws_ecs_service" "operations" {
 
   task_definition = aws_ecs_task_definition.operations.arn
 
-  desired_count = 1
+  desired_count = var.services_desired_count
   launch_type   = "FARGATE"
 
   platform_version = "1.4.0"

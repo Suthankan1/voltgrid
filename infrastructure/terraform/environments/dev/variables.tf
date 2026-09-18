@@ -55,3 +55,14 @@ variable "operations_image_tag" {
 
   default = "bd698ad89cb3e92c81b4308f296af1662eab08a9"
 }
+
+variable "services_desired_count" {
+  description = "Desired ECS task count for each VoltGrid backend service in the dev environment."
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = contains([0, 1], var.services_desired_count)
+    error_message = "services_desired_count must be either 0 or 1 in the dev environment."
+  }
+}

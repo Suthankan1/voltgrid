@@ -8,7 +8,7 @@ resource "aws_ecs_service" "station" {
 
   task_definition = aws_ecs_task_definition.station.arn
 
-  desired_count = 1
+  desired_count = var.services_desired_count
   launch_type   = "FARGATE"
 
   platform_version = "1.4.0"
