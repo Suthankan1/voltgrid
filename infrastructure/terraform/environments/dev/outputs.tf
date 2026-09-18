@@ -132,3 +132,18 @@ output "operations_ecs_service_id" {
   description = "Operations Service ECS service ID."
   value       = aws_ecs_service.operations.id
 }
+
+output "alb_dns_name" {
+  description = "Public DNS name of the VoltGrid Application Load Balancer."
+  value       = aws_lb.main.dns_name
+}
+
+output "station_target_group_arn" {
+  description = "Station Service ALB target group ARN."
+  value       = aws_lb_target_group.station.arn
+}
+
+output "operations_target_group_arn" {
+  description = "Operations Service ALB target group ARN."
+  value       = aws_lb_target_group.operations.arn
+}
