@@ -18,6 +18,10 @@ resource "aws_ecs_service" "operations" {
   deployment_minimum_healthy_percent = 0
   deployment_maximum_percent         = 100
 
+  # Operations takes time to initialize Spring Boot, JPA, Flyway, and GraphQL.
+  # Ignore ALB health-check failures during this startup window.
+  health_check_grace_period_seconds = 120
+
   deployment_circuit_breaker {
     enable   = true
     rollback = true
@@ -36,6 +40,12 @@ resource "aws_ecs_service" "operations" {
     assign_public_ip = true
   }
 
+  load_balancer {
+    target_group_arn = aws_lb_target_group.operations.arn
+    container_name   = "operations-service"
+    container_port   = 8081
+  }
+
   enable_ecs_managed_tags = true
   propagate_tags          = "SERVICE"
 
@@ -45,6 +55,7 @@ resource "aws_ecs_service" "operations" {
   }
 
   depends_on = [
-    aws_iam_role_policy.operations_task_execution_secrets
+    aws_iam_role_policy.operations_task_execution_secrets,
+    aws_lb_listener_rule.operations
   ]
 }
