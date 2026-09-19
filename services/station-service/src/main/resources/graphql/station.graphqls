@@ -4,6 +4,7 @@ type Query {
     stationConnectors(stationId: ID!): [StationConnector!]!
 
     transactions: [ChargingTransaction!]!
+    networkTransactions: [NetworkTransaction!]!
 
     stationTransactions(stationId: ID!): [ChargingTransaction!]!
 
@@ -51,6 +52,11 @@ type ChargingTransaction {
     startedAt: String!
     endedAt: String
     lastSequenceNumber: Int!
+}
+
+type NetworkTransaction {
+    transaction: ChargingTransaction!
+    completeness: TransactionCompleteness!
 }
 
 type TransactionMeterSample {

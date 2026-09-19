@@ -1,5 +1,6 @@
 package com.voltgrid.station.api.graphql;
 
+import com.voltgrid.station.application.NetworkTransactionQueryService;
 import com.voltgrid.station.application.StationTransactionQueryService;
 import com.voltgrid.station.application.TransactionCompletenessService;
 
@@ -14,13 +15,17 @@ public class StationTransactionGraphQlController {
 
     private final StationTransactionQueryService queryService;
     private final TransactionCompletenessService completenessService;
+    private final NetworkTransactionQueryService networkTransactionQueryService;
 
     public StationTransactionGraphQlController(
             StationTransactionQueryService queryService,
-            TransactionCompletenessService completenessService
+            TransactionCompletenessService completenessService,
+            NetworkTransactionQueryService networkTransactionQueryService
     ) {
         this.queryService = queryService;
         this.completenessService = completenessService;
+        this.networkTransactionQueryService =
+                networkTransactionQueryService;
     }
 
     @QueryMapping
@@ -29,6 +34,15 @@ public class StationTransactionGraphQlController {
                 .findAll()
                 .stream()
                 .map(ChargingTransactionView::from)
+                .toList();
+    }
+
+    @QueryMapping
+    public List<NetworkTransactionView> networkTransactions() {
+        return networkTransactionQueryService
+                .findAll()
+                .stream()
+                .map(NetworkTransactionView::from)
                 .toList();
     }
 

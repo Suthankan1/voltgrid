@@ -13,6 +13,8 @@ public interface TransactionEventReceiptReader {
             int sequenceNumber
     );
 
+    List<TransactionEventReceipt> findAll();
+
     List<TransactionEventReceipt> findByTransaction(
             String stationId,
             String transactionId

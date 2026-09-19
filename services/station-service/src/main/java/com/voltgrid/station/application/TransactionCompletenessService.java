@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class TransactionCompletenessService {
@@ -49,6 +50,54 @@ public class TransactionCompletenessService {
                 transactionId
         );
 
+        return calculate(
+                transaction,
+                receipts
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<TransactionCompleteness> calculateAll(
+            List<ChargingTransaction> transactions
+    ) {
+        if (transactions.isEmpty()) {
+            return List.of();
+        }
+
+        var receiptsByTransaction = receiptReader
+                .findAll()
+                .stream()
+                .collect(
+                        Collectors.groupingBy(
+                                receipt ->
+                                        new TransactionKey(
+                                                receipt.stationId(),
+                                                receipt.transactionId()
+                                        )
+                        )
+                );
+
+        return transactions
+                .stream()
+                .map(transaction ->
+                        calculate(
+                                transaction,
+                                receiptsByTransaction.getOrDefault(
+                                        new TransactionKey(
+                                                transaction.stationId(),
+                                                transaction.transactionId()
+                                        ),
+                                        List.of()
+                                )
+                        )
+                )
+                .toList();
+    }
+
+    private TransactionCompleteness calculate(
+            ChargingTransaction transaction,
+            List<TransactionEventReceipt> receipts
+    ) {
         if (receipts.isEmpty()) {
             return unknown(transaction);
         }
@@ -66,7 +115,8 @@ public class TransactionCompletenessService {
         }
 
         var firstSequenceNumber =
-                startedReceipt.get()
+                startedReceipt
+                        .get()
                         .sequenceNumber();
 
         var missingSequenceNumbers =
@@ -151,5 +201,11 @@ public class TransactionCompletenessService {
                 transaction.lastSequenceNumber(),
                 List.of()
         );
+    }
+
+    private record TransactionKey(
+            String stationId,
+            String transactionId
+    ) {
     }
 }

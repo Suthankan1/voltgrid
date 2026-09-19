@@ -61,4 +61,13 @@ public class JpaTransactionEventReceiptReader
                 entity.getEventType()
         );
     }
+
+    @Override
+    public List<TransactionEventReceipt> findAll() {
+        return repository
+                .findAll()
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
 }

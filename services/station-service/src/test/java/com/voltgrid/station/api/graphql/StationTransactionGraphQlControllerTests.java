@@ -1,5 +1,7 @@
 package com.voltgrid.station.api.graphql;
 
+import com.voltgrid.station.application.NetworkTransactionQueryService;
+import com.voltgrid.station.application.NetworkTransactionSnapshot;
 import com.voltgrid.station.application.StationTransactionQueryService;
 import com.voltgrid.station.application.TransactionCompletenessService;
 import com.voltgrid.station.domain.ChargingTransaction;
@@ -7,6 +9,7 @@ import com.voltgrid.station.domain.TransactionCompleteness;
 import com.voltgrid.station.domain.TransactionDataStatus;
 import com.voltgrid.station.domain.TransactionMeterSample;
 import com.voltgrid.station.domain.TransactionStatus;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.graphql.test.autoconfigure.GraphQlTest;
@@ -33,6 +36,9 @@ class StationTransactionGraphQlControllerTests {
 
     @MockitoBean
     private TransactionCompletenessService completenessService;
+
+    @MockitoBean
+    private NetworkTransactionQueryService networkTransactionQueryService;
 
     @Test
     void shouldQueryStationTransactions() {
@@ -123,6 +129,119 @@ class StationTransactionGraphQlControllerTests {
                 )
                 .entity(String.class)
                 .isEqualTo("ACTIVE");
+    }
+
+    @Test
+    void shouldQueryNetworkTransactionsWithCompleteness() {
+        var transaction = new ChargingTransaction(
+                "AWS-CP-001",
+                "AWS-DEMO-TX-0187",
+                1,
+                1,
+                TransactionStatus.ENDED,
+                Instant.parse(
+                        "2026-09-18T09:01:00Z"
+                ),
+                Instant.parse(
+                        "2026-09-18T09:16:00Z"
+                ),
+                4
+        );
+
+        var completeness = new TransactionCompleteness(
+                "AWS-CP-001",
+                "AWS-DEMO-TX-0187",
+                TransactionDataStatus.INCOMPLETE,
+                0,
+                4,
+                List.of(2)
+        );
+
+        when(
+                networkTransactionQueryService.findAll()
+        ).thenReturn(
+                List.of(
+                        new NetworkTransactionSnapshot(
+                                transaction,
+                                completeness
+                        )
+                )
+        );
+
+        graphQlTester
+                .document(
+                        """
+                        query {
+                          networkTransactions {
+                            transaction {
+                              stationId
+                              transactionId
+                              evseId
+                              connectorId
+                              status
+                              startedAt
+                              endedAt
+                              lastSequenceNumber
+                            }
+
+                            completeness {
+                              status
+                              firstSequenceNumber
+                              lastSequenceNumber
+                              missingSequenceNumbers
+                            }
+                          }
+                        }
+                        """
+                )
+                .execute()
+                .path(
+                        "networkTransactions"
+                )
+                .entityList(
+                        NetworkTransactionView.class
+                )
+                .hasSize(1)
+                .path(
+                        "networkTransactions[0].transaction.stationId"
+                )
+                .entity(String.class)
+                .isEqualTo("AWS-CP-001")
+                .path(
+                        "networkTransactions[0].transaction.transactionId"
+                )
+                .entity(String.class)
+                .isEqualTo("AWS-DEMO-TX-0187")
+                .path(
+                        "networkTransactions[0].transaction.status"
+                )
+                .entity(String.class)
+                .isEqualTo("ENDED")
+                .path(
+                        "networkTransactions[0].transaction.lastSequenceNumber"
+                )
+                .entity(Integer.class)
+                .isEqualTo(4)
+                .path(
+                        "networkTransactions[0].completeness.status"
+                )
+                .entity(String.class)
+                .isEqualTo("INCOMPLETE")
+                .path(
+                        "networkTransactions[0].completeness.firstSequenceNumber"
+                )
+                .entity(Integer.class)
+                .isEqualTo(0)
+                .path(
+                        "networkTransactions[0].completeness.lastSequenceNumber"
+                )
+                .entity(Integer.class)
+                .isEqualTo(4)
+                .path(
+                        "networkTransactions[0].completeness.missingSequenceNumbers"
+                )
+                .entityList(Integer.class)
+                .containsExactly(2);
     }
 
     @Test
