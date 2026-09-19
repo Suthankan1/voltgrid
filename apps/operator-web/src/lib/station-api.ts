@@ -67,7 +67,8 @@ export async function getStationSnapshot(): Promise<StationSnapshot> {
       };
     }
 
-    const payload = (await response.json()) as StationsQueryResponse;
+    const payload =
+      (await response.json()) as StationsQueryResponse;
 
     if (payload.errors?.length) {
       return {
@@ -241,6 +242,96 @@ export async function getStationDetail(
   }
 }
 
+type NetworkTransactionsResponse = {
+  data?: {
+    transactions: ChargingTransaction[];
+  };
+  errors?: Array<{
+    message: string;
+  }>;
+};
+
+export type NetworkTransactionSnapshot =
+  | {
+      state: "live";
+      transactions: ChargingTransaction[];
+    }
+  | {
+      state: "unavailable";
+      transactions: [];
+      message: string;
+    };
+
+const NETWORK_TRANSACTIONS_QUERY = `
+  query OperatorNetworkTransactions {
+    transactions {
+      stationId
+      transactionId
+      evseId
+      connectorId
+      status
+      startedAt
+      endedAt
+      lastSequenceNumber
+    }
+  }
+`;
+
+export async function getNetworkTransactions(): Promise<NetworkTransactionSnapshot> {
+  const endpoint = process.env.STATION_GRAPHQL_URL;
+
+  if (!endpoint) {
+    return {
+      state: "unavailable",
+      transactions: [],
+      message: "Station API is not configured.",
+    };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query: NETWORK_TRANSACTIONS_QUERY,
+      }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        state: "unavailable",
+        transactions: [],
+        message: `Station API returned HTTP ${response.status}.`,
+      };
+    }
+
+    const payload =
+      (await response.json()) as NetworkTransactionsResponse;
+
+    if (payload.errors?.length) {
+      return {
+        state: "unavailable",
+        transactions: [],
+        message: payload.errors[0].message,
+      };
+    }
+
+    return {
+      state: "live",
+      transactions: payload.data?.transactions ?? [],
+    };
+  } catch {
+    return {
+      state: "unavailable",
+      transactions: [],
+      message: "Station API could not be reached.",
+    };
+  }
+}
+
 export type TransactionDataStatus =
   | "IN_PROGRESS"
   | "COMPLETE"
@@ -401,7 +492,8 @@ export async function getTransactionInspector(
       };
     }
 
-    const transaction = lookupPayload.data?.transaction ?? null;
+    const transaction =
+      lookupPayload.data?.transaction ?? null;
 
     if (!transaction) {
       return {
@@ -449,7 +541,8 @@ export async function getTransactionInspector(
       state: "live",
       transaction,
       completeness: dataPayload.data.transactionCompleteness,
-      meterSamples: dataPayload.data.transactionMeterSamples ?? [],
+      meterSamples:
+        dataPayload.data.transactionMeterSamples ?? [],
     };
   } catch {
     return {

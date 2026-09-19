@@ -8,6 +8,7 @@ const navigation = [
   { label: "Condition", href: "#condition" },
   { label: "Attention", href: "#attention" },
   { label: "Fleet", href: "#fleet" },
+  { label: "Transactions", href: "/transactions" },
 ];
 
 export default async function Home() {
@@ -106,7 +107,7 @@ export default async function Home() {
 
           <nav className="flex overflow-x-auto border-t border-[#17191c]/10 px-5 sm:px-7 lg:px-10">
             {navigation.map((item, index) => (
-              <a
+              <Link
                 key={item.label}
                 href={item.href}
                 className="flex min-w-fit items-center gap-3 border-r border-[#17191c]/10 px-5 py-3 text-sm text-[#5f625f] transition-colors first:border-l hover:bg-white/60 hover:text-[#17191c]"
@@ -116,7 +117,7 @@ export default async function Home() {
                 </span>
 
                 {item.label}
-              </a>
+              </Link>
             ))}
           </nav>
         </div>
