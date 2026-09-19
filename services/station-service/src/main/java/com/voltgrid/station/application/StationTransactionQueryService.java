@@ -34,6 +34,11 @@ public class StationTransactionQueryService {
     }
 
     @Transactional(readOnly = true)
+    public List<ChargingTransaction> findAll() {
+        return transactionReader.findAll();
+    }
+
+    @Transactional(readOnly = true)
     public List<ChargingTransaction> findByStationId(
             String stationId
     ) {

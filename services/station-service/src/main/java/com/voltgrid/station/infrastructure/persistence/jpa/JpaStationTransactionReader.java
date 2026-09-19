@@ -48,6 +48,15 @@ public class JpaStationTransactionReader
     }
 
     @Override
+    public List<ChargingTransaction> findAll() {
+        return repository
+                .findAllByOrderByStartedAtDescIdStationIdAscIdTransactionIdAsc()
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
     public List<ChargingTransaction> findByStationId(
             String stationId
     ) {

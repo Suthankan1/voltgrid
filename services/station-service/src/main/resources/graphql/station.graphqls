@@ -3,6 +3,8 @@ type Query {
     station(id: ID!): ChargingStation
     stationConnectors(stationId: ID!): [StationConnector!]!
 
+    transactions: [ChargingTransaction!]!
+
     stationTransactions(stationId: ID!): [ChargingTransaction!]!
 
     transaction(

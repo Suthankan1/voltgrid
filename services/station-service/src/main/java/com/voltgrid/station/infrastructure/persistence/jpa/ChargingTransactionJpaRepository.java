@@ -18,6 +18,9 @@ public interface ChargingTransactionJpaRepository
         > {
 
     List<ChargingTransactionEntity>
+    findAllByOrderByStartedAtDescIdStationIdAscIdTransactionIdAsc();
+
+    List<ChargingTransactionEntity>
     findByIdStationIdOrderByStartedAtDesc(
             String stationId
     );

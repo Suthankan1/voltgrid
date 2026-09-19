@@ -17,6 +17,8 @@ public interface StationTransactionReader {
             String transactionId
     );
 
+    List<ChargingTransaction> findAll();
+
     List<ChargingTransaction> findByStationId(
             String stationId
     );

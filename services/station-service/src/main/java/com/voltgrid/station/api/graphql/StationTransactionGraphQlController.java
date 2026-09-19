@@ -21,7 +21,15 @@ public class StationTransactionGraphQlController {
     ) {
         this.queryService = queryService;
         this.completenessService = completenessService;
+    }
 
+    @QueryMapping
+    public List<ChargingTransactionView> transactions() {
+        return queryService
+                .findAll()
+                .stream()
+                .map(ChargingTransactionView::from)
+                .toList();
     }
 
     @QueryMapping
