@@ -4,7 +4,13 @@ type Query {
     stationConnectors(stationId: ID!): [StationConnector!]!
 
     transactions: [ChargingTransaction!]!
+
     networkTransactions: [NetworkTransaction!]!
+
+    networkTransactionPage(
+        page: Int!
+        size: Int!
+    ): NetworkTransactionPage!
 
     stationTransactions(stationId: ID!): [ChargingTransaction!]!
 
@@ -57,6 +63,15 @@ type ChargingTransaction {
 type NetworkTransaction {
     transaction: ChargingTransaction!
     completeness: TransactionCompleteness!
+}
+
+type NetworkTransactionPage {
+    content: [NetworkTransaction!]!
+    page: Int!
+    size: Int!
+    totalElements: Int!
+    totalPages: Int!
+    hasNext: Boolean!
 }
 
 type TransactionMeterSample {

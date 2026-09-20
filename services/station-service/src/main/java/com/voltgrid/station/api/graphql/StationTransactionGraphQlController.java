@@ -47,6 +47,19 @@ public class StationTransactionGraphQlController {
     }
 
     @QueryMapping
+    public NetworkTransactionPageView networkTransactionPage(
+            @Argument int page,
+            @Argument int size
+    ) {
+        return NetworkTransactionPageView.from(
+                networkTransactionQueryService.findPage(
+                        page,
+                        size
+                )
+        );
+    }
+
+    @QueryMapping
     public List<ChargingTransactionView> stationTransactions(
             @Argument String stationId
     ) {

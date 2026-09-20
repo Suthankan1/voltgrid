@@ -2,6 +2,7 @@ package com.voltgrid.station.api.graphql;
 
 import com.voltgrid.station.application.NetworkTransactionQueryService;
 import com.voltgrid.station.application.NetworkTransactionSnapshot;
+import com.voltgrid.station.application.PageResult;
 import com.voltgrid.station.application.StationTransactionQueryService;
 import com.voltgrid.station.application.TransactionCompletenessService;
 import com.voltgrid.station.domain.ChargingTransaction;
@@ -242,6 +243,189 @@ class StationTransactionGraphQlControllerTests {
                 )
                 .entityList(Integer.class)
                 .containsExactly(2);
+    }
+
+    @Test
+    void shouldQueryPaginatedNetworkTransactionsWithCompleteness() {
+        var transaction = new ChargingTransaction(
+                "AWS-CP-001",
+                "AWS-DEMO-TX-0187",
+                1,
+                1,
+                TransactionStatus.ENDED,
+                Instant.parse(
+                        "2026-09-18T09:01:00Z"
+                ),
+                Instant.parse(
+                        "2026-09-18T09:16:00Z"
+                ),
+                4
+        );
+
+        var completeness = new TransactionCompleteness(
+                "AWS-CP-001",
+                "AWS-DEMO-TX-0187",
+                TransactionDataStatus.INCOMPLETE,
+                0,
+                4,
+                List.of(2)
+        );
+
+        when(
+                networkTransactionQueryService.findPage(
+                        0,
+                        20
+                )
+        ).thenReturn(
+                new PageResult<>(
+                        List.of(
+                                new NetworkTransactionSnapshot(
+                                        transaction,
+                                        completeness
+                                )
+                        ),
+                        0,
+                        20,
+                        41,
+                        3,
+                        true
+                )
+        );
+
+        graphQlTester
+                .document(
+                        """
+                        query {
+                          networkTransactionPage(
+                            page: 0
+                            size: 20
+                          ) {
+                            content {
+                              transaction {
+                                stationId
+                                transactionId
+                                evseId
+                                connectorId
+                                status
+                                startedAt
+                                endedAt
+                                lastSequenceNumber
+                              }
+
+                              completeness {
+                                status
+                                firstSequenceNumber
+                                lastSequenceNumber
+                                missingSequenceNumbers
+                              }
+                            }
+
+                            page
+                            size
+                            totalElements
+                            totalPages
+                            hasNext
+                          }
+                        }
+                        """
+                )
+                .execute()
+                .path(
+                        "networkTransactionPage.content"
+                )
+                .entityList(
+                        NetworkTransactionView.class
+                )
+                .hasSize(1)
+                .path(
+                        "networkTransactionPage.content[0].transaction.stationId"
+                )
+                .entity(String.class)
+                .isEqualTo("AWS-CP-001")
+                .path(
+                        "networkTransactionPage.content[0].transaction.transactionId"
+                )
+                .entity(String.class)
+                .isEqualTo("AWS-DEMO-TX-0187")
+                .path(
+                        "networkTransactionPage.content[0].transaction.evseId"
+                )
+                .entity(Integer.class)
+                .isEqualTo(1)
+                .path(
+                        "networkTransactionPage.content[0].transaction.connectorId"
+                )
+                .entity(Integer.class)
+                .isEqualTo(1)
+                .path(
+                        "networkTransactionPage.content[0].transaction.status"
+                )
+                .entity(String.class)
+                .isEqualTo("ENDED")
+                .path(
+                        "networkTransactionPage.content[0].transaction.startedAt"
+                )
+                .entity(String.class)
+                .isEqualTo(
+                        "2026-09-18T09:01:00Z"
+                )
+                .path(
+                        "networkTransactionPage.content[0].transaction.endedAt"
+                )
+                .entity(String.class)
+                .isEqualTo(
+                        "2026-09-18T09:16:00Z"
+                )
+                .path(
+                        "networkTransactionPage.content[0].transaction.lastSequenceNumber"
+                )
+                .entity(Integer.class)
+                .isEqualTo(4)
+                .path(
+                        "networkTransactionPage.content[0].completeness.status"
+                )
+                .entity(String.class)
+                .isEqualTo("INCOMPLETE")
+                .path(
+                        "networkTransactionPage.content[0].completeness.firstSequenceNumber"
+                )
+                .entity(Integer.class)
+                .isEqualTo(0)
+                .path(
+                        "networkTransactionPage.content[0].completeness.lastSequenceNumber"
+                )
+                .entity(Integer.class)
+                .isEqualTo(4)
+                .path(
+                        "networkTransactionPage.content[0].completeness.missingSequenceNumbers"
+                )
+                .entityList(Integer.class)
+                .containsExactly(2)
+                .path(
+                        "networkTransactionPage.page"
+                )
+                .entity(Integer.class)
+                .isEqualTo(0)
+                .path(
+                        "networkTransactionPage.size"
+                )
+                .entity(Integer.class)
+                .isEqualTo(20)
+                .path(
+                        "networkTransactionPage.totalElements"
+                )
+                .entity(Integer.class)
+                .isEqualTo(41)
+                .path(
+                        "networkTransactionPage.totalPages"
+                )
+                .entity(Integer.class)
+                .isEqualTo(3)
+                .path(
+                        "networkTransactionPage.hasNext"
+                )
+                .entity(Boolean.class)
+                .isEqualTo(true);
     }
 
     @Test
