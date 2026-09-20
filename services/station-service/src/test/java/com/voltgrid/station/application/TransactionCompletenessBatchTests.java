@@ -4,6 +4,7 @@ import com.voltgrid.station.domain.ChargingTransaction;
 import com.voltgrid.station.domain.TransactionEventReceipt;
 import com.voltgrid.station.domain.TransactionEventType;
 import com.voltgrid.station.domain.TransactionStatus;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,6 +51,13 @@ class TransactionCompletenessBatchTests {
                 4
         );
 
+        var transactionKeys = List.of(
+                new TransactionKey(
+                        "AWS-CP-001",
+                        "AWS-DEMO-TX-0187"
+                )
+        );
+
         var receipts = List.of(
                 new TransactionEventReceipt(
                         "AWS-CP-001",
@@ -77,21 +85,72 @@ class TransactionCompletenessBatchTests {
                 )
         );
 
-        when(receiptReader.findAll())
-                .thenReturn(receipts);
+        when(
+                receiptReader.findByTransactions(
+                        transactionKeys
+                )
+        ).thenReturn(
+                receipts
+        );
 
         var result = service.calculateAll(
                 List.of(transaction)
         );
 
-        assertEquals(1, result.size());
+        assertEquals(
+                1,
+                result.size()
+        );
+
         assertEquals(
                 List.of(2),
-                result.getFirst()
+                result
+                        .getFirst()
                         .missingSequenceNumbers()
         );
 
-        verify(receiptReader).findAll();
+        verify(receiptReader)
+                .findByTransactions(
+                        transactionKeys
+                );
+
+        verify(
+                receiptReader,
+                never()
+        ).findAll();
+
+        verify(
+                receiptReader,
+                never()
+        ).findByTransaction(
+                "AWS-CP-001",
+                "AWS-DEMO-TX-0187"
+        );
+
+        verify(
+                transactionReader,
+                never()
+        ).findById(
+                "AWS-CP-001",
+                "AWS-DEMO-TX-0187"
+        );
+    }
+
+    @Test
+    void shouldSkipReceiptReadWhenNoTransactionsAreProvided() {
+        var result = service.calculateAll(
+                List.of()
+        );
+
+        assertEquals(
+                List.of(),
+                result
+        );
+
+        verify(
+                receiptReader,
+                never()
+        ).findAll();
 
         verify(
                 transactionReader,

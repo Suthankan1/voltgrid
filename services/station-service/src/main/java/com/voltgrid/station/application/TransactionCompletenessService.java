@@ -6,6 +6,7 @@ import com.voltgrid.station.domain.TransactionDataStatus;
 import com.voltgrid.station.domain.TransactionEventReceipt;
 import com.voltgrid.station.domain.TransactionEventType;
 import com.voltgrid.station.domain.TransactionStatus;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,10 +46,11 @@ public class TransactionCompletenessService {
                         )
                 );
 
-        var receipts = receiptReader.findByTransaction(
-                stationId,
-                transactionId
-        );
+        var receipts =
+                receiptReader.findByTransaction(
+                        stationId,
+                        transactionId
+                );
 
         return calculate(
                 transaction,
@@ -64,18 +66,32 @@ public class TransactionCompletenessService {
             return List.of();
         }
 
-        var receiptsByTransaction = receiptReader
-                .findAll()
-                .stream()
-                .collect(
-                        Collectors.groupingBy(
-                                receipt ->
-                                        new TransactionKey(
-                                                receipt.stationId(),
-                                                receipt.transactionId()
-                                        )
+        var transactionKeys =
+                transactions
+                        .stream()
+                        .map(transaction ->
+                                new TransactionKey(
+                                        transaction.stationId(),
+                                        transaction.transactionId()
+                                )
                         )
-                );
+                        .toList();
+
+        var receiptsByTransaction =
+                receiptReader
+                        .findByTransactions(
+                                transactionKeys
+                        )
+                        .stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        receipt ->
+                                                new TransactionKey(
+                                                        receipt.stationId(),
+                                                        receipt.transactionId()
+                                                )
+                                )
+                        );
 
         return transactions
                 .stream()
@@ -102,13 +118,14 @@ public class TransactionCompletenessService {
             return unknown(transaction);
         }
 
-        var startedReceipt = receipts
-                .stream()
-                .filter(receipt ->
-                        receipt.eventType()
-                                == TransactionEventType.STARTED
-                )
-                .findFirst();
+        var startedReceipt =
+                receipts
+                        .stream()
+                        .filter(receipt ->
+                                receipt.eventType()
+                                        == TransactionEventType.STARTED
+                        )
+                        .findFirst();
 
         if (startedReceipt.isEmpty()) {
             return unknown(transaction);
@@ -126,10 +143,11 @@ public class TransactionCompletenessService {
                         transaction.lastSequenceNumber()
                 );
 
-        var status = determineStatus(
-                transaction,
-                missingSequenceNumbers
-        );
+        var status =
+                determineStatus(
+                        transaction,
+                        missingSequenceNumbers
+                );
 
         return new TransactionCompleteness(
                 transaction.stationId(),
@@ -159,14 +177,18 @@ public class TransactionCompletenessService {
                 new ArrayList<Integer>();
 
         for (
-                int sequenceNumber = firstSequenceNumber;
-                sequenceNumber <= lastSequenceNumber;
+                int sequenceNumber =
+                        firstSequenceNumber;
+                sequenceNumber <=
+                        lastSequenceNumber;
                 sequenceNumber++
         ) {
             if (!receivedNumbers.contains(
                     sequenceNumber
             )) {
-                missing.add(sequenceNumber);
+                missing.add(
+                        sequenceNumber
+                );
             }
         }
 
@@ -201,11 +223,5 @@ public class TransactionCompletenessService {
                 transaction.lastSequenceNumber(),
                 List.of()
         );
-    }
-
-    private record TransactionKey(
-            String stationId,
-            String transactionId
-    ) {
     }
 }

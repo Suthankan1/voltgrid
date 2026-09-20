@@ -19,6 +19,11 @@ public interface StationTransactionReader {
 
     List<ChargingTransaction> findAll();
 
+    PageResult<ChargingTransaction> findPage(
+            int page,
+            int size
+    );
+
     List<ChargingTransaction> findByStationId(
             String stationId
     );

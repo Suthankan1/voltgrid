@@ -1,7 +1,11 @@
 package com.voltgrid.station.infrastructure.persistence.jpa;
 
+import com.voltgrid.station.application.PageResult;
 import com.voltgrid.station.application.StationTransactionReader;
 import com.voltgrid.station.domain.ChargingTransaction;
+
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -54,6 +58,50 @@ public class JpaStationTransactionReader
                 .stream()
                 .map(this::toDomain)
                 .toList();
+    }
+
+    @Override
+    public PageResult<ChargingTransaction> findPage(
+            int page,
+            int size
+    ) {
+        var sort =
+                Sort.by(
+                        Sort.Order.desc(
+                                "startedAt"
+                        ),
+                        Sort.Order.asc(
+                                "id.stationId"
+                        ),
+                        Sort.Order.asc(
+                                "id.transactionId"
+                        )
+                );
+
+        var result =
+                repository.findAll(
+                        PageRequest.of(
+                                page,
+                                size,
+                                sort
+                        )
+                );
+
+        var content =
+                result
+                        .getContent()
+                        .stream()
+                        .map(this::toDomain)
+                        .toList();
+
+        return new PageResult<>(
+                content,
+                result.getNumber(),
+                result.getSize(),
+                result.getTotalElements(),
+                result.getTotalPages(),
+                result.hasNext()
+        );
     }
 
     @Override

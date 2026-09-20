@@ -15,6 +15,10 @@ public interface TransactionEventReceiptReader {
 
     List<TransactionEventReceipt> findAll();
 
+    List<TransactionEventReceipt> findByTransactions(
+            List<TransactionKey> transactions
+    );
+
     List<TransactionEventReceipt> findByTransaction(
             String stationId,
             String transactionId

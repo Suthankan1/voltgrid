@@ -15,4 +15,10 @@ public interface TransactionEventReceiptJpaRepository
             String stationId,
             String transactionId
     );
+
+    List<TransactionEventReceiptEntity>
+    findByIdStationIdInAndIdTransactionIdInOrderByIdStationIdAscIdTransactionIdAscIdSequenceNumberAsc(
+            List<String> stationIds,
+            List<String> transactionIds
+    );
 }
