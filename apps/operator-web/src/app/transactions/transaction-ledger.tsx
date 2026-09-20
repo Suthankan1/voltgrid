@@ -15,8 +15,18 @@ type LedgerFilter =
 
 export function TransactionLedger({
   transactions,
+  page,
+  totalPages,
+  totalElements,
+  hasNext,
+  unavailableMessage,
 }: {
   transactions: NetworkTransaction[];
+  page: number;
+  totalPages: number;
+  totalElements: number;
+  hasNext: boolean;
+  unavailableMessage?: string;
 }) {
   const [filter, setFilter] =
     useState<LedgerFilter>("ALL");
@@ -45,19 +55,22 @@ export function TransactionLedger({
       query.trim().toLowerCase();
 
     return transactions.filter((record) => {
-      const transaction = record.transaction;
+      const transaction =
+        record.transaction;
 
       const matchesFilter =
         filter === "ALL" ||
         (filter === "ACTIVE" &&
-          transaction.status === "ACTIVE") ||
+          transaction.status ===
+            "ACTIVE") ||
         (filter === "INCOMPLETE" &&
           record.completeness.status ===
             "INCOMPLETE");
 
       const matchesStation =
         stationId === "ALL" ||
-        transaction.stationId === stationId;
+        transaction.stationId ===
+          stationId;
 
       const matchesQuery =
         normalizedQuery.length === 0 ||
@@ -78,6 +91,11 @@ export function TransactionLedger({
     transactions,
   ]);
 
+  const displayedPage =
+    totalPages === 0
+      ? 0
+      : page + 1;
+
   return (
     <section className="mt-14">
       <div className="flex flex-wrap items-end justify-between gap-4 border-b-2 border-[#17191c] pb-4">
@@ -91,9 +109,16 @@ export function TransactionLedger({
           </h2>
         </div>
 
-        <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#747773]">
-          Active promoted
-        </p>
+        <div className="text-right">
+          <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#747773]">
+            Page {displayedPage} /{" "}
+            {totalPages}
+          </p>
+
+          <p className="mt-1 font-mono text-[8px] uppercase tracking-[0.1em] text-[#999b97]">
+            {totalElements} total records
+          </p>
+        </div>
       </div>
 
       <div className="border-b border-[#17191c]/20 py-5">
@@ -106,7 +131,9 @@ export function TransactionLedger({
             <div className="flex">
               <FilterButton
                 label="All"
-                active={filter === "ALL"}
+                active={
+                  filter === "ALL"
+                }
                 onClick={() =>
                   setFilter("ALL")
                 }
@@ -114,7 +141,9 @@ export function TransactionLedger({
 
               <FilterButton
                 label="Active"
-                active={filter === "ACTIVE"}
+                active={
+                  filter === "ACTIVE"
+                }
                 onClick={() =>
                   setFilter("ACTIVE")
                 }
@@ -126,7 +155,9 @@ export function TransactionLedger({
                   filter === "INCOMPLETE"
                 }
                 onClick={() =>
-                  setFilter("INCOMPLETE")
+                  setFilter(
+                    "INCOMPLETE",
+                  )
                 }
                 last
               />
@@ -142,16 +173,18 @@ export function TransactionLedger({
               type="search"
               value={query}
               onChange={(event) =>
-                setQuery(event.target.value)
+                setQuery(
+                  event.target.value,
+                )
               }
-              placeholder="Search transaction…"
+              placeholder="Search this page…"
               className="h-10 w-full border border-[#17191c]/25 bg-transparent px-3 font-mono text-xs outline-none transition-colors placeholder:text-[#a0a29e] focus:border-[#2457ff]"
             />
           </label>
 
           <label>
             <span className="mb-2 block font-mono text-[9px] uppercase tracking-[0.13em] text-[#858783]">
-              Station
+              Station / page
             </span>
 
             <select
@@ -164,16 +197,24 @@ export function TransactionLedger({
               className="h-10 w-full border border-[#17191c]/25 bg-[#f2f0ea] px-3 font-mono text-xs outline-none focus:border-[#2457ff]"
             >
               <option value="ALL">
-                All stations
+                All page stations
               </option>
 
               {stationIds.map(
-                (currentStationId) => (
+                (
+                  currentStationId,
+                ) => (
                   <option
-                    key={currentStationId}
-                    value={currentStationId}
+                    key={
+                      currentStationId
+                    }
+                    value={
+                      currentStationId
+                    }
                   >
-                    {currentStationId}
+                    {
+                      currentStationId
+                    }
                   </option>
                 ),
               )}
@@ -182,7 +223,9 @@ export function TransactionLedger({
 
           <div className="xl:text-right">
             <p className="font-mono text-xl">
-              {filteredTransactions.length}
+              {
+                filteredTransactions.length
+              }
               <span className="mx-2 text-[#aaa9a3]">
                 /
               </span>
@@ -190,10 +233,15 @@ export function TransactionLedger({
             </p>
 
             <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-[#858783]">
-              records shown
+              shown on this page
             </p>
           </div>
         </div>
+
+        <p className="mt-4 font-mono text-[8px] uppercase tracking-[0.1em] text-[#989a96]">
+          Filters and search apply only
+          to the currently loaded page
+        </p>
       </div>
 
       <div className="hidden grid-cols-[100px_140px_1fr_170px_110px_90px_190px] border-b border-[#17191c]/20 px-3 py-3 font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783] lg:grid">
@@ -208,29 +256,105 @@ export function TransactionLedger({
         </span>
       </div>
 
-      {filteredTransactions.length > 0 ? (
-        filteredTransactions.map((record) => (
-          <TransactionRow
-            key={`${record.transaction.stationId}-${record.transaction.transactionId}`}
-            record={record}
-          />
-        ))
+      {filteredTransactions.length >
+      0 ? (
+        filteredTransactions.map(
+          (record) => (
+            <TransactionRow
+              key={`${record.transaction.stationId}-${record.transaction.transactionId}`}
+              record={record}
+            />
+          ),
+        )
       ) : (
         <div className="grid min-h-52 place-items-center border-b border-[#17191c]/15">
           <div className="max-w-md px-6 text-center">
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#8d908c]">
-              No matching transactions
+              {unavailableMessage
+                ? "Transaction data unavailable"
+                : transactions.length >
+                    0
+                  ? "No matching transactions"
+                  : "No transactions on this page"}
             </p>
 
             <p className="mt-3 text-sm leading-6 text-[#686b68]">
-              Change the lifecycle,
-              integrity, station, or search
-              filters to widen this view.
+              {unavailableMessage ??
+                (transactions.length >
+                0
+                  ? "Change the lifecycle, integrity, station, or search filters to widen this page-local view."
+                  : "There are no transaction records in the currently loaded page.")}
             </p>
           </div>
         </div>
       )}
+
+      {!unavailableMessage && (
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#17191c]/20 py-5">
+          <PaginationLink
+            direction="previous"
+            page={page}
+            enabled={page > 0}
+          />
+
+          <div className="text-center">
+            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5f625f]">
+              Page {displayedPage} of{" "}
+              {totalPages}
+            </p>
+
+            <p className="mt-1 font-mono text-[8px] uppercase tracking-[0.1em] text-[#989a96]">
+              {totalElements} records
+              across network history
+            </p>
+          </div>
+
+          <PaginationLink
+            direction="next"
+            page={page}
+            enabled={hasNext}
+          />
+        </div>
+      )}
     </section>
+  );
+}
+
+function PaginationLink({
+  direction,
+  page,
+  enabled,
+}: {
+  direction: "previous" | "next";
+  page: number;
+  enabled: boolean;
+}) {
+  const previous =
+    direction === "previous";
+
+  const label = previous
+    ? "← Previous"
+    : "Next →";
+
+  const targetPage = previous
+    ? page - 1
+    : page + 1;
+
+  if (!enabled) {
+    return (
+      <span className="border border-[#17191c]/10 px-4 py-2 font-mono text-[9px] uppercase tracking-[0.12em] text-[#aaa9a3]">
+        {label}
+      </span>
+    );
+  }
+
+  return (
+    <Link
+      href={`/transactions?page=${targetPage}`}
+      className="border border-[#17191c]/25 px-4 py-2 font-mono text-[9px] uppercase tracking-[0.12em] transition-colors hover:border-[#17191c] hover:bg-white"
+    >
+      {label}
+    </Link>
   );
 }
 
@@ -267,14 +391,18 @@ function TransactionRow({
 }: {
   record: NetworkTransaction;
 }) {
-  const transaction = record.transaction;
-  const completeness = record.completeness;
+  const transaction =
+    record.transaction;
+
+  const completeness =
+    record.completeness;
 
   const active =
     transaction.status === "ACTIVE";
 
   const incomplete =
-    completeness.status === "INCOMPLETE";
+    completeness.status ===
+    "INCOMPLETE";
 
   return (
     <article
@@ -301,7 +429,9 @@ function TransactionRow({
       </div>
 
       <IntegrityCell
-        status={completeness.status}
+        status={
+          completeness.status
+        }
         missingSequenceNumbers={
           completeness.missingSequenceNumbers
         }
@@ -317,7 +447,9 @@ function TransactionRow({
           className="group inline-flex max-w-full items-center gap-3"
         >
           <span className="truncate font-mono text-sm group-hover:text-[#2457ff]">
-            {transaction.transactionId}
+            {
+              transaction.transactionId
+            }
           </span>
 
           <span className="shrink-0 text-xs text-[#2457ff] transition-transform group-hover:translate-x-1">
@@ -340,10 +472,9 @@ function TransactionRow({
       </Link>
 
       <p className="font-mono text-xs">
-        {String(transaction.evseId).padStart(
-          2,
-          "0",
-        )}
+        {String(
+          transaction.evseId,
+        ).padStart(2, "0")}
         <span className="mx-1 text-[#aaa9a3]">
           /
         </span>
@@ -353,7 +484,10 @@ function TransactionRow({
       </p>
 
       <p className="font-mono text-sm">
-        #{transaction.lastSequenceNumber}
+        #
+        {
+          transaction.lastSequenceNumber
+        }
       </p>
 
       <div className="lg:text-right">
@@ -398,7 +532,9 @@ function IntegrityCell({
               : "text-[#656865]"
           }`}
         >
-          {formatIntegrityStatus(status)}
+          {formatIntegrityStatus(
+            status,
+          )}
         </span>
       </div>
 
@@ -418,10 +554,13 @@ function formatIntegrityStatus(
   switch (status) {
     case "IN_PROGRESS":
       return "In progress";
+
     case "COMPLETE":
       return "Complete";
+
     case "INCOMPLETE":
       return "Incomplete";
+
     case "UNKNOWN":
       return "Unknown";
   }
@@ -440,13 +579,15 @@ function integrityDetail(
 
     case "INCOMPLETE":
       if (
-        missingSequenceNumbers.length === 0
+        missingSequenceNumbers.length ===
+        0
       ) {
         return "receipt gap detected";
       }
 
       if (
-        missingSequenceNumbers.length === 1
+        missingSequenceNumbers.length ===
+        1
       ) {
         return `gap #${missingSequenceNumbers[0]}`;
       }
@@ -469,30 +610,38 @@ function integrityTone(
   switch (status) {
     case "IN_PROGRESS":
       return "bg-[#2457ff]";
+
     case "COMPLETE":
       return "bg-[#16a36a]";
+
     case "INCOMPLETE":
       return "bg-[#c54435]";
+
     case "UNKNOWN":
       return "bg-[#a1a39f]";
   }
 }
 
-function formatTimestamp(value: string) {
+function formatTimestamp(
+  value: string,
+) {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return value;
   }
 
-  return new Intl.DateTimeFormat("en", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: "UTC",
-    timeZoneName: "short",
-  }).format(date);
+  return new Intl.DateTimeFormat(
+    "en",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZone: "UTC",
+      timeZoneName: "short",
+    },
+  ).format(date);
 }

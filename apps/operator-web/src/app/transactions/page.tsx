@@ -1,33 +1,75 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
-import { getNetworkTransactions } from "@/lib/station-api";
+import { getNetworkTransactionPage } from "@/lib/station-api";
 
 import { TransactionLedger } from "./transaction-ledger";
 
 export const dynamic = "force-dynamic";
 
-export default async function TransactionsPage() {
-  const snapshot = await getNetworkTransactions();
+const PAGE_SIZE = 20;
+
+type TransactionsPageProps = {
+  searchParams: Promise<{
+    page?: string | string[];
+  }>;
+};
+
+export default async function TransactionsPage({
+  searchParams,
+}: TransactionsPageProps) {
+  const params = await searchParams;
+
+  const requestedPage = parsePage(
+    params.page,
+  );
+
+  const snapshot =
+    await getNetworkTransactionPage(
+      requestedPage,
+      PAGE_SIZE,
+    );
+
+  if (snapshot.state === "live") {
+    const lastPage = Math.max(
+      snapshot.totalPages - 1,
+      0,
+    );
+
+    if (requestedPage > lastPage) {
+      redirect(
+        `/transactions?page=${lastPage}`,
+      );
+    }
+  }
 
   const transactions = snapshot.transactions;
 
-  const activeTransactions = transactions.filter(
-    (record) => record.transaction.status === "ACTIVE",
-  );
+  const activeTransactions =
+    transactions.filter(
+      (record) =>
+        record.transaction.status === "ACTIVE",
+    );
 
-  const endedTransactions = transactions.filter(
-    (record) => record.transaction.status === "ENDED",
-  );
+  const endedTransactions =
+    transactions.filter(
+      (record) =>
+        record.transaction.status === "ENDED",
+    );
 
-  const incompleteTransactions = transactions.filter(
-    (record) =>
-      record.completeness.status === "INCOMPLETE",
-  );
+  const incompleteTransactions =
+    transactions.filter(
+      (record) =>
+        record.completeness.status ===
+        "INCOMPLETE",
+    );
 
-  const unknownTransactions = transactions.filter(
-    (record) =>
-      record.completeness.status === "UNKNOWN",
-  );
+  const unknownTransactions =
+    transactions.filter(
+      (record) =>
+        record.completeness.status ===
+        "UNKNOWN",
+    );
 
   const orderedTransactions = [
     ...activeTransactions,
@@ -47,9 +89,9 @@ export default async function TransactionsPage() {
               incompleteTransactions.length === 1
                 ? "record requires"
                 : "records require"
-            } attention`,
+            } attention on this page`,
             detail:
-              "One or more ended transaction records contain missing event receipts.",
+              "The current page contains ended transaction records with missing event receipts.",
             tone: "attention" as const,
           }
         : activeTransactions.length > 0
@@ -58,21 +100,22 @@ export default async function TransactionsPage() {
                 activeTransactions.length === 1
                   ? "session"
                   : "sessions"
-              } charging`,
+              } charging on this page`,
               detail:
-                "Active sessions are promoted to the top of the network ledger.",
+                "Active sessions are promoted within the currently loaded transaction page.",
               tone: "live" as const,
             }
           : {
-              label: "No active charging sessions",
+              label:
+                "No active charging sessions on this page",
               detail:
                 unknownTransactions.length > 0
-                  ? `${unknownTransactions.length} historical ${
+                  ? `${unknownTransactions.length} ${
                       unknownTransactions.length === 1
                         ? "record has"
                         : "records have"
-                    } insufficient receipt history for integrity assessment.`
-                  : "No transaction currently has an active charging lifecycle.",
+                    } insufficient receipt history on this page.`
+                  : "The currently loaded transaction page contains no active charging lifecycle.",
               tone: "neutral" as const,
             };
 
@@ -154,18 +197,22 @@ export default async function TransactionsPage() {
                 </p>
 
                 <p className="mt-4 text-sm text-[#666967]">
-                  active charging sessions
+                  active on this page
                 </p>
               </div>
 
               <Metric
-                value={transactions.length}
+                value={
+                  snapshot.totalElements
+                }
                 label="total records"
               />
 
               <Metric
-                value={incompleteTransactions.length}
-                label="incomplete"
+                value={
+                  incompleteTransactions.length
+                }
+                label="incomplete on page"
                 attention={
                   incompleteTransactions.length > 0
                 }
@@ -176,7 +223,7 @@ export default async function TransactionsPage() {
           <div className="flex flex-col justify-between py-8 lg:pl-8">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-[#818480]">
-                Session condition
+                Page condition
               </p>
 
               <div className="mt-5 flex items-start gap-3">
@@ -201,14 +248,25 @@ export default async function TransactionsPage() {
             <p className="mt-10 font-mono text-[9px] uppercase leading-5 tracking-[0.12em] text-[#91938f]">
               Station Service / GraphQL
               <br />
-              Network transaction + integrity read
-              model
+              Paginated transaction + integrity
+              read model
             </p>
           </div>
         </section>
 
         <TransactionLedger
           transactions={orderedTransactions}
+          page={snapshot.page}
+          totalPages={snapshot.totalPages}
+          totalElements={
+            snapshot.totalElements
+          }
+          hasNext={snapshot.hasNext}
+          unavailableMessage={
+            snapshot.state === "unavailable"
+              ? snapshot.message
+              : undefined
+          }
         />
       </main>
     </div>
@@ -228,7 +286,9 @@ function Metric({
     <div className="border-l border-[#17191c]/20 pl-6">
       <p
         className={`font-mono text-xl ${
-          attention ? "text-[#c54435]" : ""
+          attention
+            ? "text-[#c54435]"
+            : ""
         }`}
       >
         {value}
@@ -261,4 +321,28 @@ function conditionTone(
     case "neutral":
       return "bg-[#92948f]";
   }
+}
+
+function parsePage(
+  value: string | string[] | undefined,
+) {
+  const candidate =
+    Array.isArray(value)
+      ? value[0]
+      : value;
+
+  if (!candidate) {
+    return 0;
+  }
+
+  const parsed = Number(candidate);
+
+  if (
+    !Number.isInteger(parsed) ||
+    parsed < 0
+  ) {
+    return 0;
+  }
+
+  return parsed;
 }

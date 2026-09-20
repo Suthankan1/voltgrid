@@ -348,12 +348,194 @@ export async function getNetworkTransactions(): Promise<NetworkTransactionSnapsh
 
     return {
       state: "live",
-      transactions: payload.data?.networkTransactions ?? [],
+      transactions:
+        payload.data?.networkTransactions ?? [],
     };
   } catch {
     return {
       state: "unavailable",
       transactions: [],
+      message: "Station API could not be reached.",
+    };
+  }
+}
+
+export type NetworkTransactionPage = {
+  content: NetworkTransaction[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
+};
+
+type NetworkTransactionPageResponse = {
+  data?: {
+    networkTransactionPage: NetworkTransactionPage;
+  };
+  errors?: Array<{
+    message: string;
+  }>;
+};
+
+export type NetworkTransactionPageSnapshot =
+  | {
+      state: "live";
+      transactions: NetworkTransaction[];
+      page: number;
+      size: number;
+      totalElements: number;
+      totalPages: number;
+      hasNext: boolean;
+    }
+  | {
+      state: "unavailable";
+      transactions: [];
+      page: number;
+      size: number;
+      totalElements: 0;
+      totalPages: 0;
+      hasNext: false;
+      message: string;
+    };
+
+const NETWORK_TRANSACTION_PAGE_QUERY = `
+  query OperatorNetworkTransactionPage(
+    $page: Int!
+    $size: Int!
+  ) {
+    networkTransactionPage(
+      page: $page
+      size: $size
+    ) {
+      content {
+        transaction {
+          stationId
+          transactionId
+          evseId
+          connectorId
+          status
+          startedAt
+          endedAt
+          lastSequenceNumber
+        }
+
+        completeness {
+          status
+          firstSequenceNumber
+          lastSequenceNumber
+          missingSequenceNumbers
+        }
+      }
+
+      page
+      size
+      totalElements
+      totalPages
+      hasNext
+    }
+  }
+`;
+
+export async function getNetworkTransactionPage(
+  page: number,
+  size: number,
+): Promise<NetworkTransactionPageSnapshot> {
+  const endpoint = process.env.STATION_GRAPHQL_URL;
+
+  if (!endpoint) {
+    return {
+      state: "unavailable",
+      transactions: [],
+      page,
+      size,
+      totalElements: 0,
+      totalPages: 0,
+      hasNext: false,
+      message: "Station API is not configured.",
+    };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query: NETWORK_TRANSACTION_PAGE_QUERY,
+        variables: {
+          page,
+          size,
+        },
+      }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        state: "unavailable",
+        transactions: [],
+        page,
+        size,
+        totalElements: 0,
+        totalPages: 0,
+        hasNext: false,
+        message: `Station API returned HTTP ${response.status}.`,
+      };
+    }
+
+    const payload =
+      (await response.json()) as NetworkTransactionPageResponse;
+
+    if (payload.errors?.length) {
+      return {
+        state: "unavailable",
+        transactions: [],
+        page,
+        size,
+        totalElements: 0,
+        totalPages: 0,
+        hasNext: false,
+        message: payload.errors[0].message,
+      };
+    }
+
+    const transactionPage =
+      payload.data?.networkTransactionPage;
+
+    if (!transactionPage) {
+      return {
+        state: "unavailable",
+        transactions: [],
+        page,
+        size,
+        totalElements: 0,
+        totalPages: 0,
+        hasNext: false,
+        message:
+          "Network transaction page was not returned.",
+      };
+    }
+
+    return {
+      state: "live",
+      transactions: transactionPage.content ?? [],
+      page: transactionPage.page,
+      size: transactionPage.size,
+      totalElements: transactionPage.totalElements,
+      totalPages: transactionPage.totalPages,
+      hasNext: transactionPage.hasNext,
+    };
+  } catch {
+    return {
+      state: "unavailable",
+      transactions: [],
+      page,
+      size,
+      totalElements: 0,
+      totalPages: 0,
+      hasNext: false,
       message: "Station API could not be reached.",
     };
   }
@@ -547,14 +729,16 @@ export async function getTransactionInspector(
     if (!dataPayload.data) {
       return {
         state: "unavailable",
-        message: "Transaction operational data was not returned.",
+        message:
+          "Transaction operational data was not returned.",
       };
     }
 
     return {
       state: "live",
       transaction,
-      completeness: dataPayload.data.transactionCompleteness,
+      completeness:
+        dataPayload.data.transactionCompleteness,
       meterSamples:
         dataPayload.data.transactionMeterSamples ?? [],
     };
