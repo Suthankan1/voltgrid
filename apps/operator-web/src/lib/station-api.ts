@@ -242,9 +242,27 @@ export async function getStationDetail(
   }
 }
 
+export type TransactionDataStatus =
+  | "IN_PROGRESS"
+  | "COMPLETE"
+  | "INCOMPLETE"
+  | "UNKNOWN";
+
+export type TransactionCompleteness = {
+  status: TransactionDataStatus;
+  firstSequenceNumber: number | null;
+  lastSequenceNumber: number;
+  missingSequenceNumbers: number[];
+};
+
+export type NetworkTransaction = {
+  transaction: ChargingTransaction;
+  completeness: TransactionCompleteness;
+};
+
 type NetworkTransactionsResponse = {
   data?: {
-    transactions: ChargingTransaction[];
+    networkTransactions: NetworkTransaction[];
   };
   errors?: Array<{
     message: string;
@@ -254,7 +272,7 @@ type NetworkTransactionsResponse = {
 export type NetworkTransactionSnapshot =
   | {
       state: "live";
-      transactions: ChargingTransaction[];
+      transactions: NetworkTransaction[];
     }
   | {
       state: "unavailable";
@@ -264,15 +282,24 @@ export type NetworkTransactionSnapshot =
 
 const NETWORK_TRANSACTIONS_QUERY = `
   query OperatorNetworkTransactions {
-    transactions {
-      stationId
-      transactionId
-      evseId
-      connectorId
-      status
-      startedAt
-      endedAt
-      lastSequenceNumber
+    networkTransactions {
+      transaction {
+        stationId
+        transactionId
+        evseId
+        connectorId
+        status
+        startedAt
+        endedAt
+        lastSequenceNumber
+      }
+
+      completeness {
+        status
+        firstSequenceNumber
+        lastSequenceNumber
+        missingSequenceNumbers
+      }
     }
   }
 `;
@@ -321,7 +348,7 @@ export async function getNetworkTransactions(): Promise<NetworkTransactionSnapsh
 
     return {
       state: "live",
-      transactions: payload.data?.transactions ?? [],
+      transactions: payload.data?.networkTransactions ?? [],
     };
   } catch {
     return {
@@ -331,19 +358,6 @@ export async function getNetworkTransactions(): Promise<NetworkTransactionSnapsh
     };
   }
 }
-
-export type TransactionDataStatus =
-  | "IN_PROGRESS"
-  | "COMPLETE"
-  | "INCOMPLETE"
-  | "UNKNOWN";
-
-export type TransactionCompleteness = {
-  status: TransactionDataStatus;
-  firstSequenceNumber: number | null;
-  lastSequenceNumber: number;
-  missingSequenceNumbers: number[];
-};
 
 export type TransactionMeterSample = {
   sequenceNumber: number;

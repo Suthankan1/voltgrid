@@ -2,7 +2,8 @@ import Link from "next/link";
 
 import {
   getNetworkTransactions,
-  type ChargingTransaction,
+  type NetworkTransaction,
+  type TransactionDataStatus,
 } from "@/lib/station-api";
 
 export const dynamic = "force-dynamic";
@@ -13,17 +14,67 @@ export default async function TransactionsPage() {
   const transactions = snapshot.transactions;
 
   const activeTransactions = transactions.filter(
-    (transaction) => transaction.status === "ACTIVE",
+    (record) => record.transaction.status === "ACTIVE",
   );
 
   const endedTransactions = transactions.filter(
-    (transaction) => transaction.status === "ENDED",
+    (record) => record.transaction.status === "ENDED",
+  );
+
+  const incompleteTransactions = transactions.filter(
+    (record) => record.completeness.status === "INCOMPLETE",
+  );
+
+  const unknownTransactions = transactions.filter(
+    (record) => record.completeness.status === "UNKNOWN",
   );
 
   const orderedTransactions = [
     ...activeTransactions,
     ...endedTransactions,
   ];
+
+  const condition =
+    snapshot.state === "unavailable"
+      ? {
+          label: "Session data unavailable",
+          detail: snapshot.message,
+          tone: "unavailable" as const,
+        }
+      : incompleteTransactions.length > 0
+        ? {
+            label: `${incompleteTransactions.length} ${
+              incompleteTransactions.length === 1
+                ? "record requires"
+                : "records require"
+            } attention`,
+            detail:
+              "One or more ended transaction records contain missing event receipts.",
+            tone: "attention" as const,
+          }
+        : activeTransactions.length > 0
+          ? {
+              label: `${activeTransactions.length} ${
+                activeTransactions.length === 1
+                  ? "session"
+                  : "sessions"
+              } charging`,
+              detail:
+                "Active sessions are promoted to the top of the network ledger.",
+              tone: "live" as const,
+            }
+          : {
+              label: "No active charging sessions",
+              detail:
+                unknownTransactions.length > 0
+                  ? `${unknownTransactions.length} historical ${
+                      unknownTransactions.length === 1
+                        ? "record has"
+                        : "records have"
+                    } insufficient receipt history for integrity assessment.`
+                  : "No transaction currently has an active charging lifecycle.",
+              tone: "neutral" as const,
+            };
 
   return (
     <div className="min-h-screen bg-[#f2f0ea] text-[#17191c]">
@@ -107,15 +158,16 @@ export default async function TransactionsPage() {
                 </p>
               </div>
 
-              <div className="border-l border-[#17191c]/20 pl-6">
-                <p className="font-mono text-xl">
-                  {transactions.length}
-                </p>
+              <Metric
+                value={transactions.length}
+                label="total records"
+              />
 
-                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.13em] text-[#858783]">
-                  total records
-                </p>
-              </div>
+              <Metric
+                value={incompleteTransactions.length}
+                label="incomplete"
+                attention={incompleteTransactions.length > 0}
+              />
             </div>
           </div>
 
@@ -127,33 +179,19 @@ export default async function TransactionsPage() {
 
               <div className="mt-5 flex items-start gap-3">
                 <span
-                  className={`mt-1 h-3 w-3 shrink-0 ${
-                    snapshot.state === "live"
-                      ? activeTransactions.length > 0
-                        ? "bg-[#2457ff]"
-                        : "bg-[#16a36a]"
-                      : "bg-[#ef7d32]"
-                  }`}
+                  className={`mt-1 h-3 w-3 shrink-0 ${conditionTone(
+                    condition.tone,
+                  )}`}
                 />
 
                 <div>
                   <p className="text-xl font-medium tracking-[-0.03em]">
-                    {snapshot.state === "unavailable"
-                      ? "Session data unavailable"
-                      : activeTransactions.length > 0
-                        ? `${activeTransactions.length} ${
-                            activeTransactions.length === 1
-                              ? "session"
-                              : "sessions"
-                          } charging`
-                        : "No active charging sessions"}
+                    {condition.label}
                   </p>
 
-                  {snapshot.state === "unavailable" && (
-                    <p className="mt-3 max-w-sm text-sm leading-6 text-[#676a67]">
-                      {snapshot.message}
-                    </p>
-                  )}
+                  <p className="mt-3 max-w-sm text-sm leading-6 text-[#676a67]">
+                    {condition.detail}
+                  </p>
                 </div>
               </div>
             </div>
@@ -161,40 +199,10 @@ export default async function TransactionsPage() {
             <p className="mt-10 font-mono text-[9px] uppercase leading-5 tracking-[0.12em] text-[#91938f]">
               Station Service / GraphQL
               <br />
-              Network transaction read model
+              Network transaction + integrity read model
             </p>
           </div>
         </section>
-
-        {activeTransactions.length > 0 && (
-          <section className="mt-12">
-            <div className="flex items-end justify-between border-b-2 border-[#17191c] pb-4">
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#2457ff]">
-                  Live sessions
-                </p>
-
-                <h2 className="mt-2 text-3xl font-medium tracking-[-0.045em]">
-                  Charging now
-                </h2>
-              </div>
-
-              <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#747773]">
-                {activeTransactions.length} active
-              </p>
-            </div>
-
-            <div>
-              {activeTransactions.map((transaction) => (
-                <TransactionRow
-                  key={`${transaction.stationId}-${transaction.transactionId}`}
-                  transaction={transaction}
-                  live
-                />
-              ))}
-            </div>
-          </section>
-        )}
 
         <section className="mt-14">
           <div className="flex flex-wrap items-end justify-between gap-4 border-b-2 border-[#17191c] pb-4">
@@ -213,8 +221,9 @@ export default async function TransactionsPage() {
             </p>
           </div>
 
-          <div className="hidden grid-cols-[110px_1fr_180px_120px_100px_200px] border-b border-[#17191c]/20 px-3 py-3 font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783] lg:grid">
+          <div className="hidden grid-cols-[100px_140px_1fr_170px_110px_90px_190px] border-b border-[#17191c]/20 px-3 py-3 font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783] lg:grid">
             <span>State</span>
+            <span>Integrity</span>
             <span>Transaction</span>
             <span>Station</span>
             <span>Endpoint</span>
@@ -223,10 +232,10 @@ export default async function TransactionsPage() {
           </div>
 
           {orderedTransactions.length > 0 ? (
-            orderedTransactions.map((transaction) => (
+            orderedTransactions.map((record) => (
               <TransactionRow
-                key={`ledger-${transaction.stationId}-${transaction.transactionId}`}
-                transaction={transaction}
+                key={`${record.transaction.stationId}-${record.transaction.transactionId}`}
+                record={record}
               />
             ))
           ) : (
@@ -250,25 +259,58 @@ export default async function TransactionsPage() {
   );
 }
 
-function TransactionRow({
-  transaction,
-  live = false,
+function Metric({
+  value,
+  label,
+  attention = false,
 }: {
-  transaction: ChargingTransaction;
-  live?: boolean;
+  value: number;
+  label: string;
+  attention?: boolean;
 }) {
   return (
+    <div className="border-l border-[#17191c]/20 pl-6">
+      <p
+        className={`font-mono text-xl ${
+          attention ? "text-[#c54435]" : ""
+        }`}
+      >
+        {value}
+      </p>
+
+      <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.13em] text-[#858783]">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function TransactionRow({
+  record,
+}: {
+  record: NetworkTransaction;
+}) {
+  const transaction = record.transaction;
+  const completeness = record.completeness;
+
+  const active = transaction.status === "ACTIVE";
+  const incomplete =
+    completeness.status === "INCOMPLETE";
+
+  return (
     <article
-      className={`grid gap-5 border-b px-3 py-5 transition-colors lg:grid-cols-[110px_1fr_180px_120px_100px_200px] lg:items-center ${
-        live
-          ? "border-[#2457ff]/25 bg-[#2457ff]/[0.025]"
-          : "border-[#17191c]/15 hover:bg-white/65"
+      className={`grid gap-5 border-b px-3 py-5 transition-colors lg:grid-cols-[100px_140px_1fr_170px_110px_90px_190px] lg:items-center ${
+        incomplete
+          ? "border-[#c54435]/25 bg-[#c54435]/[0.025]"
+          : active
+            ? "border-[#2457ff]/25 bg-[#2457ff]/[0.025]"
+            : "border-[#17191c]/15 hover:bg-white/65"
       }`}
     >
       <div className="flex items-center gap-3">
         <span
           className={`h-3 w-3 ${
-            transaction.status === "ACTIVE"
+            active
               ? "bg-[#2457ff]"
               : "bg-[#8f918e]"
           }`}
@@ -278,6 +320,13 @@ function TransactionRow({
           {transaction.status}
         </span>
       </div>
+
+      <IntegrityCell
+        status={completeness.status}
+        missingSequenceNumbers={
+          completeness.missingSequenceNumbers
+        }
+      />
 
       <div className="min-w-0">
         <Link
@@ -313,8 +362,13 @@ function TransactionRow({
 
       <p className="font-mono text-xs">
         {String(transaction.evseId).padStart(2, "0")}
-        <span className="mx-1 text-[#aaa9a3]">/</span>
-        {String(transaction.connectorId).padStart(2, "0")}
+        <span className="mx-1 text-[#aaa9a3]">
+          /
+        </span>
+        {String(transaction.connectorId).padStart(
+          2,
+          "0",
+        )}
       </p>
 
       <p className="font-mono text-sm">
@@ -328,12 +382,129 @@ function TransactionRow({
 
         <p className="mt-1 font-mono text-[8px] uppercase tracking-[0.1em] text-[#969894]">
           {transaction.endedAt
-            ? `ended ${formatTimestamp(transaction.endedAt)}`
+            ? `ended ${formatTimestamp(
+                transaction.endedAt,
+              )}`
             : "session open"}
         </p>
       </div>
     </article>
   );
+}
+
+function IntegrityCell({
+  status,
+  missingSequenceNumbers,
+}: {
+  status: TransactionDataStatus;
+  missingSequenceNumbers: number[];
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <span
+          className={`h-2.5 w-2.5 ${integrityTone(
+            status,
+          )}`}
+        />
+
+        <span
+          className={`font-mono text-[9px] uppercase tracking-[0.1em] ${
+            status === "INCOMPLETE"
+              ? "text-[#b83c30]"
+              : "text-[#656865]"
+          }`}
+        >
+          {formatIntegrityStatus(status)}
+        </span>
+      </div>
+
+      <p className="mt-1 font-mono text-[8px] uppercase tracking-[0.08em] text-[#989a96]">
+        {integrityDetail(
+          status,
+          missingSequenceNumbers,
+        )}
+      </p>
+    </div>
+  );
+}
+
+function formatIntegrityStatus(
+  status: TransactionDataStatus,
+) {
+  switch (status) {
+    case "IN_PROGRESS":
+      return "In progress";
+    case "COMPLETE":
+      return "Complete";
+    case "INCOMPLETE":
+      return "Incomplete";
+    case "UNKNOWN":
+      return "Unknown";
+  }
+}
+
+function integrityDetail(
+  status: TransactionDataStatus,
+  missingSequenceNumbers: number[],
+) {
+  switch (status) {
+    case "IN_PROGRESS":
+      return "receiving events";
+
+    case "COMPLETE":
+      return "sequence verified";
+
+    case "INCOMPLETE":
+      if (missingSequenceNumbers.length === 0) {
+        return "receipt gap detected";
+      }
+
+      if (missingSequenceNumbers.length === 1) {
+        return `gap #${missingSequenceNumbers[0]}`;
+      }
+
+      return `gaps ${missingSequenceNumbers
+        .map((sequenceNumber) => `#${sequenceNumber}`)
+        .join(", ")}`;
+
+    case "UNKNOWN":
+      return "insufficient history";
+  }
+}
+
+function integrityTone(
+  status: TransactionDataStatus,
+) {
+  switch (status) {
+    case "IN_PROGRESS":
+      return "bg-[#2457ff]";
+    case "COMPLETE":
+      return "bg-[#16a36a]";
+    case "INCOMPLETE":
+      return "bg-[#c54435]";
+    case "UNKNOWN":
+      return "bg-[#a1a39f]";
+  }
+}
+
+function conditionTone(
+  tone:
+    | "unavailable"
+    | "attention"
+    | "live"
+    | "neutral",
+) {
+  switch (tone) {
+    case "unavailable":
+      return "bg-[#ef7d32]";
+    case "attention":
+      return "bg-[#c54435]";
+    case "live":
+      return "bg-[#2457ff]";
+    case "neutral":
+      return "bg-[#92948f]";
+  }
 }
 
 function formatTimestamp(value: string) {
