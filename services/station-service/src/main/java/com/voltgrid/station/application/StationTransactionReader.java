@@ -19,9 +19,21 @@ public interface StationTransactionReader {
 
     List<ChargingTransaction> findAll();
 
-    PageResult<ChargingTransaction> findPage(
+    default PageResult<ChargingTransaction> findPage(
             int page,
             int size
+    ) {
+        return findPage(
+                page,
+                size,
+                TransactionPageFilter.empty()
+        );
+    }
+
+    PageResult<ChargingTransaction> findPage(
+            int page,
+            int size,
+            TransactionPageFilter filter
     );
 
     List<ChargingTransaction> findByStationId(

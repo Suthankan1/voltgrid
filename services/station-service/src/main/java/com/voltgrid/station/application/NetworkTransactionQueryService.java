@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class NetworkTransactionQueryService {
@@ -36,15 +37,34 @@ public class NetworkTransactionQueryService {
             int page,
             int size
     ) {
+        return findPage(
+                page,
+                size,
+                TransactionPageFilter.empty()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public PageResult<NetworkTransactionSnapshot> findPage(
+            int page,
+            int size,
+            TransactionPageFilter filter
+    ) {
         validatePageRequest(
                 page,
                 size
         );
 
+        Objects.requireNonNull(
+                filter,
+                "Transaction page filter is required."
+        );
+
         var transactionPage =
                 transactionReader.findPage(
                         page,
-                        size
+                        size,
+                        filter
                 );
 
         var content =

@@ -17,6 +17,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -77,10 +78,14 @@ class NetworkTransactionPaginationTests {
                         List.of(2)
                 );
 
+        var filter =
+                TransactionPageFilter.empty();
+
         when(
                 transactionReader.findPage(
                         0,
-                        20
+                        20,
+                        filter
                 )
         ).thenReturn(
                 transactionPage
@@ -159,12 +164,82 @@ class NetworkTransactionPaginationTests {
         verify(transactionReader)
                 .findPage(
                         0,
-                        20
+                        20,
+                        filter
                 );
 
         verify(completenessService)
                 .calculateAll(
                         List.of(transaction)
                 );
+    }
+
+    @Test
+    void shouldForwardNormalizedTransactionFilters() {
+        var filter =
+                new TransactionPageFilter(
+                        " AWS-CP-001 ",
+                        " demo "
+                );
+
+        var normalizedFilter =
+                new TransactionPageFilter(
+                        "AWS-CP-001",
+                        "demo"
+                );
+
+        when(
+                transactionReader.findPage(
+                        0,
+                        20,
+                        normalizedFilter
+                )
+        ).thenReturn(
+                new PageResult<>(
+                        List.of(),
+                        0,
+                        20,
+                        0,
+                        0,
+                        false
+                )
+        );
+
+        var result =
+                service.findPage(
+                        0,
+                        20,
+                        filter
+                );
+
+        assertEquals(
+                0,
+                result.content().size()
+        );
+
+        assertEquals(
+                0,
+                result.totalElements()
+        );
+
+        assertEquals(
+                0,
+                result.totalPages()
+        );
+
+        assertFalse(
+                result.hasNext()
+        );
+
+        verify(transactionReader)
+                .findPage(
+                        0,
+                        20,
+                        normalizedFilter
+                );
+
+        verifyNoInteractions(
+                completenessService
+        );
     }
 }

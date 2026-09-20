@@ -2,13 +2,19 @@ package com.voltgrid.station.infrastructure.persistence.jpa;
 
 import com.voltgrid.station.application.PageResult;
 import com.voltgrid.station.application.StationTransactionReader;
+import com.voltgrid.station.application.TransactionPageFilter;
 import com.voltgrid.station.domain.ChargingTransaction;
+
+import jakarta.persistence.criteria.Predicate;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @Component
@@ -63,7 +69,8 @@ public class JpaStationTransactionReader
     @Override
     public PageResult<ChargingTransaction> findPage(
             int page,
-            int size
+            int size,
+            TransactionPageFilter filter
     ) {
         var sort =
                 Sort.by(
@@ -80,6 +87,7 @@ public class JpaStationTransactionReader
 
         var result =
                 repository.findAll(
+                        specification(filter),
                         PageRequest.of(
                                 page,
                                 size,
@@ -115,6 +123,81 @@ public class JpaStationTransactionReader
                 .stream()
                 .map(this::toDomain)
                 .toList();
+    }
+
+    private Specification<ChargingTransactionEntity> specification(
+            TransactionPageFilter filter
+    ) {
+        return (
+                root,
+                query,
+                criteriaBuilder
+        ) -> {
+            var predicates =
+                    new ArrayList<Predicate>();
+
+            if (filter.stationId() != null) {
+                predicates.add(
+                        criteriaBuilder.equal(
+                                root
+                                        .get("id")
+                                        .get("stationId"),
+                                filter.stationId()
+                        )
+                );
+            }
+
+            if (filter.transactionId() != null) {
+                var pattern =
+                        "%"
+                                + escapeLike(
+                                        filter
+                                                .transactionId()
+                                                .toLowerCase(
+                                                        Locale.ROOT
+                                                )
+                                )
+                                + "%";
+
+                predicates.add(
+                        criteriaBuilder.like(
+                                criteriaBuilder.lower(
+                                        root
+                                                .get("id")
+                                                .get("transactionId")
+                                ),
+                                pattern,
+                                '\\'
+                        )
+                );
+            }
+
+            return predicates.isEmpty()
+                    ? criteriaBuilder.conjunction()
+                    : criteriaBuilder.and(
+                            predicates.toArray(
+                                    Predicate[]::new
+                            )
+                    );
+        };
+    }
+
+    private String escapeLike(
+            String value
+    ) {
+        return value
+                .replace(
+                        "\\",
+                        "\\\\"
+                )
+                .replace(
+                        "%",
+                        "\\%"
+                )
+                .replace(
+                        "_",
+                        "\\_"
+                );
     }
 
     private ChargingTransaction toDomain(
