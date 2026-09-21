@@ -369,6 +369,11 @@ export type NetworkTransactionPage = {
   hasNext: boolean;
 };
 
+export type NetworkTransactionPageFilters = {
+  stationId?: string;
+  transactionId?: string;
+};
+
 type NetworkTransactionPageResponse = {
   data?: {
     networkTransactionPage: NetworkTransactionPage;
@@ -403,10 +408,14 @@ const NETWORK_TRANSACTION_PAGE_QUERY = `
   query OperatorNetworkTransactionPage(
     $page: Int!
     $size: Int!
+    $stationId: ID
+    $transactionId: String
   ) {
     networkTransactionPage(
       page: $page
       size: $size
+      stationId: $stationId
+      transactionId: $transactionId
     ) {
       content {
         transaction {
@@ -440,6 +449,7 @@ const NETWORK_TRANSACTION_PAGE_QUERY = `
 export async function getNetworkTransactionPage(
   page: number,
   size: number,
+  filters: NetworkTransactionPageFilters = {},
 ): Promise<NetworkTransactionPageSnapshot> {
   const endpoint = process.env.STATION_GRAPHQL_URL;
 
@@ -467,6 +477,12 @@ export async function getNetworkTransactionPage(
         variables: {
           page,
           size,
+          stationId: normalizeOptionalFilter(
+            filters.stationId,
+          ),
+          transactionId: normalizeOptionalFilter(
+            filters.transactionId,
+          ),
         },
       }),
       cache: "no-store",
@@ -539,6 +555,20 @@ export async function getNetworkTransactionPage(
       message: "Station API could not be reached.",
     };
   }
+}
+
+function normalizeOptionalFilter(
+  value: string | undefined,
+): string | null {
+  if (value === undefined) {
+    return null;
+  }
+
+  const normalized = value.trim();
+
+  return normalized.length > 0
+    ? normalized
+    : null;
 }
 
 export type TransactionMeterSample = {

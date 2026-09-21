@@ -9,26 +9,37 @@ export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 20;
 
-type TransactionsPageProps = {
-  searchParams: Promise<{
-    page?: string | string[];
-  }>;
+type TransactionsSearchParams = {
+  page?: string | string[];
+  station?: string | string[];
+  q?: string | string[];
 };
 
 export default async function TransactionsPage({
   searchParams,
-}: TransactionsPageProps) {
+}: {
+  searchParams: Promise<TransactionsSearchParams>;
+}) {
   const params = await searchParams;
 
-  const requestedPage = parsePage(
-    params.page,
+  const requestedPage = parsePage(params.page);
+
+  const stationId = parseOptionalFilter(
+    params.station,
   );
 
-  const snapshot =
-    await getNetworkTransactionPage(
-      requestedPage,
-      PAGE_SIZE,
-    );
+  const transactionId = parseOptionalFilter(
+    params.q,
+  );
+
+  const snapshot = await getNetworkTransactionPage(
+    requestedPage,
+    PAGE_SIZE,
+    {
+      stationId,
+      transactionId,
+    },
+  );
 
   if (snapshot.state === "live") {
     const lastPage = Math.max(
@@ -38,7 +49,11 @@ export default async function TransactionsPage({
 
     if (requestedPage > lastPage) {
       redirect(
-        `/transactions?page=${lastPage}`,
+        buildTransactionsHref(
+          lastPage,
+          stationId,
+          transactionId,
+        ),
       );
     }
   }
@@ -76,6 +91,10 @@ export default async function TransactionsPage({
     ...endedTransactions,
   ];
 
+  const filtersActive =
+    stationId !== undefined ||
+    transactionId !== undefined;
+
   const condition =
     snapshot.state === "unavailable"
       ? {
@@ -91,7 +110,7 @@ export default async function TransactionsPage({
                 : "records require"
             } attention on this page`,
             detail:
-              "The current page contains ended transaction records with missing event receipts.",
+              "One or more transaction records on the current page contain missing event receipts.",
             tone: "attention" as const,
           }
         : activeTransactions.length > 0
@@ -102,7 +121,7 @@ export default async function TransactionsPage({
                   : "sessions"
               } charging on this page`,
               detail:
-                "Active sessions are promoted within the currently loaded transaction page.",
+                "Active sessions on the current page are promoted within the loaded ledger.",
               tone: "live" as const,
             }
           : {
@@ -111,11 +130,12 @@ export default async function TransactionsPage({
               detail:
                 unknownTransactions.length > 0
                   ? `${unknownTransactions.length} ${
-                      unknownTransactions.length === 1
+                      unknownTransactions.length ===
+                      1
                         ? "record has"
                         : "records have"
-                    } insufficient receipt history on this page.`
-                  : "The currently loaded transaction page contains no active charging lifecycle.",
+                    } insufficient receipt history on the current page for integrity assessment.`
+                  : "No transaction on the current page has an active charging lifecycle.",
               tone: "neutral" as const,
             };
 
@@ -197,21 +217,21 @@ export default async function TransactionsPage({
                 </p>
 
                 <p className="mt-4 text-sm text-[#666967]">
-                  active on this page
+                  active charging sessions on this page
                 </p>
               </div>
 
               <Metric
-                value={
-                  snapshot.totalElements
+                value={snapshot.totalElements}
+                label={
+                  filtersActive
+                    ? "matching records"
+                    : "total records"
                 }
-                label="total records"
               />
 
               <Metric
-                value={
-                  incompleteTransactions.length
-                }
+                value={incompleteTransactions.length}
                 label="incomplete on page"
                 attention={
                   incompleteTransactions.length > 0
@@ -223,7 +243,7 @@ export default async function TransactionsPage({
           <div className="flex flex-col justify-between py-8 lg:pl-8">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-[#818480]">
-                Page condition
+                Session condition
               </p>
 
               <div className="mt-5 flex items-start gap-3">
@@ -248,8 +268,8 @@ export default async function TransactionsPage({
             <p className="mt-10 font-mono text-[9px] uppercase leading-5 tracking-[0.12em] text-[#91938f]">
               Station Service / GraphQL
               <br />
-              Paginated transaction + integrity
-              read model
+              Network transaction + integrity read
+              model
             </p>
           </div>
         </section>
@@ -258,10 +278,10 @@ export default async function TransactionsPage({
           transactions={orderedTransactions}
           page={snapshot.page}
           totalPages={snapshot.totalPages}
-          totalElements={
-            snapshot.totalElements
-          }
+          totalElements={snapshot.totalElements}
           hasNext={snapshot.hasNext}
+          stationFilter={stationId}
+          queryFilter={transactionId}
           unavailableMessage={
             snapshot.state === "unavailable"
               ? snapshot.message
@@ -345,4 +365,52 @@ function parsePage(
   }
 
   return parsed;
+}
+
+function parseOptionalFilter(
+  value: string | string[] | undefined,
+): string | undefined {
+  const candidate =
+    Array.isArray(value)
+      ? value[0]
+      : value;
+
+  if (!candidate) {
+    return undefined;
+  }
+
+  const normalized = candidate.trim();
+
+  return normalized.length > 0
+    ? normalized
+    : undefined;
+}
+
+function buildTransactionsHref(
+  page: number,
+  stationId?: string,
+  transactionId?: string,
+) {
+  const params = new URLSearchParams();
+
+  params.set(
+    "page",
+    String(page),
+  );
+
+  if (stationId) {
+    params.set(
+      "station",
+      stationId,
+    );
+  }
+
+  if (transactionId) {
+    params.set(
+      "q",
+      transactionId,
+    );
+  }
+
+  return `/transactions?${params.toString()}`;
 }

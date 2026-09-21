@@ -19,6 +19,8 @@ export function TransactionLedger({
   totalPages,
   totalElements,
   hasNext,
+  stationFilter,
+  queryFilter,
   unavailableMessage,
 }: {
   transactions: NetworkTransaction[];
@@ -26,75 +28,44 @@ export function TransactionLedger({
   totalPages: number;
   totalElements: number;
   hasNext: boolean;
+  stationFilter?: string;
+  queryFilter?: string;
   unavailableMessage?: string;
 }) {
   const [filter, setFilter] =
     useState<LedgerFilter>("ALL");
 
-  const [stationId, setStationId] =
-    useState("ALL");
+  const filteredTransactions =
+    useMemo(() => {
+      return transactions.filter(
+        (record) => {
+          const transaction =
+            record.transaction;
 
-  const [query, setQuery] =
-    useState("");
-
-  const stationIds = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          transactions.map(
-            (record) =>
-              record.transaction.stationId,
-          ),
-        ),
-      ).sort(),
-    [transactions],
-  );
-
-  const filteredTransactions = useMemo(() => {
-    const normalizedQuery =
-      query.trim().toLowerCase();
-
-    return transactions.filter((record) => {
-      const transaction =
-        record.transaction;
-
-      const matchesFilter =
-        filter === "ALL" ||
-        (filter === "ACTIVE" &&
-          transaction.status ===
-            "ACTIVE") ||
-        (filter === "INCOMPLETE" &&
-          record.completeness.status ===
-            "INCOMPLETE");
-
-      const matchesStation =
-        stationId === "ALL" ||
-        transaction.stationId ===
-          stationId;
-
-      const matchesQuery =
-        normalizedQuery.length === 0 ||
-        transaction.transactionId
-          .toLowerCase()
-          .includes(normalizedQuery);
-
-      return (
-        matchesFilter &&
-        matchesStation &&
-        matchesQuery
+          return (
+            filter === "ALL" ||
+            (filter === "ACTIVE" &&
+              transaction.status ===
+                "ACTIVE") ||
+            (filter === "INCOMPLETE" &&
+              record.completeness.status ===
+                "INCOMPLETE")
+          );
+        },
       );
-    });
-  }, [
-    filter,
-    query,
-    stationId,
-    transactions,
-  ]);
+    }, [
+      filter,
+      transactions,
+    ]);
 
   const displayedPage =
     totalPages === 0
       ? 0
       : page + 1;
+
+  const filtersActive =
+    Boolean(stationFilter) ||
+    Boolean(queryFilter);
 
   return (
     <section className="mt-14">
@@ -116,24 +87,28 @@ export function TransactionLedger({
           </p>
 
           <p className="mt-1 font-mono text-[8px] uppercase tracking-[0.1em] text-[#999b97]">
-            {totalElements} total records
+            {totalElements}{" "}
+            {totalElements === 1
+              ? "record"
+              : "records"}
+            {filtersActive
+              ? " matching server filters"
+              : " total"}
           </p>
         </div>
       </div>
 
       <div className="border-b border-[#17191c]/20 py-5">
-        <div className="grid gap-4 xl:grid-cols-[auto_1fr_240px_auto] xl:items-end">
+        <div className="grid gap-5 xl:grid-cols-[auto_1fr_auto] xl:items-end">
           <div>
             <p className="mb-2 font-mono text-[9px] uppercase tracking-[0.13em] text-[#858783]">
-              View
+              Page view
             </p>
 
             <div className="flex">
               <FilterButton
                 label="All"
-                active={
-                  filter === "ALL"
-                }
+                active={filter === "ALL"}
                 onClick={() =>
                   setFilter("ALL")
                 }
@@ -164,71 +139,80 @@ export function TransactionLedger({
             </div>
           </div>
 
-          <label>
-            <span className="mb-2 block font-mono text-[9px] uppercase tracking-[0.13em] text-[#858783]">
-              Transaction ID
-            </span>
-
+          <form
+            action="/transactions"
+            method="get"
+            className="grid gap-4 md:grid-cols-[minmax(0,1fr)_240px_auto]"
+          >
             <input
-              type="search"
-              value={query}
-              onChange={(event) =>
-                setQuery(
-                  event.target.value,
-                )
-              }
-              placeholder="Search this page…"
-              className="h-10 w-full border border-[#17191c]/25 bg-transparent px-3 font-mono text-xs outline-none transition-colors placeholder:text-[#a0a29e] focus:border-[#2457ff]"
+              type="hidden"
+              name="page"
+              value="0"
             />
-          </label>
 
-          <label>
-            <span className="mb-2 block font-mono text-[9px] uppercase tracking-[0.13em] text-[#858783]">
-              Station / page
-            </span>
+            <label>
+              <span className="mb-2 block font-mono text-[9px] uppercase tracking-[0.13em] text-[#858783]">
+                Transaction ID
+              </span>
 
-            <select
-              value={stationId}
-              onChange={(event) =>
-                setStationId(
-                  event.target.value,
-                )
-              }
-              className="h-10 w-full border border-[#17191c]/25 bg-[#f2f0ea] px-3 font-mono text-xs outline-none focus:border-[#2457ff]"
-            >
-              <option value="ALL">
-                All page stations
-              </option>
+              <input
+                name="q"
+                type="search"
+                defaultValue={
+                  queryFilter ?? ""
+                }
+                placeholder="Search all transactions…"
+                className="h-10 w-full border border-[#17191c]/25 bg-transparent px-3 font-mono text-xs outline-none transition-colors placeholder:text-[#a0a29e] focus:border-[#2457ff]"
+              />
+            </label>
 
-              {stationIds.map(
-                (
-                  currentStationId,
-                ) => (
-                  <option
-                    key={
-                      currentStationId
-                    }
-                    value={
-                      currentStationId
-                    }
-                  >
-                    {
-                      currentStationId
-                    }
-                  </option>
-                ),
-              )}
-            </select>
-          </label>
+            <label>
+              <span className="mb-2 block font-mono text-[9px] uppercase tracking-[0.13em] text-[#858783]">
+                Station ID
+              </span>
+
+              <input
+                name="station"
+                type="search"
+                defaultValue={
+                  stationFilter ?? ""
+                }
+                placeholder="Exact station ID…"
+                className="h-10 w-full border border-[#17191c]/25 bg-transparent px-3 font-mono text-xs outline-none transition-colors placeholder:text-[#a0a29e] focus:border-[#2457ff]"
+              />
+            </label>
+
+            <div>
+              <p className="mb-2 font-mono text-[9px] uppercase tracking-[0.13em] text-transparent">
+                Actions
+              </p>
+
+              <div className="flex h-10">
+                <button
+                  type="submit"
+                  className="border border-[#17191c] bg-[#17191c] px-4 font-mono text-[9px] uppercase tracking-[0.12em] text-white transition-colors hover:bg-[#2a2d30]"
+                >
+                  Apply
+                </button>
+
+                <Link
+                  href="/transactions"
+                  className="grid place-items-center border-y border-r border-[#17191c]/25 px-4 font-mono text-[9px] uppercase tracking-[0.12em] text-[#626562] transition-colors hover:bg-white"
+                >
+                  Clear
+                </Link>
+              </div>
+            </div>
+          </form>
 
           <div className="xl:text-right">
             <p className="font-mono text-xl">
-              {
-                filteredTransactions.length
-              }
+              {filteredTransactions.length}
+
               <span className="mx-2 text-[#aaa9a3]">
                 /
               </span>
+
               {transactions.length}
             </p>
 
@@ -238,9 +222,11 @@ export function TransactionLedger({
           </div>
         </div>
 
-        <p className="mt-4 font-mono text-[8px] uppercase tracking-[0.1em] text-[#989a96]">
-          Filters and search apply only
-          to the currently loaded page
+        <p className="mt-4 font-mono text-[8px] uppercase leading-5 tracking-[0.1em] text-[#989a96]">
+          Station and transaction search run
+          server-side across transaction history.
+          All / Active / Incomplete only change
+          the currently loaded page.
         </p>
       </div>
 
@@ -251,13 +237,13 @@ export function TransactionLedger({
         <span>Station</span>
         <span>Endpoint</span>
         <span>Sequence</span>
+
         <span className="text-right">
           Started
         </span>
       </div>
 
-      {filteredTransactions.length >
-      0 ? (
+      {filteredTransactions.length > 0 ? (
         filteredTransactions.map(
           (record) => (
             <TransactionRow
@@ -272,18 +258,20 @@ export function TransactionLedger({
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#8d908c]">
               {unavailableMessage
                 ? "Transaction data unavailable"
-                : transactions.length >
-                    0
-                  ? "No matching transactions"
-                  : "No transactions on this page"}
+                : transactions.length > 0
+                  ? "No transactions in this page view"
+                  : filtersActive
+                    ? "No matching transactions"
+                    : "No transactions on this page"}
             </p>
 
             <p className="mt-3 text-sm leading-6 text-[#686b68]">
               {unavailableMessage ??
-                (transactions.length >
-                0
-                  ? "Change the lifecycle, integrity, station, or search filters to widen this page-local view."
-                  : "There are no transaction records in the currently loaded page.")}
+                (transactions.length > 0
+                  ? "Change the page-local lifecycle or integrity view to show more records from this loaded page."
+                  : filtersActive
+                    ? "No network transaction matches the current server-side station and transaction search."
+                    : "There are no transaction records in the currently loaded page.")}
             </p>
           </div>
         </div>
@@ -295,6 +283,8 @@ export function TransactionLedger({
             direction="previous"
             page={page}
             enabled={page > 0}
+            stationFilter={stationFilter}
+            queryFilter={queryFilter}
           />
 
           <div className="text-center">
@@ -304,8 +294,13 @@ export function TransactionLedger({
             </p>
 
             <p className="mt-1 font-mono text-[8px] uppercase tracking-[0.1em] text-[#989a96]">
-              {totalElements} records
-              across network history
+              {totalElements}{" "}
+              {totalElements === 1
+                ? "record"
+                : "records"}
+              {filtersActive
+                ? " match current server filters"
+                : " across network history"}
             </p>
           </div>
 
@@ -313,6 +308,8 @@ export function TransactionLedger({
             direction="next"
             page={page}
             enabled={hasNext}
+            stationFilter={stationFilter}
+            queryFilter={queryFilter}
           />
         </div>
       )}
@@ -324,10 +321,14 @@ function PaginationLink({
   direction,
   page,
   enabled,
+  stationFilter,
+  queryFilter,
 }: {
   direction: "previous" | "next";
   page: number;
   enabled: boolean;
+  stationFilter?: string;
+  queryFilter?: string;
 }) {
   const previous =
     direction === "previous";
@@ -350,7 +351,11 @@ function PaginationLink({
 
   return (
     <Link
-      href={`/transactions?page=${targetPage}`}
+      href={buildTransactionPageHref(
+        targetPage,
+        stationFilter,
+        queryFilter,
+      )}
       className="border border-[#17191c]/25 px-4 py-2 font-mono text-[9px] uppercase tracking-[0.12em] transition-colors hover:border-[#17191c] hover:bg-white"
     >
       {label}
@@ -429,9 +434,7 @@ function TransactionRow({
       </div>
 
       <IntegrityCell
-        status={
-          completeness.status
-        }
+        status={completeness.status}
         missingSequenceNumbers={
           completeness.missingSequenceNumbers
         }
@@ -447,9 +450,7 @@ function TransactionRow({
           className="group inline-flex max-w-full items-center gap-3"
         >
           <span className="truncate font-mono text-sm group-hover:text-[#2457ff]">
-            {
-              transaction.transactionId
-            }
+            {transaction.transactionId}
           </span>
 
           <span className="shrink-0 text-xs text-[#2457ff] transition-transform group-hover:translate-x-1">
@@ -475,19 +476,18 @@ function TransactionRow({
         {String(
           transaction.evseId,
         ).padStart(2, "0")}
+
         <span className="mx-1 text-[#aaa9a3]">
           /
         </span>
+
         {String(
           transaction.connectorId,
         ).padStart(2, "0")}
       </p>
 
       <p className="font-mono text-sm">
-        #
-        {
-          transaction.lastSequenceNumber
-        }
+        #{transaction.lastSequenceNumber}
       </p>
 
       <div className="lg:text-right">
@@ -644,4 +644,33 @@ function formatTimestamp(
       timeZoneName: "short",
     },
   ).format(date);
+}
+
+function buildTransactionPageHref(
+  page: number,
+  stationFilter?: string,
+  queryFilter?: string,
+) {
+  const params = new URLSearchParams();
+
+  params.set(
+    "page",
+    String(page),
+  );
+
+  if (stationFilter) {
+    params.set(
+      "station",
+      stationFilter,
+    );
+  }
+
+  if (queryFilter) {
+    params.set(
+      "q",
+      queryFilter,
+    );
+  }
+
+  return `/transactions?${params.toString()}`;
 }
