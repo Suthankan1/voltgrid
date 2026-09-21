@@ -3,6 +3,7 @@ package com.voltgrid.station.api.graphql;
 import com.voltgrid.station.application.NetworkTransactionQueryService;
 import com.voltgrid.station.application.StationTransactionQueryService;
 import com.voltgrid.station.application.TransactionCompletenessService;
+import com.voltgrid.station.application.TransactionPageFilter;
 
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
@@ -49,12 +50,18 @@ public class StationTransactionGraphQlController {
     @QueryMapping
     public NetworkTransactionPageView networkTransactionPage(
             @Argument int page,
-            @Argument int size
+            @Argument int size,
+            @Argument String stationId,
+            @Argument String transactionId
     ) {
         return NetworkTransactionPageView.from(
                 networkTransactionQueryService.findPage(
                         page,
-                        size
+                        size,
+                        new TransactionPageFilter(
+                                stationId,
+                                transactionId
+                        )
                 )
         );
     }

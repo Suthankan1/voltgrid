@@ -10,6 +10,8 @@ type Query {
     networkTransactionPage(
         page: Int!
         size: Int!
+        stationId: ID
+        transactionId: String
     ): NetworkTransactionPage!
 
     stationTransactions(stationId: ID!): [ChargingTransaction!]!
