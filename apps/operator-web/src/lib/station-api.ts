@@ -372,6 +372,7 @@ export type NetworkTransactionPage = {
 export type NetworkTransactionPageFilters = {
   stationId?: string;
   transactionId?: string;
+  integrityStatus?: TransactionDataStatus;
 };
 
 type NetworkTransactionPageResponse = {
@@ -410,12 +411,14 @@ const NETWORK_TRANSACTION_PAGE_QUERY = `
     $size: Int!
     $stationId: ID
     $transactionId: String
+    $integrityStatus: TransactionDataStatus
   ) {
     networkTransactionPage(
       page: $page
       size: $size
       stationId: $stationId
       transactionId: $transactionId
+      integrityStatus: $integrityStatus
     ) {
       content {
         transaction {
@@ -483,6 +486,8 @@ export async function getNetworkTransactionPage(
           transactionId: normalizeOptionalFilter(
             filters.transactionId,
           ),
+          integrityStatus:
+            filters.integrityStatus ?? null,
         },
       }),
       cache: "no-store",

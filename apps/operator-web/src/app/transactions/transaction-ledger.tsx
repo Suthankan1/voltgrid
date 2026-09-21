@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import {
+  useMemo,
+  useState,
+} from "react";
 
 import type {
   NetworkTransaction,
@@ -10,8 +13,7 @@ import type {
 
 type LedgerFilter =
   | "ALL"
-  | "ACTIVE"
-  | "INCOMPLETE";
+  | "ACTIVE";
 
 export function TransactionLedger({
   transactions,
@@ -21,6 +23,7 @@ export function TransactionLedger({
   hasNext,
   stationFilter,
   queryFilter,
+  integrityFilter,
   unavailableMessage,
 }: {
   transactions: NetworkTransaction[];
@@ -30,6 +33,7 @@ export function TransactionLedger({
   hasNext: boolean;
   stationFilter?: string;
   queryFilter?: string;
+  integrityFilter?: TransactionDataStatus;
   unavailableMessage?: string;
 }) {
   const [filter, setFilter] =
@@ -37,21 +41,14 @@ export function TransactionLedger({
 
   const filteredTransactions =
     useMemo(() => {
-      return transactions.filter(
-        (record) => {
-          const transaction =
-            record.transaction;
+      if (filter === "ALL") {
+        return transactions;
+      }
 
-          return (
-            filter === "ALL" ||
-            (filter === "ACTIVE" &&
-              transaction.status ===
-                "ACTIVE") ||
-            (filter === "INCOMPLETE" &&
-              record.completeness.status ===
-                "INCOMPLETE")
-          );
-        },
+      return transactions.filter(
+        (record) =>
+          record.transaction.status ===
+          "ACTIVE",
       );
     }, [
       filter,
@@ -65,7 +62,8 @@ export function TransactionLedger({
 
   const filtersActive =
     Boolean(stationFilter) ||
-    Boolean(queryFilter);
+    Boolean(queryFilter) ||
+    Boolean(integrityFilter);
 
   return (
     <section className="mt-14">
@@ -99,10 +97,10 @@ export function TransactionLedger({
       </div>
 
       <div className="border-b border-[#17191c]/20 py-5">
-        <div className="grid gap-5 xl:grid-cols-[auto_1fr_auto] xl:items-end">
+        <div className="grid gap-5 xl:grid-cols-[auto_auto_1fr_auto] xl:items-end">
           <div>
             <p className="mb-2 font-mono text-[9px] uppercase tracking-[0.13em] text-[#858783]">
-              Page view
+              Page lifecycle
             </p>
 
             <div className="flex">
@@ -122,20 +120,47 @@ export function TransactionLedger({
                 onClick={() =>
                   setFilter("ACTIVE")
                 }
-              />
-
-              <FilterButton
-                label="Incomplete"
-                active={
-                  filter === "INCOMPLETE"
-                }
-                onClick={() =>
-                  setFilter(
-                    "INCOMPLETE",
-                  )
-                }
                 last
               />
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 font-mono text-[9px] uppercase tracking-[0.13em] text-[#858783]">
+              Network integrity
+            </p>
+
+            <div className="flex">
+              <Link
+                href={buildTransactionPageHref(
+                  0,
+                  stationFilter,
+                  queryFilter,
+                )}
+                className={`grid h-10 place-items-center border-y border-l border-[#17191c]/25 px-4 font-mono text-[10px] uppercase tracking-[0.1em] transition-colors ${
+                  !integrityFilter
+                    ? "bg-[#17191c] text-white"
+                    : "bg-transparent text-[#626562] hover:bg-white"
+                }`}
+              >
+                All
+              </Link>
+
+              <Link
+                href={buildTransactionPageHref(
+                  0,
+                  stationFilter,
+                  queryFilter,
+                  "INCOMPLETE",
+                )}
+                className={`grid h-10 place-items-center border border-[#17191c]/25 px-4 font-mono text-[10px] uppercase tracking-[0.1em] transition-colors ${
+                  integrityFilter === "INCOMPLETE"
+                    ? "bg-[#17191c] text-white"
+                    : "bg-transparent text-[#626562] hover:bg-white"
+                }`}
+              >
+                Incomplete
+              </Link>
             </div>
           </div>
 
@@ -149,6 +174,14 @@ export function TransactionLedger({
               name="page"
               value="0"
             />
+
+            {integrityFilter && (
+              <input
+                type="hidden"
+                name="integrity"
+                value={integrityFilter}
+              />
+            )}
 
             <label>
               <span className="mb-2 block font-mono text-[9px] uppercase tracking-[0.13em] text-[#858783]">
@@ -223,10 +256,10 @@ export function TransactionLedger({
         </div>
 
         <p className="mt-4 font-mono text-[8px] uppercase leading-5 tracking-[0.1em] text-[#989a96]">
-          Station and transaction search run
-          server-side across transaction history.
-          All / Active / Incomplete only change
-          the currently loaded page.
+          Station, transaction and integrity
+          filters run server-side across network
+          history. Active only changes the
+          currently loaded page.
         </p>
       </div>
 
@@ -268,9 +301,9 @@ export function TransactionLedger({
             <p className="mt-3 text-sm leading-6 text-[#686b68]">
               {unavailableMessage ??
                 (transactions.length > 0
-                  ? "Change the page-local lifecycle or integrity view to show more records from this loaded page."
+                  ? "Change the page-local lifecycle view to show more records from this loaded page."
                   : filtersActive
-                    ? "No network transaction matches the current server-side station and transaction search."
+                    ? "No network transaction matches the current server-side filters."
                     : "There are no transaction records in the currently loaded page.")}
             </p>
           </div>
@@ -285,6 +318,7 @@ export function TransactionLedger({
             enabled={page > 0}
             stationFilter={stationFilter}
             queryFilter={queryFilter}
+            integrityFilter={integrityFilter}
           />
 
           <div className="text-center">
@@ -310,6 +344,7 @@ export function TransactionLedger({
             enabled={hasNext}
             stationFilter={stationFilter}
             queryFilter={queryFilter}
+            integrityFilter={integrityFilter}
           />
         </div>
       )}
@@ -323,12 +358,14 @@ function PaginationLink({
   enabled,
   stationFilter,
   queryFilter,
+  integrityFilter,
 }: {
   direction: "previous" | "next";
   page: number;
   enabled: boolean;
   stationFilter?: string;
   queryFilter?: string;
+  integrityFilter?: TransactionDataStatus;
 }) {
   const previous =
     direction === "previous";
@@ -355,6 +392,7 @@ function PaginationLink({
         targetPage,
         stationFilter,
         queryFilter,
+        integrityFilter,
       )}
       className="border border-[#17191c]/25 px-4 py-2 font-mono text-[9px] uppercase tracking-[0.12em] transition-colors hover:border-[#17191c] hover:bg-white"
     >
@@ -650,6 +688,7 @@ function buildTransactionPageHref(
   page: number,
   stationFilter?: string,
   queryFilter?: string,
+  integrityFilter?: TransactionDataStatus,
 ) {
   const params = new URLSearchParams();
 
@@ -669,6 +708,13 @@ function buildTransactionPageHref(
     params.set(
       "q",
       queryFilter,
+    );
+  }
+
+  if (integrityFilter) {
+    params.set(
+      "integrity",
+      integrityFilter,
     );
   }
 

@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { getNetworkTransactionPage } from "@/lib/station-api";
+import {
+  getNetworkTransactionPage,
+  type TransactionDataStatus,
+} from "@/lib/station-api";
 
 import { TransactionLedger } from "./transaction-ledger";
 
@@ -13,6 +16,7 @@ type TransactionsSearchParams = {
   page?: string | string[];
   station?: string | string[];
   q?: string | string[];
+  integrity?: string | string[];
 };
 
 export default async function TransactionsPage({
@@ -32,12 +36,18 @@ export default async function TransactionsPage({
     params.q,
   );
 
+  const integrityStatus =
+    parseIntegrityStatus(
+      params.integrity,
+    );
+
   const snapshot = await getNetworkTransactionPage(
     requestedPage,
     PAGE_SIZE,
     {
       stationId,
       transactionId,
+      integrityStatus,
     },
   );
 
@@ -53,6 +63,7 @@ export default async function TransactionsPage({
           lastPage,
           stationId,
           transactionId,
+          integrityStatus,
         ),
       );
     }
@@ -93,7 +104,8 @@ export default async function TransactionsPage({
 
   const filtersActive =
     stationId !== undefined ||
-    transactionId !== undefined;
+    transactionId !== undefined ||
+    integrityStatus !== undefined;
 
   const condition =
     snapshot.state === "unavailable"
@@ -275,6 +287,7 @@ export default async function TransactionsPage({
         </section>
 
         <TransactionLedger
+          key={`${stationId ?? ""}:${transactionId ?? ""}:${integrityStatus ?? ""}`}
           transactions={orderedTransactions}
           page={snapshot.page}
           totalPages={snapshot.totalPages}
@@ -282,6 +295,7 @@ export default async function TransactionsPage({
           hasNext={snapshot.hasNext}
           stationFilter={stationId}
           queryFilter={transactionId}
+          integrityFilter={integrityStatus}
           unavailableMessage={
             snapshot.state === "unavailable"
               ? snapshot.message
@@ -386,10 +400,31 @@ function parseOptionalFilter(
     : undefined;
 }
 
+function parseIntegrityStatus(
+  value: string | string[] | undefined,
+): TransactionDataStatus | undefined {
+  const candidate =
+    Array.isArray(value)
+      ? value[0]
+      : value;
+
+  switch (candidate) {
+    case "IN_PROGRESS":
+    case "COMPLETE":
+    case "INCOMPLETE":
+    case "UNKNOWN":
+      return candidate;
+
+    default:
+      return undefined;
+  }
+}
+
 function buildTransactionsHref(
   page: number,
   stationId?: string,
   transactionId?: string,
+  integrityStatus?: TransactionDataStatus,
 ) {
   const params = new URLSearchParams();
 
