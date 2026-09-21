@@ -1,8 +1,11 @@
 package com.voltgrid.station.application;
 
+import com.voltgrid.station.domain.TransactionDataStatus;
+
 public record TransactionPageFilter(
         String stationId,
-        String transactionId
+        String transactionId,
+        TransactionDataStatus integrityStatus
 ) {
 
     public TransactionPageFilter {
@@ -10,8 +13,20 @@ public record TransactionPageFilter(
         transactionId = normalize(transactionId);
     }
 
+    public TransactionPageFilter(
+            String stationId,
+            String transactionId
+    ) {
+        this(
+                stationId,
+                transactionId,
+                null
+        );
+    }
+
     public static TransactionPageFilter empty() {
         return new TransactionPageFilter(
+                null,
                 null,
                 null
         );

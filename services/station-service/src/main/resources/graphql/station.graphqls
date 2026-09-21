@@ -12,6 +12,7 @@ type Query {
         size: Int!
         stationId: ID
         transactionId: String
+        integrityStatus: TransactionDataStatus
     ): NetworkTransactionPage!
 
     stationTransactions(stationId: ID!): [ChargingTransaction!]!

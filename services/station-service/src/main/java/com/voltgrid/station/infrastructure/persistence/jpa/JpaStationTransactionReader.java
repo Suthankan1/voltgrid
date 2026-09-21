@@ -67,52 +67,6 @@ public class JpaStationTransactionReader
     }
 
     @Override
-    public PageResult<ChargingTransaction> findPage(
-            int page,
-            int size,
-            TransactionPageFilter filter
-    ) {
-        var sort =
-                Sort.by(
-                        Sort.Order.desc(
-                                "startedAt"
-                        ),
-                        Sort.Order.asc(
-                                "id.stationId"
-                        ),
-                        Sort.Order.asc(
-                                "id.transactionId"
-                        )
-                );
-
-        var result =
-                repository.findAll(
-                        specification(filter),
-                        PageRequest.of(
-                                page,
-                                size,
-                                sort
-                        )
-                );
-
-        var content =
-                result
-                        .getContent()
-                        .stream()
-                        .map(this::toDomain)
-                        .toList();
-
-        return new PageResult<>(
-                content,
-                result.getNumber(),
-                result.getSize(),
-                result.getTotalElements(),
-                result.getTotalPages(),
-                result.hasNext()
-        );
-    }
-
-    @Override
     public List<ChargingTransaction> findByStationId(
             String stationId
     ) {
@@ -125,7 +79,49 @@ public class JpaStationTransactionReader
                 .toList();
     }
 
-    private Specification<ChargingTransactionEntity> specification(
+    @Override
+    public PageResult<ChargingTransaction> findPage(
+            int page,
+            int size,
+            TransactionPageFilter filter
+    ) {
+        var pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(
+                        Sort.Order.desc(
+                                "startedAt"
+                        ),
+                        Sort.Order.asc(
+                                "id.stationId"
+                        ),
+                        Sort.Order.asc(
+                                "id.transactionId"
+                        )
+                )
+        );
+
+        var result = repository.findAll(
+                specification(filter),
+                pageable
+        );
+
+        return new PageResult<>(
+                result
+                        .getContent()
+                        .stream()
+                        .map(this::toDomain)
+                        .toList(),
+                result.getNumber(),
+                result.getSize(),
+                result.getTotalElements(),
+                result.getTotalPages(),
+                result.hasNext()
+        );
+    }
+
+    private Specification<ChargingTransactionEntity>
+    specification(
             TransactionPageFilter filter
     ) {
         return (
@@ -172,13 +168,58 @@ public class JpaStationTransactionReader
                 );
             }
 
-            return predicates.isEmpty()
-                    ? criteriaBuilder.conjunction()
-                    : criteriaBuilder.and(
-                            predicates.toArray(
-                                    Predicate[]::new
-                            )
-                    );
+            if (filter.integrityStatus() != null) {
+                var integritySubquery =
+                        query.subquery(
+                                Integer.class
+                        );
+
+                var integrity =
+                        integritySubquery.from(
+                                TransactionIntegrityStatusEntity.class
+                        );
+
+                integritySubquery.select(
+                        criteriaBuilder.literal(1)
+                );
+
+                integritySubquery.where(
+                        criteriaBuilder.equal(
+                                integrity
+                                        .get("id")
+                                        .get("stationId"),
+                                root
+                                        .get("id")
+                                        .get("stationId")
+                        ),
+                        criteriaBuilder.equal(
+                                integrity
+                                        .get("id")
+                                        .get("transactionId"),
+                                root
+                                        .get("id")
+                                        .get("transactionId")
+                        ),
+                        criteriaBuilder.equal(
+                                integrity.get(
+                                        "integrityStatus"
+                                ),
+                                filter.integrityStatus()
+                        )
+                );
+
+                predicates.add(
+                        criteriaBuilder.exists(
+                                integritySubquery
+                        )
+                );
+            }
+
+            return criteriaBuilder.and(
+                    predicates.toArray(
+                            Predicate[]::new
+                    )
+            );
         };
     }
 
@@ -204,8 +245,12 @@ public class JpaStationTransactionReader
             ChargingTransactionEntity entity
     ) {
         return new ChargingTransaction(
-                entity.getId().getStationId(),
-                entity.getId().getTransactionId(),
+                entity
+                        .getId()
+                        .getStationId(),
+                entity
+                        .getId()
+                        .getTransactionId(),
                 entity.getEvseId(),
                 entity.getConnectorId(),
                 entity.getStatus(),
