@@ -10,6 +10,8 @@ import com.voltgrid.station.application.AuthorizationReasonCode;
 import com.voltgrid.station.application.AuthorizationResult;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +21,11 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class GrpcAuthorizationClient
         implements AuthorizationClient {
+
+    private static final Logger LOGGER =
+            LoggerFactory.getLogger(
+                    GrpcAuthorizationClient.class
+            );
 
     private final AuthorizationServiceGrpc.AuthorizationServiceBlockingStub stub;
     private final Duration deadline;
@@ -61,6 +68,12 @@ public class GrpcAuthorizationClient
             );
 
         } catch (StatusRuntimeException exception) {
+            LOGGER.warn(
+                    "Authorization gRPC call failed closed: stationId={}, status={}",
+                    stationId,
+                    exception.getStatus().getCode()
+            );
+
             return handleGrpcFailure(exception);
         }
     }
