@@ -18,9 +18,9 @@ resource "aws_ecs_service" "station" {
   deployment_minimum_healthy_percent = 0
   deployment_maximum_percent         = 100
 
-  # Station takes around a minute to finish Spring Boot startup.
-  # Ignore ALB health-check failures during this startup window.
-  health_check_grace_period_seconds = 120
+  # Station cold startup can approach 100 seconds in dev.
+  # Leave enough time for startup plus consecutive ALB health checks.
+  health_check_grace_period_seconds = 180
 
   deployment_circuit_breaker {
     enable   = true
