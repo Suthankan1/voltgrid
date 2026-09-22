@@ -447,5 +447,12 @@ function buildTransactionsHref(
     );
   }
 
+  if (integrityStatus) {
+    params.set(
+      "integrity",
+      integrityStatus,
+    );
+  }
+
   return `/transactions?${params.toString()}`;
 }
