@@ -4,65 +4,65 @@ import { getStationSnapshot } from "@/lib/station-api";
 
 export const dynamic = "force-dynamic";
 
-const navigation = [
-  { label: "Condition", href: "#condition" },
-  { label: "Attention", href: "#attention" },
-  { label: "Fleet", href: "#fleet" },
-  { label: "Transactions", href: "/transactions" },
-];
-
 export default async function Home() {
   const snapshot = await getStationSnapshot();
 
   const stations = snapshot.stations;
+
   const totalStations = stations.length;
 
   const onlineStations = stations.filter(
     (station) => station.status === "ONLINE",
   ).length;
 
-  const offlineStations = totalStations - onlineStations;
+  const offlineStations =
+    totalStations - onlineStations;
 
   const connectivity =
     totalStations === 0
       ? 0
-      : Math.round((onlineStations / totalStations) * 100);
+      : Math.round(
+          (onlineStations / totalStations) * 100,
+        );
 
-  const orderedStations = [...stations].sort((left, right) => {
-    if (left.status === right.status) {
-      return left.name.localeCompare(right.name);
-    }
+  const orderedStations = [...stations].sort(
+    (left, right) => {
+      if (left.status === right.status) {
+        return left.name.localeCompare(right.name);
+      }
 
-    return left.status === "OFFLINE" ? -1 : 1;
-  });
+      return left.status === "OFFLINE" ? -1 : 1;
+    },
+  );
 
   const condition =
     snapshot.state === "unavailable"
       ? {
-          label: "Data interrupted",
-          description:
-            "VoltGrid cannot currently read station state from Station Service.",
-          tone: "alert" as const,
+          title: "Station data unavailable",
+          detail: snapshot.message,
+          tone: "unavailable" as const,
         }
       : totalStations === 0
         ? {
-            label: "No fleet registered",
-            description:
-              "Station Service is reachable, but there are no registered charging stations.",
+            title: "No stations registered",
+            detail:
+              "Station Service is reachable, but the network does not contain any registered charging stations.",
             tone: "neutral" as const,
           }
         : offlineStations > 0
           ? {
-              label: "Attention required",
-              description: `${offlineStations} registered ${
-                offlineStations === 1 ? "station is" : "stations are"
+              title: "Attention required",
+              detail: `${offlineStations} ${
+                offlineStations === 1
+                  ? "station is"
+                  : "stations are"
               } currently offline.`,
-              tone: "alert" as const,
+              tone: "attention" as const,
             }
           : {
-              label: "Fleet connected",
-              description:
-                "Every registered station is currently reporting online.",
+              title: "Network fully connected",
+              detail:
+                "Every registered charging station is currently online.",
               tone: "healthy" as const,
             };
 
@@ -106,163 +106,173 @@ export default async function Home() {
           </div>
 
           <nav className="flex overflow-x-auto border-t border-[#17191c]/10 px-5 sm:px-7 lg:px-10">
-            {navigation.map((item, index) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="flex min-w-fit items-center gap-3 border-r border-[#17191c]/10 px-5 py-3 text-sm text-[#5f625f] transition-colors first:border-l hover:bg-white/60 hover:text-[#17191c]"
-              >
-                <span className="font-mono text-[9px] text-[#989a96]">
-                  0{index + 1}
-                </span>
+            <div className="relative flex min-w-fit items-center gap-3 border-x border-[#17191c]/10 bg-white px-5 py-3 text-sm">
+              <span className="font-mono text-[9px] text-[#989a96]">
+                01
+              </span>
 
-                {item.label}
-              </Link>
-            ))}
+              Network
+
+              <span className="absolute inset-x-0 bottom-0 h-[3px] bg-[#2457ff]" />
+            </div>
+
+            <Link
+              href="/transactions"
+              className="flex min-w-fit items-center gap-3 border-r border-[#17191c]/10 px-5 py-3 text-sm text-[#5f625f] transition-colors hover:bg-white/60 hover:text-[#17191c]"
+            >
+              <span className="font-mono text-[9px] text-[#989a96]">
+                02
+              </span>
+
+              Transactions
+            </Link>
           </nav>
         </div>
       </header>
 
       <main className="mx-auto max-w-[1600px] px-5 py-8 sm:px-7 lg:px-10">
-        <section
-          id="condition"
-          className="scroll-mt-6 border-y border-[#17191c]/20"
-        >
-          <div className="grid lg:grid-cols-[1.45fr_0.55fr]">
-            <div className="border-b border-[#17191c]/20 py-9 lg:border-r lg:border-b-0 lg:pr-12">
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#2457ff]">
-                  Fleet connectivity
-                </span>
-
-                <span className="h-px w-10 bg-[#2457ff]" />
-              </div>
-
-              <div className="mt-7 flex flex-wrap items-end gap-x-8 gap-y-5">
-                <p className="text-[clamp(3.8rem,8vw,7rem)] font-medium leading-[0.82] tracking-[-0.075em]">
-                  {onlineStations}
-                  <span className="mx-2 text-[#aaa9a2]">/</span>
-                  {totalStations}
-                </p>
-
-                <div className="border-l border-[#17191c]/20 pl-5">
-                  <p className="font-mono text-xl tracking-[-0.04em]">
-                    {connectivity}%
-                  </p>
-
-                  <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.13em] text-[#858783]">
-                    connected
-                  </p>
-                </div>
-              </div>
-
-              <p className="mt-5 text-sm text-[#666967]">
-                registered stations currently online
+        <section className="border-y border-[#17191c]/20">
+          <div className="grid gap-8 py-9 lg:grid-cols-[1fr_auto] lg:items-end">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#2457ff]">
+                Network overview
               </p>
 
-              <div className="mt-8 flex h-1.5 w-full overflow-hidden bg-[#d8d6cf]">
-                <div
-                  className="bg-[#2457ff]"
-                  style={{ width: `${connectivity}%` }}
-                />
-              </div>
+              <h1 className="mt-3 max-w-4xl text-[clamp(2.7rem,6vw,5.7rem)] font-medium leading-[0.9] tracking-[-0.065em]">
+                Charging network
+              </h1>
+
+              <p className="mt-5 max-w-2xl text-sm leading-6 text-[#666967]">
+                Monitor charging-station connectivity
+                and investigate network availability
+                from the Station Service read model.
+              </p>
             </div>
 
-            <div className="flex flex-col justify-between py-8 lg:pl-8">
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#818480]">
-                  Network condition
-                </p>
-
-                <div className="mt-5 flex items-start gap-3">
-                  <span
-                    className={`mt-1 h-3 w-3 shrink-0 ${
-                      condition.tone === "healthy"
-                        ? "bg-[#16a36a]"
-                        : condition.tone === "alert"
-                          ? "bg-[#df4c35]"
-                          : "bg-[#8f918e]"
-                    }`}
-                  />
-
-                  <div>
-                    <p className="text-xl font-medium tracking-[-0.03em]">
-                      {condition.label}
-                    </p>
-
-                    <p className="mt-3 max-w-sm text-sm leading-6 text-[#676a67]">
-                      {condition.description}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-10 font-mono text-[9px] uppercase leading-5 tracking-[0.12em] text-[#91938f]">
-                <p>Source / Station Service GraphQL</p>
-                <p>View / request-time snapshot</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section
-          id="attention"
-          className="scroll-mt-6 mt-10"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-5 border-y border-[#17191c]/20 py-5">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <span
-                className={`h-3 w-3 ${
-                  snapshot.state === "unavailable" || offlineStations > 0
-                    ? "bg-[#df4c35]"
-                    : "bg-[#16a36a]"
+                className={`h-2.5 w-2.5 ${
+                  snapshot.state === "live"
+                    ? "bg-[#16a36a]"
+                    : "bg-[#ef7d32]"
                 }`}
               />
 
-              <div>
-                <p className="font-mono text-[9px] uppercase tracking-[0.15em] text-[#858783]">
-                  Attention
-                </p>
+              <span className="font-mono text-[9px] uppercase tracking-[0.13em] text-[#747774]">
+                {snapshot.state === "live"
+                  ? "Live station data"
+                  : "Service unavailable"}
+              </span>
+            </div>
+          </div>
 
-                <p className="mt-1 font-medium tracking-[-0.02em]">
-                  {snapshot.state === "unavailable"
-                    ? "Station data link requires attention"
-                    : offlineStations > 0
-                      ? `${offlineStations} ${
-                          offlineStations === 1 ? "station" : "stations"
-                        } offline`
-                      : "No station connectivity alerts"}
-                </p>
+          <div className="grid border-t border-[#17191c]/15 sm:grid-cols-3">
+            <SummaryMetric
+              value={totalStations}
+              label="Registered stations"
+              detail="network total"
+            />
+
+            <SummaryMetric
+              value={onlineStations}
+              label="Online"
+              detail="currently connected"
+              tone={
+                onlineStations > 0
+                  ? "healthy"
+                  : "default"
+              }
+            />
+
+            <SummaryMetric
+              value={offlineStations}
+              label="Offline"
+              detail="requires attention"
+              tone={
+                offlineStations > 0
+                  ? "attention"
+                  : "default"
+              }
+            />
+          </div>
+
+          <div className="grid border-t border-[#17191c]/15 lg:grid-cols-[1fr_320px]">
+            <div className="py-6 lg:border-r lg:border-[#17191c]/15 lg:pr-8">
+              <div className="flex items-start gap-4">
+                <span
+                  className={`mt-1.5 h-3 w-3 shrink-0 ${conditionTone(
+                    condition.tone,
+                  )}`}
+                />
+
+                <div>
+                  <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783]">
+                    Network condition
+                  </p>
+
+                  <p className="mt-2 text-lg font-medium tracking-[-0.03em]">
+                    {condition.title}
+                  </p>
+
+                  <p className="mt-2 max-w-xl text-sm leading-6 text-[#686b68]">
+                    {condition.detail}
+                  </p>
+                </div>
               </div>
             </div>
 
-            <p className="max-w-lg text-sm leading-6 text-[#747774]">
-              {snapshot.state === "unavailable"
-                ? snapshot.message
-                : offlineStations > 0
-                  ? "Offline stations are promoted to the top of the fleet ledger for investigation."
-                  : "All registered stations are currently connected."}
-            </p>
+            <div className="py-6 lg:pl-8">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783]">
+                    Connectivity
+                  </p>
+
+                  <p className="mt-2 font-mono text-3xl tracking-[-0.045em]">
+                    {connectivity}%
+                  </p>
+                </div>
+
+                <p className="font-mono text-[9px] uppercase tracking-[0.1em] text-[#92948f]">
+                  {onlineStations}/{totalStations} online
+                </p>
+              </div>
+
+              <div className="mt-5 h-1.5 w-full overflow-hidden bg-[#d8d6cf]">
+                <div
+                  className="h-full bg-[#2457ff]"
+                  style={{
+                    width: `${connectivity}%`,
+                  }}
+                />
+              </div>
+            </div>
           </div>
         </section>
 
-        <section
-          id="fleet"
-          className="scroll-mt-6 mt-12"
-        >
-          <div className="flex flex-wrap items-end justify-between gap-4 border-b-2 border-[#17191c] pb-4">
+        <section className="mt-14">
+          <div className="flex flex-wrap items-end justify-between gap-5 border-b-2 border-[#17191c] pb-5">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#777a78]">
-                Fleet ledger
+                Fleet
               </p>
 
-              <h1 className="mt-2 text-3xl font-medium tracking-[-0.045em]">
+              <h2 className="mt-2 text-3xl font-medium tracking-[-0.045em] sm:text-4xl">
                 Charging stations
-              </h1>
+              </h2>
+
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#686b68]">
+                Offline stations are promoted for
+                investigation. Open a station to
+                inspect its connectors and charging
+                transactions.
+              </p>
             </div>
 
-            <div className="flex gap-5 font-mono text-[10px] uppercase tracking-[0.1em] text-[#777a78]">
-              <span>{totalStations} registered</span>
+            <div className="flex items-center gap-5 font-mono text-[9px] uppercase tracking-[0.11em]">
+              <span className="text-[#747774]">
+                {totalStations} registered
+              </span>
 
               {offlineStations > 0 && (
                 <span className="text-[#df4c35]">
@@ -272,70 +282,115 @@ export default async function Home() {
             </div>
           </div>
 
-          <div className="hidden grid-cols-[120px_1fr_180px_150px] border-b border-[#17191c]/20 px-3 py-3 font-mono text-[9px] uppercase tracking-[0.14em] text-[#777a78] sm:grid">
-            <span>Connectivity</span>
+          <div className="hidden grid-cols-[150px_minmax(240px,1fr)_220px_180px] border-b border-[#17191c]/20 px-3 py-3 font-mono text-[9px] uppercase tracking-[0.14em] text-[#777a78] sm:grid">
+            <span>Status</span>
             <span>Station</span>
             <span>Identifier</span>
-            <span className="text-right">Action</span>
+
+            <span className="text-right">
+              Action
+            </span>
           </div>
 
           {orderedStations.length > 0 ? (
             <div>
-              {orderedStations.map((station, index) => (
-                <article
-                  key={station.id}
-                  className={`grid gap-4 border-b px-3 py-5 transition-colors sm:grid-cols-[120px_1fr_180px_150px] sm:items-center ${
-                    station.status === "OFFLINE"
-                      ? "border-[#df4c35]/30 bg-[#df4c35]/[0.025]"
-                      : "border-[#17191c]/15 hover:bg-white/65"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`h-2.5 w-2.5 ${
-                        station.status === "ONLINE"
-                          ? "bg-[#16a36a]"
-                          : "bg-[#df4c35]"
-                      }`}
-                    />
+              {orderedStations.map((station) => {
+                const offline =
+                  station.status === "OFFLINE";
 
-                    <span className="font-mono text-[10px] uppercase tracking-[0.1em]">
-                      {station.status}
-                    </span>
-                  </div>
+                return (
+                  <article
+                    key={station.id}
+                    className={`grid gap-5 border-b px-3 py-5 transition-colors sm:grid-cols-[150px_minmax(240px,1fr)_220px_180px] sm:items-center ${
+                      offline
+                        ? "border-[#df4c35]/30 bg-[#df4c35]/[0.025]"
+                        : "border-[#17191c]/15 hover:bg-white/65"
+                    }`}
+                  >
+                    <div>
+                      <p className="mb-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#92948f] sm:hidden">
+                        Status
+                      </p>
 
-                  <div>
-                    <p className="font-medium tracking-[-0.02em]">
-                      {station.name}
-                    </p>
+                      <div className="inline-flex items-center gap-2">
+                        <span
+                          className={`h-2.5 w-2.5 ${
+                            offline
+                              ? "bg-[#df4c35]"
+                              : "bg-[#16a36a]"
+                          }`}
+                        />
 
-                    <p className="mt-1 font-mono text-[10px] text-[#7b7d7a] sm:hidden">
-                      {station.id}
-                    </p>
-                  </div>
+                        <span
+                          className={`font-mono text-[9px] uppercase tracking-[0.1em] ${
+                            offline
+                              ? "text-[#b83c30]"
+                              : "text-[#167451]"
+                          }`}
+                        >
+                          {offline
+                            ? "Offline"
+                            : "Online"}
+                        </span>
+                      </div>
+                    </div>
 
-                  <p className="hidden font-mono text-xs text-[#626562] sm:block">
-                    {station.id}
-                  </p>
+                    <div className="min-w-0">
+                      <p className="mb-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#92948f] sm:hidden">
+                        Station
+                      </p>
 
-                  <div className="flex items-center justify-between sm:justify-end">
-                    <span className="font-mono text-[9px] text-[#999b98] sm:hidden">
-                      #{String(index + 1).padStart(2, "0")}
-                    </span>
+                      <Link
+                        href={`/stations/${encodeURIComponent(
+                          station.id,
+                        )}`}
+                        className="group inline-flex max-w-full items-center gap-3"
+                      >
+                        <span className="truncate text-base font-medium tracking-[-0.025em] transition-colors group-hover:text-[#2457ff]">
+                          {station.name}
+                        </span>
 
-                    <Link
-                      href={`/stations/${encodeURIComponent(station.id)}`}
-                      className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#2457ff] transition-opacity hover:opacity-60"
-                    >
-                      Open dossier →
-                    </Link>
-                  </div>
-                </article>
-              ))}
+                        <span className="text-xs text-[#2457ff] transition-transform group-hover:translate-x-1">
+                          →
+                        </span>
+                      </Link>
+
+                      {offline && (
+                        <p className="mt-1 text-xs text-[#9b5549]">
+                          Connectivity requires review
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="mb-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#92948f] sm:hidden">
+                        Identifier
+                      </p>
+
+                      <p className="font-mono text-xs text-[#626562]">
+                        {station.id}
+                      </p>
+                    </div>
+
+                    <div className="sm:text-right">
+                      <Link
+                        href={`/stations/${encodeURIComponent(
+                          station.id,
+                        )}`}
+                        className="inline-flex items-center border border-[#17191c]/20 px-3.5 py-2 font-mono text-[9px] uppercase tracking-[0.1em] text-[#5f625f] transition-colors hover:border-[#17191c] hover:bg-white hover:text-[#17191c]"
+                      >
+                        {offline
+                          ? "Investigate →"
+                          : "Open station →"}
+                      </Link>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           ) : (
             <div className="grid min-h-52 place-items-center border-b border-[#17191c]/15">
-              <div className="max-w-sm px-6 text-center">
+              <div className="max-w-md px-6 text-center">
                 <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#8b8d89]">
                   No station records
                 </p>
@@ -350,11 +405,111 @@ export default async function Home() {
           )}
         </section>
 
-        <footer className="mt-14 flex flex-wrap justify-between gap-4 border-t border-[#17191c]/20 py-5 font-mono text-[9px] uppercase tracking-[0.12em] text-[#92948f]">
-          <span>VoltGrid / Operator Console</span>
-          <span>Station state / live GraphQL read</span>
+        <section className="mt-12 border-y border-[#17191c]/15">
+          <div className="flex flex-wrap items-center justify-between gap-5 py-6">
+            <div>
+              <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783]">
+                Charging sessions
+              </p>
+
+              <p className="mt-2 text-base font-medium tracking-[-0.025em]">
+                Inspect transaction lifecycle and
+                integrity across the network.
+              </p>
+            </div>
+
+            <Link
+              href="/transactions"
+              className="bg-[#17191c] px-5 py-3 font-mono text-[9px] uppercase tracking-[0.12em] text-white transition-colors hover:bg-[#2457ff]"
+            >
+              Open transactions →
+            </Link>
+          </div>
+        </section>
+
+        <footer className="mt-12 flex flex-wrap justify-between gap-4 border-t border-[#17191c]/20 py-5 font-mono text-[8px] uppercase tracking-[0.12em] text-[#92948f]">
+          <span>
+            VoltGrid / Operator Console
+          </span>
+
+          <span>
+            Station Service / GraphQL
+          </span>
         </footer>
       </main>
     </div>
   );
+}
+
+function SummaryMetric({
+  value,
+  label,
+  detail,
+  tone = "default",
+}: {
+  value: number;
+  label: string;
+  detail: string;
+  tone?:
+    | "default"
+    | "healthy"
+    | "attention";
+}) {
+  return (
+    <div className="border-b border-[#17191c]/15 py-6 sm:border-r sm:border-b-0 sm:px-6 sm:first:pl-0 sm:last:border-r-0">
+      <div className="flex items-baseline gap-3">
+        <p
+          className={`font-mono text-3xl tracking-[-0.04em] ${
+            tone === "healthy"
+              ? "text-[#167451]"
+              : tone === "attention"
+                ? "text-[#c54435]"
+                : ""
+          }`}
+        >
+          {value}
+        </p>
+
+        {tone !== "default" && (
+          <span
+            className={`h-2 w-2 ${
+              tone === "healthy"
+                ? "bg-[#16a36a]"
+                : "bg-[#c54435]"
+            }`}
+          />
+        )}
+      </div>
+
+      <p className="mt-3 text-sm font-medium">
+        {label}
+      </p>
+
+      <p className="mt-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#92948f]">
+        {detail}
+      </p>
+    </div>
+  );
+}
+
+function conditionTone(
+  tone:
+    | "unavailable"
+    | "attention"
+    | "healthy"
+    | "neutral",
+) {
+  switch (tone) {
+    case "unavailable":
+      return "bg-[#ef7d32]";
+
+    case "attention":
+      return "bg-[#df4c35]";
+
+    case "healthy":
+      return "bg-[#16a36a]";
+
+    case "neutral":
+      return "bg-[#92948f]";
+  }
 }

@@ -110,46 +110,46 @@ export default async function TransactionsPage({
   const condition =
     snapshot.state === "unavailable"
       ? {
-          label: "Session data unavailable",
+          title: "Transaction data unavailable",
           detail: snapshot.message,
           tone: "unavailable" as const,
         }
       : incompleteTransactions.length > 0
         ? {
-            label: `${incompleteTransactions.length} ${
+            title: "Integrity review required",
+            detail: `${incompleteTransactions.length} ${
               incompleteTransactions.length === 1
-                ? "record requires"
-                : "records require"
-            } attention on this page`,
-            detail:
-              "One or more transaction records on the current page contain missing event receipts.",
+                ? "transaction on this page has"
+                : "transactions on this page have"
+            } missing event receipts.`,
             tone: "attention" as const,
           }
         : activeTransactions.length > 0
           ? {
-              label: `${activeTransactions.length} ${
+              title: "Charging activity detected",
+              detail: `${activeTransactions.length} ${
                 activeTransactions.length === 1
-                  ? "session"
-                  : "sessions"
-              } charging on this page`,
-              detail:
-                "Active sessions on the current page are promoted within the loaded ledger.",
+                  ? "transaction is"
+                  : "transactions are"
+              } currently active on this page.`,
               tone: "live" as const,
             }
-          : {
-              label:
-                "No active charging sessions on this page",
-              detail:
-                unknownTransactions.length > 0
-                  ? `${unknownTransactions.length} ${
-                      unknownTransactions.length ===
-                      1
-                        ? "record has"
-                        : "records have"
-                    } insufficient receipt history on the current page for integrity assessment.`
-                  : "No transaction on the current page has an active charging lifecycle.",
-              tone: "neutral" as const,
-            };
+          : unknownTransactions.length > 0
+            ? {
+                title: "Historical data available",
+                detail: `${unknownTransactions.length} ${
+                  unknownTransactions.length === 1
+                    ? "transaction has"
+                    : "transactions have"
+                } insufficient receipt history for integrity verification.`,
+                tone: "neutral" as const,
+              }
+            : {
+                title: "Transaction history healthy",
+                detail:
+                  "No active sessions or integrity issues are visible on this page.",
+                tone: "healthy" as const,
+              };
 
   return (
     <div className="min-h-screen bg-[#f2f0ea] text-[#17191c]">
@@ -216,73 +216,104 @@ export default async function TransactionsPage({
       </header>
 
       <main className="mx-auto max-w-[1600px] px-5 py-8 sm:px-7 lg:px-10">
-        <section className="grid border-y border-[#17191c]/20 lg:grid-cols-[1.45fr_0.55fr]">
-          <div className="py-9 lg:border-r lg:border-[#17191c]/20 lg:pr-12">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#2457ff]">
-              Network sessions
-            </p>
+        <section className="border-y border-[#17191c]/20">
+          <div className="grid gap-8 py-8 lg:grid-cols-[1fr_auto] lg:items-end">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#2457ff]">
+                Network sessions
+              </p>
 
-            <div className="mt-7 flex flex-wrap items-end gap-x-10 gap-y-5">
-              <div>
-                <p className="text-[clamp(3.8rem,8vw,7rem)] font-medium leading-[0.82] tracking-[-0.075em]">
-                  {activeTransactions.length}
-                </p>
+              <h1 className="mt-3 max-w-3xl text-[clamp(2.5rem,6vw,5.5rem)] font-medium leading-[0.9] tracking-[-0.065em]">
+                Transaction operations
+              </h1>
 
-                <p className="mt-4 text-sm text-[#666967]">
-                  active charging sessions on this page
-                </p>
-              </div>
+              <p className="mt-5 max-w-2xl text-sm leading-6 text-[#666967]">
+                Inspect charging lifecycle state,
+                transaction integrity and network
+                history from the Station Service
+                read model.
+              </p>
+            </div>
 
-              <Metric
-                value={snapshot.totalElements}
-                label={
-                  filtersActive
-                    ? "matching records"
-                    : "total records"
-                }
+            <div className="flex items-center gap-3">
+              <span
+                className={`h-2.5 w-2.5 ${conditionTone(
+                  condition.tone,
+                )}`}
               />
 
-              <Metric
-                value={incompleteTransactions.length}
-                label="incomplete on page"
-                attention={
-                  incompleteTransactions.length > 0
-                }
-              />
+              <span className="font-mono text-[9px] uppercase tracking-[0.13em] text-[#747774]">
+                {snapshot.state === "live"
+                  ? "Live data"
+                  : "Service unavailable"}
+              </span>
             </div>
           </div>
 
-          <div className="flex flex-col justify-between py-8 lg:pl-8">
-            <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-[#818480]">
+          <div className="grid border-t border-[#17191c]/15 sm:grid-cols-3">
+            <SummaryMetric
+              value={activeTransactions.length}
+              label="Active sessions"
+              detail="current page"
+              tone={
+                activeTransactions.length > 0
+                  ? "live"
+                  : "default"
+              }
+            />
+
+            <SummaryMetric
+              value={incompleteTransactions.length}
+              label="Integrity issues"
+              detail="current page"
+              tone={
+                incompleteTransactions.length > 0
+                  ? "attention"
+                  : "default"
+              }
+            />
+
+            <SummaryMetric
+              value={snapshot.totalElements}
+              label={
+                filtersActive
+                  ? "Matching transactions"
+                  : "Network transactions"
+              }
+              detail={
+                filtersActive
+                  ? "server-filtered history"
+                  : "total history"
+              }
+            />
+          </div>
+
+          <div className="grid border-t border-[#17191c]/15 lg:grid-cols-[220px_1fr]">
+            <div className="py-5 lg:border-r lg:border-[#17191c]/15 lg:pr-6">
+              <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783]">
                 Session condition
               </p>
+            </div>
 
-              <div className="mt-5 flex items-start gap-3">
+            <div className="py-5 lg:pl-7">
+              <div className="flex items-start gap-3">
                 <span
-                  className={`mt-1 h-3 w-3 shrink-0 ${conditionTone(
+                  className={`mt-1.5 h-2.5 w-2.5 shrink-0 ${conditionTone(
                     condition.tone,
                   )}`}
                 />
 
                 <div>
-                  <p className="text-xl font-medium tracking-[-0.03em]">
-                    {condition.label}
+                  <p className="text-base font-medium tracking-[-0.025em]">
+                    {condition.title}
                   </p>
 
-                  <p className="mt-3 max-w-sm text-sm leading-6 text-[#676a67]">
+                  <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[#686b68]">
                     {condition.detail}
                   </p>
                 </div>
               </div>
             </div>
-
-            <p className="mt-10 font-mono text-[9px] uppercase leading-5 tracking-[0.12em] text-[#91938f]">
-              Station Service / GraphQL
-              <br />
-              Network transaction + integrity read
-              model
-            </p>
           </div>
         </section>
 
@@ -307,29 +338,49 @@ export default async function TransactionsPage({
   );
 }
 
-function Metric({
+function SummaryMetric({
   value,
   label,
-  attention = false,
+  detail,
+  tone = "default",
 }: {
   value: number;
   label: string;
-  attention?: boolean;
+  detail: string;
+  tone?: "default" | "live" | "attention";
 }) {
   return (
-    <div className="border-l border-[#17191c]/20 pl-6">
-      <p
-        className={`font-mono text-xl ${
-          attention
-            ? "text-[#c54435]"
-            : ""
-        }`}
-      >
-        {value}
+    <div className="border-b border-[#17191c]/15 px-0 py-6 last:border-b-0 sm:border-r sm:border-b-0 sm:px-6 sm:first:pl-0 sm:last:border-r-0">
+      <div className="flex items-baseline gap-3">
+        <p
+          className={`font-mono text-3xl tracking-[-0.04em] ${
+            tone === "live"
+              ? "text-[#2457ff]"
+              : tone === "attention"
+                ? "text-[#c54435]"
+                : "text-[#17191c]"
+          }`}
+        >
+          {value}
+        </p>
+
+        {tone !== "default" && (
+          <span
+            className={`h-2 w-2 ${
+              tone === "live"
+                ? "bg-[#2457ff]"
+                : "bg-[#c54435]"
+            }`}
+          />
+        )}
+      </div>
+
+      <p className="mt-3 text-sm font-medium">
+        {label}
       </p>
 
-      <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.13em] text-[#858783]">
-        {label}
+      <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-[#92948f]">
+        {detail}
       </p>
     </div>
   );
@@ -340,7 +391,8 @@ function conditionTone(
     | "unavailable"
     | "attention"
     | "live"
-    | "neutral",
+    | "neutral"
+    | "healthy",
 ) {
   switch (tone) {
     case "unavailable":
@@ -351,6 +403,9 @@ function conditionTone(
 
     case "live":
       return "bg-[#2457ff]";
+
+    case "healthy":
+      return "bg-[#16a36a]";
 
     case "neutral":
       return "bg-[#92948f]";
