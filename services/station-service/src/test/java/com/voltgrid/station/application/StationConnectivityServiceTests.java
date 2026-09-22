@@ -259,6 +259,90 @@ class StationConnectivityServiceTests {
                         )
                 );
 
+        var eventCaptor =
+                ArgumentCaptor.forClass(
+                        StationStatusChangedEvent.class
+                );
+
+        var occurredAtCaptor =
+                ArgumentCaptor.forClass(
+                        Instant.class
+                );
+
+        verify(stationStatusOutboxWriter)
+                .save(
+                        eventCaptor.capture(),
+                        occurredAtCaptor.capture()
+                );
+
+        var event =
+                eventCaptor.getValue();
+
+        assertNotNull(
+                event.eventId()
+        );
+
+        assertEquals(
+                "STATION-003",
+                event.stationId()
+        );
+
+        assertEquals(
+                "ONLINE",
+                event.previousStatus()
+        );
+
+        assertEquals(
+                "OFFLINE",
+                event.currentStatus()
+        );
+
+        assertNotNull(
+                event.occurredAt()
+        );
+
+        assertEquals(
+                event.occurredAt(),
+                occurredAtCaptor.getValue()
+        );
+    }
+
+    @Test
+    void shouldNotCreateStatusEventWhenStationIsAlreadyOffline() {
+        var lastSeenAt =
+                Instant.parse(
+                        "2026-09-07T16:00:00Z"
+                );
+
+        when(
+                stationReader.findById(
+                        "STATION-003"
+                )
+        ).thenReturn(
+                Optional.of(
+                        new ChargingStation(
+                                "STATION-003",
+                                "Galle Central",
+                                StationStatus.OFFLINE,
+                                lastSeenAt
+                        )
+                )
+        );
+
+        service.markOffline(
+                "STATION-003"
+        );
+
+        verify(stationWriter)
+                .save(
+                        new ChargingStation(
+                                "STATION-003",
+                                "Galle Central",
+                                StationStatus.OFFLINE,
+                                lastSeenAt
+                        )
+                );
+
         verify(
                 stationStatusOutboxWriter,
                 never()

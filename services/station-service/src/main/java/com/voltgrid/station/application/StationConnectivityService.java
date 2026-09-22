@@ -51,14 +51,10 @@ public class StationConnectivityService {
         );
 
         if (previousStatus != StationStatus.ONLINE) {
-            stationStatusOutboxWriter.save(
-                    new StationStatusChangedEvent(
-                            UUID.randomUUID(),
-                            station.id(),
-                            previousStatus.name(),
-                            StationStatus.ONLINE.name(),
-                            seenAt
-                    ),
+            writeStatusChangedEvent(
+                    station,
+                    previousStatus,
+                    StationStatus.ONLINE,
                     seenAt
             );
         }
@@ -93,6 +89,12 @@ public class StationConnectivityService {
                         stationId
                 );
 
+        var previousStatus =
+                station.status();
+
+        var occurredAt =
+                Instant.now();
+
         stationWriter.save(
                 new ChargingStation(
                         station.id(),
@@ -100,6 +102,33 @@ public class StationConnectivityService {
                         StationStatus.OFFLINE,
                         station.lastSeenAt()
                 )
+        );
+
+        if (previousStatus != StationStatus.OFFLINE) {
+            writeStatusChangedEvent(
+                    station,
+                    previousStatus,
+                    StationStatus.OFFLINE,
+                    occurredAt
+            );
+        }
+    }
+
+    private void writeStatusChangedEvent(
+            ChargingStation station,
+            StationStatus previousStatus,
+            StationStatus currentStatus,
+            Instant occurredAt
+    ) {
+        stationStatusOutboxWriter.save(
+                new StationStatusChangedEvent(
+                        UUID.randomUUID(),
+                        station.id(),
+                        previousStatus.name(),
+                        currentStatus.name(),
+                        occurredAt
+                ),
+                occurredAt
         );
     }
 
