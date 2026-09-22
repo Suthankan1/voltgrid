@@ -13,10 +13,10 @@ resource "aws_ecs_service" "station" {
 
   platform_version = "1.4.0"
 
-  # Cost-conscious dev deployment:
-  # allow ECS to stop the old task before starting its replacement.
-  deployment_minimum_healthy_percent = 0
-  deployment_maximum_percent         = 100
+  # Keep the existing Station task healthy while its replacement starts.
+  # For desired_count = 1, ECS may temporarily run two tasks during rollout.
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
 
   # Station cold startup can approach 100 seconds in dev.
   # Leave enough time for startup plus consecutive ALB health checks.
