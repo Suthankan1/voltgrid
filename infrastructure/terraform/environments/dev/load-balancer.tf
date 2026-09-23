@@ -51,7 +51,7 @@ resource "aws_lb_target_group" "station" {
     enabled = true
 
     protocol = "HTTP"
-    path     = "/actuator/health"
+    path     = "/actuator/health/readiness"
 
     matcher = "200"
 
