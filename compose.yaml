@@ -1,0 +1,90 @@
+name: voltgrid
+
+include:
+  - path: ./infrastructure/local/postgres/compose.yaml
+
+services:
+  authorization-service:
+    build:
+      context: .
+      dockerfile: services/authorization-service/Dockerfile
+
+    environment:
+      AUTHORIZATION_DB_URL: jdbc:postgresql://authorization-postgres:5432/voltgrid_authorization
+      AUTHORIZATION_DB_USER: voltgrid
+      AUTHORIZATION_DB_PASSWORD: voltgrid_dev
+      AUTHORIZATION_TOKEN_HMAC_KEY: voltgrid-local-development-hmac-key-change-me
+
+    ports:
+      - "9090:9090"
+
+    depends_on:
+      authorization-postgres:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/usr/local/bin/grpc_health_probe",
+          "-addr=127.0.0.1:9090",
+          "-connect-timeout=2s",
+          "-rpc-timeout=2s"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  operations-service:
+    build:
+      context: .
+      dockerfile: services/operations-service/Dockerfile
+
+    environment:
+      OPERATIONS_DB_URL: jdbc:postgresql://operations-postgres:5432/voltgrid_operations
+      OPERATIONS_DB_USER: voltgrid
+      OPERATIONS_DB_PASSWORD: voltgrid_dev
+
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+
+      SERVER_PORT: "8081"
+
+    ports:
+      - "8081:8081"
+
+    depends_on:
+      operations-postgres:
+        condition: service_healthy
+
+      kafka-init:
+        condition: service_completed_successfully
+
+  station-service:
+    build:
+      context: .
+      dockerfile: services/station-service/Dockerfile
+
+    environment:
+      STATION_DB_URL: jdbc:postgresql://postgres:5432/voltgrid_station
+      STATION_DB_USER: voltgrid
+      STATION_DB_PASSWORD: voltgrid_dev
+
+      AUTHORIZATION_GRPC_HOST: authorization-service
+      AUTHORIZATION_GRPC_PORT: "9090"
+
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      OUTBOX_RELAY_ENABLED: "true"
+
+    ports:
+      - "8080:8080"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+      authorization-service:
+        condition: service_healthy
+
+      kafka-init:
+        condition: service_completed_successfully
