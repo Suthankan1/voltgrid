@@ -13,15 +13,10 @@ resource "aws_ecs_service" "authorization" {
 
   platform_version = "1.4.0"
 
-  # Cost-conscious dev deployment:
-  #
-  # With one desired task, this allows ECS to stop the old task before
-  # starting the replacement instead of temporarily running two tasks.
-  #
-  # This accepts brief deployment downtime in dev in exchange for avoiding
-  # temporary duplicate Fargate/public-IPv4 cost.
-  deployment_minimum_healthy_percent = 0
-  deployment_maximum_percent         = 100
+  # Keep the existing Authorization task running while its replacement starts.
+  # For desired_count = 1, ECS may temporarily run two tasks during rollout.
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
 
   deployment_circuit_breaker {
     enable   = true
