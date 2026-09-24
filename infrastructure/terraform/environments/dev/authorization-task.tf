@@ -114,6 +114,21 @@ resource "aws_ecs_task_definition" "authorization" {
         }
       ]
 
+      healthCheck = {
+        command = [
+          "CMD",
+          "/usr/local/bin/grpc_health_probe",
+          "-addr=127.0.0.1:9090",
+          "-connect-timeout=2s",
+          "-rpc-timeout=2s"
+        ]
+
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 60
+      }
+
       logConfiguration = {
         logDriver = "awslogs"
 

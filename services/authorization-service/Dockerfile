@@ -20,6 +20,9 @@ RUN ./mvnw -q -DskipTests package \
         --destination extracted
 
 
+FROM ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.57 AS grpc-health-probe
+
+
 FROM eclipse-temurin:25-jre-noble AS runtime
 
 WORKDIR /application
@@ -31,6 +34,9 @@ RUN groupadd --system voltgrid \
         --home-dir /application \
         --shell /usr/sbin/nologin \
         voltgrid
+
+COPY --from=grpc-health-probe \
+    /ko-app/grpc-health-probe /usr/local/bin/grpc_health_probe
 
 COPY --from=build \
     --chown=voltgrid:voltgrid \
