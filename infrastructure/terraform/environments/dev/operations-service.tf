@@ -13,10 +13,10 @@ resource "aws_ecs_service" "operations" {
 
   platform_version = "1.4.0"
 
-  # Cost-conscious dev deployment:
-  # avoid temporarily running two tasks during replacement deployments.
-  deployment_minimum_healthy_percent = 0
-  deployment_maximum_percent         = 100
+  # Keep the existing Operations task running while its replacement starts.
+  # For desired_count = 1, ECS may temporarily run two tasks during rollout.
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
 
   # Operations takes time to initialize Spring Boot, JPA, Flyway, and GraphQL.
   # Ignore ALB health-check failures during this startup window.
