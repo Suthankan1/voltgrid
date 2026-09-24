@@ -10,6 +10,9 @@ import com.voltgrid.contracts.authorization.v1.AuthorizationServiceGrpc;
 import com.voltgrid.contracts.authorization.v1.AuthorizeRequest;
 import io.grpc.ManagedChannel;
 import io.grpc.netty.NettyChannelBuilder;
+import io.grpc.health.v1.HealthCheckRequest;
+import io.grpc.health.v1.HealthCheckResponse;
+import io.grpc.health.v1.HealthGrpc;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +44,37 @@ class AuthorizationGrpcIntegrationTests {
     @BeforeEach
     void setUp() {
         repository.deleteAll();
+    }
+
+    @Test
+    void shouldReportHealthyStatusOverGrpc()
+            throws Exception {
+
+        var channel = createChannel();
+
+        try {
+            var client =
+                    HealthGrpc
+                            .newBlockingStub(channel)
+                            .withDeadlineAfter(
+                                    5,
+                                    TimeUnit.SECONDS
+                            );
+
+            var response =
+                    client.check(
+                            HealthCheckRequest.getDefaultInstance()
+                    );
+
+            assertThat(
+                    response.getStatus()
+            ).isEqualTo(
+                    HealthCheckResponse.ServingStatus.SERVING
+            );
+
+        } finally {
+            shutdown(channel);
+        }
     }
 
     @Test
