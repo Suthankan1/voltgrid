@@ -11,6 +11,7 @@ resource "aws_ecr_repository" "service" {
 
   name                 = "${var.project_name}/${each.value}"
   image_tag_mutability = "IMMUTABLE"
+  force_delete         = true
 
   encryption_configuration {
     encryption_type = "AES256"
@@ -31,8 +32,7 @@ resource "aws_ecr_lifecycle_policy" "service" {
     rules = [
       {
         rulePriority = 1
-
-        description = "Keep only the 10 most recent images"
+        description  = "Keep only the 10 most recent images"
 
         selection = {
           tagStatus   = "any"
