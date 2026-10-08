@@ -415,4 +415,8 @@ OCPP
 
 The AWS deployment milestone was completed and runtime-verified before the dev environment was intentionally retired.
 
-Current closeout work focuses on documentation, demo evidence, repository higiene, and release preparation.
+The operator console lives in `apps/operator-web`. It provides a station dashboard, station/connector details, transaction ledger with filters and pagination, transaction integrity/meter inspection, and a paginated Operations projection view. Station and Operations data retain their separate ownership boundaries.
+
+See `apps/operator-web/README.md` for local startup and frontend checks. Browser regression tests cover navigation, filtering, pagination, failures and 404s. A separate live test exercises OCPP → Station → outbox → Kafka → Operations and the operator transaction journey against a disposable local stack. Frontend CI runs client tests, lint, production build/type checks and fixture browser tests; the live stack test is an explicit local verification step.
+
+Implementation and verification checkpoints are recorded in `docs/operator-progress.md`. The backend release remains `v0.1.0`; subsequent frontend slices are individually committed on main.

@@ -41,3 +41,12 @@ Files: operator-web src/lib/station-api.ts, src/app/page.tsx, src/app/transactio
 Missing GraphQL data now returns unavailable rather than a successful empty list or misleading 404. Explicit null records still return not-found. All Station fetches have five-second timeouts; raw GraphQL errors are hidden. Header says LOCAL / DEMO.
 Passed: 18 client tests total, full ESLint, TypeScript, production Webpack build. Browser regressions and live-stack scenario rerun against final build.
 Next: add frontend CI and update the root runtime documentation, then clean up the disposable local stack and sync the original checkout.
+
+022.4 commit: 6bf50e6. Both browser suites passed against the final rebuild (four fixture tests, one live test).
+
+## 022.5 — Frontend CI and runtime documentation
+
+Files: .github/workflows/operator-web-ci.yml, root README and progress log.
+CI uses pinned pnpm, Node 26, client tests, lint, production Webpack build/type checking and isolated Chromium fixture tests. Read-only GitHub permissions. No deploy job, cloud credentials or production resource changes. Live-stack test remains explicit and local.
+The local frontend commands all passed; GitHub-hosted workflow execution must be checked separately.
+Next: final push/remote verification, remove only voltgrid-operator-verification containers/volumes, and fast-forward the original clean checkout. No further functional frontend slice is pending in the requested scope.

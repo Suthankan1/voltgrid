@@ -1,0 +1,44 @@
+name: Operator Web CI
+
+on:
+  push:
+    branches: [main]
+    paths: ["apps/operator-web/**", ".github/workflows/operator-web-ci.yml"]
+  pull_request:
+    branches: [main]
+    paths: ["apps/operator-web/**", ".github/workflows/operator-web-ci.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: operator-web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/operator-web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "26"
+          package-manager-cache: false
+      - name: Install pinned package manager
+        run: npm install --global pnpm@12.4.2
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Client regression tests
+        run: pnpm test
+      - name: Lint
+        run: pnpm lint
+      - name: Production build and type check
+        run: pnpm exec next build --webpack
+      - name: Install browser
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Operator browser regression tests
+        run: pnpm test:e2e
