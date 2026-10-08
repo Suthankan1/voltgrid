@@ -427,6 +427,8 @@ export default async function Home() {
           </div>
         </section>
 
+        <Link href="/operations" className="mt-8 inline-block underline">View Operations status →</Link>
+
         <footer className="mt-12 flex flex-wrap justify-between gap-4 border-t border-[#17191c]/20 py-5 font-mono text-[8px] uppercase tracking-[0.12em] text-[#92948f]">
           <span>
             VoltGrid / Operator Console
