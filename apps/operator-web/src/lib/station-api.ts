@@ -71,7 +71,7 @@ export async function getStationSnapshot(): Promise<StationSnapshot> {
     const payload =
       (await response.json()) as StationsQueryResponse;
 
-    if (!Array.isArray(payload.data?.stations)) throw new Error("Missing station list");
+    if (!Array.isArray(payload.data?.stations) || !payload.data.stations.every(validStation)) throw new Error("Missing station list");
 
     if (payload.errors?.length) {
       return {
@@ -219,7 +219,7 @@ export async function getStationDetail(
     const payload =
       (await response.json()) as StationDetailQueryResponse;
 
-    if (!payload.data || !("station" in payload.data) || !Array.isArray(payload.data.stationConnectors) || !Array.isArray(payload.data.stationTransactions)) throw new Error("Missing station detail");
+    if (!payload.data || !("station" in payload.data) || (payload.data.station !== null && !validStation(payload.data.station)) || !Array.isArray(payload.data.stationConnectors) || !payload.data.stationConnectors.every(validConnector) || !Array.isArray(payload.data.stationTransactions) || !payload.data.stationTransactions.every(validTransaction)) throw new Error("Missing station detail");
 
     if (payload.errors?.length) {
       return {
@@ -345,7 +345,7 @@ export async function getNetworkTransactions(): Promise<NetworkTransactionSnapsh
     const payload =
       (await response.json()) as NetworkTransactionsResponse;
 
-    if (!Array.isArray(payload.data?.networkTransactions)) throw new Error("Missing transaction list");
+    if (!Array.isArray(payload.data?.networkTransactions) || !payload.data.networkTransactions.every(validNetworkTransaction)) throw new Error("Missing transaction list");
 
     if (payload.errors?.length) {
       return {
@@ -519,7 +519,7 @@ export async function getNetworkTransactionPage(
     const payload =
       (await response.json()) as NetworkTransactionPageResponse;
 
-    if (!payload.data?.networkTransactionPage || !Array.isArray(payload.data.networkTransactionPage.content)) throw new Error("Missing transaction page");
+    if (!validTransactionPage(payload.data?.networkTransactionPage)) throw new Error("Missing transaction page");
 
     if (payload.errors?.length) {
       return {
@@ -729,7 +729,7 @@ export async function getTransactionInspector(
     const lookupPayload =
       (await lookupResponse.json()) as TransactionLookupResponse;
 
-    if (!lookupPayload.data || !("transaction" in lookupPayload.data)) throw new Error("Missing transaction lookup");
+    if (!lookupPayload.data || !("transaction" in lookupPayload.data) || (lookupPayload.data.transaction !== null && !validTransaction(lookupPayload.data.transaction))) throw new Error("Missing transaction lookup");
 
     if (lookupPayload.errors?.length) {
       return {
@@ -770,7 +770,7 @@ export async function getTransactionInspector(
     const dataPayload =
       (await dataResponse.json()) as TransactionDataResponse;
 
-    if (!dataPayload.data?.transactionCompleteness || !Array.isArray(dataPayload.data.transactionMeterSamples)) throw new Error("Missing transaction data");
+    if (!validCompleteness(dataPayload.data?.transactionCompleteness) || !Array.isArray(dataPayload.data?.transactionMeterSamples) || !dataPayload.data.transactionMeterSamples.every(validMeterSample)) throw new Error("Missing transaction data");
 
     if (dataPayload.errors?.length) {
       return {
@@ -801,4 +801,44 @@ export async function getTransactionInspector(
       message: "Station API could not be reached.",
     };
   }
+}
+function record(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+function fields(value: unknown, strings: string[], numbers: string[] = []): boolean {
+  const data = record(value);
+  return strings.every(key => typeof data[key] === "string") && numbers.every(key => Number.isSafeInteger(data[key]));
+}
+function validStation(value: unknown): boolean {
+  return fields(value, ["id", "name"]) && ["ONLINE", "OFFLINE"].includes(String(record(value).status));
+}
+function validConnector(value: unknown): boolean {
+  return fields(value, ["statusUpdatedAt"], ["evseId", "connectorId"]) &&
+    ["AVAILABLE", "OCCUPIED", "RESERVED", "UNAVAILABLE", "FAULTED"].includes(String(record(value).status));
+}
+function validTransaction(value: unknown): boolean {
+  const data = record(value);
+  return fields(value, ["stationId", "transactionId", "startedAt"], ["evseId", "connectorId", "lastSequenceNumber"]) &&
+    ["ACTIVE", "ENDED"].includes(String(data.status)) && (data.endedAt === null || typeof data.endedAt === "string");
+}
+function validCompleteness(value: unknown): boolean {
+  const data = record(value);
+  return ["IN_PROGRESS", "COMPLETE", "INCOMPLETE", "UNKNOWN"].includes(String(data.status)) &&
+    Number.isSafeInteger(data.lastSequenceNumber) && (data.firstSequenceNumber === null || Number.isSafeInteger(data.firstSequenceNumber)) &&
+    Array.isArray(data.missingSequenceNumbers) && data.missingSequenceNumbers.every(Number.isSafeInteger);
+}
+function validNetworkTransaction(value: unknown): boolean {
+  const data = record(value);
+  return validTransaction(data.transaction) && validCompleteness(data.completeness);
+}
+function validTransactionPage(value: unknown): boolean {
+  const data = record(value);
+  return fields(value, [], ["page", "size", "totalElements", "totalPages"]) &&
+    ["page", "size", "totalElements", "totalPages"].every(key => (data[key] as number) >= 0) &&
+    typeof data.hasNext === "boolean" && Array.isArray(data.content) && data.content.every(validNetworkTransaction);
+}
+function validMeterSample(value: unknown): boolean {
+  const data = record(value);
+  return fields(value, ["sampledAt", "value"], ["sequenceNumber", "unitMultiplier"]) &&
+    ["measurand", "context", "phase", "location", "unit"].every(key => data[key] === null || typeof data[key] === "string");
 }

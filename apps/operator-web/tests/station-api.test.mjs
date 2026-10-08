@@ -33,3 +33,17 @@ test('successful empty list remains live',async()=>{
  globalThis.fetch=async()=>Response.json({data:{stations:[]}});
  assert.deepEqual(await getStationSnapshot(),{state:'live',stations:[]});
 });
+
+for (const [name,read,data] of [
+ ['station list',()=>getStationSnapshot(),{stations:[null]}],
+ ['station detail',()=>getStationDetail('CP-1'),{station:{id:'CP-1'},stationConnectors:[],stationTransactions:[]}],
+ ['network transactions',()=>getNetworkTransactions(),{networkTransactions:[{transaction:null,completeness:null}]}],
+ ['transaction page',()=>getNetworkTransactionPage(0,20),{networkTransactionPage:{content:[null],page:0,size:20,totalElements:1,totalPages:1,hasNext:false}}],
+ ['transaction lookup',()=>getTransactionInspector('CP-1','TX-1'),{transaction:{transactionId:'TX-1'}}],
+]) {
+ test(`${name}: malformed nested rows are unavailable`,async()=>{
+  process.env.STATION_GRAPHQL_URL='http://localhost:8080/graphql';
+  globalThis.fetch=async()=>Response.json({data});
+  assert.equal((await read()).state,'unavailable');
+ });
+}

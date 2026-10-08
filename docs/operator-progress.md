@@ -82,3 +82,10 @@ Passed: offline production build/type check, full lint, nine Chromium scenarios 
 
 Files: dashboard, station-registration client, stations/new action/form/page, package scripts, browser fixture/config/spec, registration unit tests, loaders and README. Search by name/ID and connectivity with network totals preserved. Registration uses the existing mutation and enforces limits; duplicate and ambiguous network outcomes are actionable. Writes disabled by default, explicitly enabled only for loopback HTTP backend/local request hosts. Dev/start bind to loopback; the gate does not provide production user authentication.
 Passed: 28 client tests, full lint, offline production build/type check, 11 browser scenarios including search and registration/duplicates. Loader markup avoids duplicate main landmarks while streaming. Next: validate nested response data and verify registration/meter inspection against real services, then cut v0.2.0.
+
+023.3 commit: 0c6229a, pushed.
+
+## 023.4 — Nested response validation
+
+Files: station-api.ts and station-api.test.mjs. Validate station, connector, transaction, completeness, page metadata and meter rows before rendering so malformed responses show unavailable rather than crashing or becoming misleading records.
+Passed: 33 client tests, full lint, offline production build/type check, 11 browser scenarios. Next: final real registration journey and release verification. Short-window remaining 15% at this checkpoint.
