@@ -15,7 +15,7 @@ export default async function Operations({ searchParams }: {
   return <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-6 py-12">
     <h1 className="text-3xl font-semibold">Operations status</h1>
     <p className="my-4">Event-driven station projection. Updates may arrive after Station Service changes.</p>
-    <form action="/operations" className="my-6 flex flex-wrap items-end gap-4">
+    <form key={status ?? ""} action="/operations" className="my-6 flex flex-wrap items-end gap-4">
       <label className="grid gap-2" htmlFor="operational-status">Station status
         <select id="operational-status" name="status" defaultValue={status ?? ""} className="border p-3">
           <option value="">All statuses</option>

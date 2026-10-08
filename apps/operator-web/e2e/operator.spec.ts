@@ -40,6 +40,8 @@ test('Operations filter resets the cursor and persists on next page', async ({pa
  await expect(page.getByRole('cell',{name:'OFFLINE',exact:true})).toBeVisible();
  await page.getByRole('link',{name:'Next page →'}).click();
  await expect(page).toHaveURL(/status=OFFLINE/);
+ await page.getByRole('link',{name:'Reset / first page'}).click();
+ await expect(page.getByRole('combobox',{name:'Station status',exact:true})).toHaveValue('');
  await page.goto('/operations?status=ONLINE&status=OFFLINE');
  await expect(page.getByRole('cell',{name:'ONLINE',exact:true})).toBeVisible();
 });
