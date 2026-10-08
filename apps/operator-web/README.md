@@ -23,3 +23,7 @@ pnpm build
 ```
 
 Tests require Node 22.18+ for native TypeScript stripping. If Turbopack cannot bind its worker port in a restricted environment, use `pnpm exec next build --webpack`. The existing font setup downloads Google Fonts during a build and requires network access.
+
+## Browser regression tests
+
+After a production build, run `pnpm exec playwright install chromium` and `pnpm test:e2e`. These tests start the production console and an isolated GraphQL fixture on loopback ports 4310/4311. They cover station navigation, transaction inspection and lifecycle filtering, Operations pagination/errors, and missing-record 404s. Fixtures test frontend behavior; they do not prove the real Kafka/OCPP path.

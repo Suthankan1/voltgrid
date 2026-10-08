@@ -1,0 +1,25 @@
+# Operator progress — 2026-10-08
+
+Baseline: clean original checkout `/Users/suthankan/Desktop/Projects/voltgrid`, main and v0.1.0 at a3f254e9cd09922d78be7339c628fdfc788eb644. GitHub main verified. Existing frontend already includes dashboard, station details, transaction filtering/pagination and meter/integrity inspection.
+
+Implementation checkout: writable project mirror `voltgrid/`. Original checkout remains untouched; pull before resuming there.
+
+## 022.1 — Operations GraphQL connection
+
+Commit 79258a9, pushed to origin/main.
+
+Files: apps/operator-web/src/lib/operations-api.ts, src/app/operations/page.tsx, src/app/page.tsx, tests/operations-api.test.mjs, package.json, README.md.
+
+Server-side paginated projection view with timestamps, station detail links, empty/unavailable states, five-second timeout and uncached requests. Page counts are not network totals. Backend contracts and infrastructure unchanged.
+
+Passed: six client tests, full ESLint, TypeScript, production Webpack build. Turbopack blocked by local worker port restrictions; font fetching needed network access.
+
+Backend Maven verify passed: Station 136, Authorization 20, Operations 29 tests; zero failures/errors/skips. Local Docker/Testcontainers only. No AWS or production actions.
+
+Next: browser coverage for station/transaction navigation and Operations pagination/failure states, followed by a real local-stack operator flow.
+
+## 022.2 — Browser regression coverage
+
+Files: operator-web Playwright configuration, e2e fixtures/specs, package manifest/lockfile, ignore rules and README; this progress log.
+Passed: four Chromium browser scenarios, full ESLint and TypeScript. The existing real-process authorization flow also passed all four tests.
+Next: run a dedicated live browser test through OCPP, outbox, Kafka, projection and transaction inspection. Docker image build hit registry DNS failure; use cached runtime images with freshly verified JARs mounted read-only for the local check.
