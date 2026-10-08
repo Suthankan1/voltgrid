@@ -23,3 +23,12 @@ Next: browser coverage for station/transaction navigation and Operations paginat
 Files: operator-web Playwright configuration, e2e fixtures/specs, package manifest/lockfile, ignore rules and README; this progress log.
 Passed: four Chromium browser scenarios, full ESLint and TypeScript. The existing real-process authorization flow also passed all four tests.
 Next: run a dedicated live browser test through OCPP, outbox, Kafka, projection and transaction inspection. Docker image build hit registry DNS failure; use cached runtime images with freshly verified JARs mounted read-only for the local check.
+
+022.2 commit: f11aef9, pushed to origin/main.
+
+## 022.3 — Real operator end-to-end test
+
+Files: operator-web e2e-live/operator.spec.ts, playwright.live.config.ts, package.json, README and progress log.
+Passed: one Chromium scenario against real services and isolated databases/Kafka, including OCPP BootNotification/Authorize/TransactionEvent, gRPC invalid-token response, durable event projection, transaction integrity, ledger and station navigation. Full ESLint and TypeScript passed before the final locator adjustment; repeat before commit.
+Docker registry DNS prevented image builds. Verification used cached runtime images with freshly Maven-verified JARs mounted read-only. Dedicated compose project: voltgrid-operator-verification; only ports 18080/18081/19090 on loopback. Cleanup after final validation.
+Next: clarify the local runtime label and prevent API failures masquerading as empty/not-found records; add regression coverage.
