@@ -93,6 +93,8 @@ test('fleet search combines name and connectivity while retaining network totals
  await page.getByRole('button',{name:'Search fleet'}).click();
  await expect(page.getByText('No stations match the selected filters.')).toBeVisible();
  await page.getByRole('link',{name:'Clear filters'}).click();
+ await expect(page.getByLabel('Search stations')).toHaveValue('');
+ await expect(page.getByLabel('Connectivity',{exact:true})).toHaveValue('');
  await page.getByLabel('Connectivity',{exact:true}).selectOption('OFFLINE');
  await page.getByRole('button',{name:'Search fleet'}).click();
  await expect(page.getByRole('link',{name:'Kandy Depot →',exact:true})).toBeVisible();

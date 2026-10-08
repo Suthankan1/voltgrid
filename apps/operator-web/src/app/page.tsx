@@ -240,7 +240,7 @@ export default async function Home({searchParams}: {
             </span>
           </div>
 
-          <form action="/" method="get" className="my-6 flex flex-wrap items-end gap-4">
+          <form key={JSON.stringify([query, status])} action="/" method="get" className="my-6 flex flex-wrap items-end gap-4">
             <label className="grid flex-1 gap-2">Search stations
               <input name="q" type="search" defaultValue={query} maxLength={255} placeholder="Station name or identifier" className="min-w-0 border p-3" />
             </label>
