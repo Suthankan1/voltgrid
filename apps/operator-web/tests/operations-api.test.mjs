@@ -14,7 +14,7 @@ test('cursor query returns projection and never caches', async () => {
   assert.equal(url, process.env.OPERATIONS_GRAPHQL_URL);
   assert.equal(options.cache, 'no-store');
   const body = JSON.parse(options.body);
-  assert.deepEqual(body.variables, {after:'cursor'});
+  assert.deepEqual(body.variables, {after:'cursor',status:null});
   assert.match(body.query, /stationStatuses/);
   return Response.json({data:{stationStatuses:{edges:[{node:{stationId:'CP-1',currentStatus:'UNAVAILABLE',statusChangedAt:'2026-10-08',updatedAt:'2026-10-08'}}],pageInfo:{hasNextPage:true,endCursor:'next'}}}});
  };
@@ -33,4 +33,13 @@ test('HTTP and network failures are unavailable', async () => {
  assert.equal((await getOperationsSnapshot()).state, 'unavailable');
  globalThis.fetch = async () => { throw new Error('offline'); };
  assert.equal((await getOperationsSnapshot()).state, 'unavailable');
+});
+
+test('status filter is passed as a GraphQL variable', async () => {
+ process.env.OPERATIONS_GRAPHQL_URL='http://localhost:8081/graphql';
+ globalThis.fetch=async (_url,options)=>{
+  assert.deepEqual(JSON.parse(options.body).variables,{after:null,status:'OFFLINE'});
+  return Response.json({data:{stationStatuses:{edges:[],pageInfo:{hasNextPage:false,endCursor:null}}}});
+ };
+ assert.equal((await getOperationsSnapshot(undefined,'OFFLINE')).state,'live');
 });

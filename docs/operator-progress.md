@@ -59,3 +59,12 @@ Files: compose.operator-test.yaml, operator-web README and e2e-live/operator.spe
 Final verification totals: 189 backend/real-process tests, 18 client tests, four fixture browser scenarios and one real-stack browser scenario; all passed. Full frontend lint/type checks and production Webpack build passed. Default Turbopack remains blocked by this environment's port restriction; Docker image rebuild remains blocked by registry DNS, with the real test verified using cached runtimes and freshly built JARs.
 
 GitHub Operator Web CI run 37775878353 passed: install, 18 client tests, lint, production build/type check and four Chromium tests. Final disposable Compose override parsed successfully; lint and TypeScript passed after readiness polling was added.
+
+## Release continuation — v0.2.0 target
+
+Baseline clean main at 01d9eaa. Full local operator-console release target; preserve all backend contracts and infrastructure. Remaining review findings: status filtering, unguarded malformed route IDs, inconsistent navigation, absent registration UI, missing recovery screens, fragile nested payload validation and build-time font downloads.
+
+## 023.1 — Operations filters and encoded identifiers
+
+Files: operations-api.ts, operations/page.tsx, station/transaction detail routes, operations client tests, browser fixture/spec. Status filtering resets the cursor and persists on the next page. Repeated query values use the first value. This Next.js version passes encoded params; route IDs retain a single guarded decode, with valid percent identifiers verified. Raw malformed URLs are rejected within Next.js before page code; no claim is made that page guards control those responses. The browser regression caught and corrected an initial decoding assumption before push.
+Passed: 19 client tests, full lint, production Webpack build/type check and six Chromium scenarios. Next: shared navigation, recovery states and deterministic offline font setup.

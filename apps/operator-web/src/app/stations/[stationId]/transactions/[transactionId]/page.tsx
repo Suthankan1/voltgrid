@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { decodePathIdentifier } from "@/lib/path-identifier";
 import { notFound } from "next/navigation";
 
 import {
@@ -21,10 +22,12 @@ export default async function TransactionPage({
     await params;
 
   const decodedStationId =
-    decodeURIComponent(stationId);
+    decodePathIdentifier(stationId);
 
   const decodedTransactionId =
-    decodeURIComponent(transactionId);
+    decodePathIdentifier(transactionId);
+
+  if (decodedStationId === null || decodedTransactionId === null) notFound();
 
   const snapshot =
     await getTransactionInspector(

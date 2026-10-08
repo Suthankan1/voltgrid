@@ -1,3 +1,4 @@
+export type OperationalStatus = "ONLINE" | "OFFLINE" | "UNAVAILABLE";
 export type ProjectedStation = {
   stationId: string;
   currentStatus: string;
@@ -8,21 +9,21 @@ export type OperationsSnapshot =
   | { state: "live"; stations: ProjectedStation[]; hasNextPage: boolean; endCursor: string | null }
   | { state: "unavailable"; message: string };
 
-const QUERY = `query OperatorStatuses($after: String) {
-  stationStatuses(first: 20, after: $after) {
+const QUERY = `query OperatorStatuses($after: String, $status: StationOperationalStatus) {
+  stationStatuses(first: 20, after: $after, status: $status) {
     edges { node { stationId currentStatus statusChangedAt updatedAt } }
     pageInfo { hasNextPage endCursor }
   }
 }`;
 
-export async function getOperationsSnapshot(after?: string): Promise<OperationsSnapshot> {
+export async function getOperationsSnapshot(after?: string, status?: OperationalStatus): Promise<OperationsSnapshot> {
   const endpoint = process.env.OPERATIONS_GRAPHQL_URL;
   if (!endpoint) return { state: "unavailable", message: "Operations API is not configured." };
   try {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: QUERY, variables: { after: after ?? null } }),
+      body: JSON.stringify({ query: QUERY, variables: { after: after ?? null, status: status ?? null } }),
       cache: "no-store",
       signal: AbortSignal.timeout(5000),
     });

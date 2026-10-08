@@ -9,12 +9,12 @@ createServer(async (req,res) => {
  let data;
  if(query.includes('OperatorStatuses')) {
   if(variables.after==='failure') {res.writeHead(503);res.end();return;}
-  data={stationStatuses:{edges:variables.after ? [] : [{node:{stationId:'CP-1',currentStatus:'ONLINE',statusChangedAt:'2026-10-08T08:00:00Z',updatedAt:'2026-10-08T08:00:01Z'}}],pageInfo:{hasNextPage:!variables.after,endCursor:variables.after ? null : 'cursor-2'}}};
+  data={stationStatuses:{edges:variables.after ? [] : [{node:{stationId:'CP-1',currentStatus:variables.status ?? 'ONLINE',statusChangedAt:'2026-10-08T08:00:00Z',updatedAt:'2026-10-08T08:00:01Z'}}],pageInfo:{hasNextPage:!variables.after,endCursor:variables.after ? null : 'cursor-2'}}};
  } else if(query.includes('OperatorStations')) data={stations:[station]};
- else if(query.includes('OperatorStation(')) data={station:variables.id==='CP-1'?station:null,stationConnectors:[{evseId:1,connectorId:1,status:'AVAILABLE',statusUpdatedAt:'2026-10-08T09:00:00Z'}],stationTransactions:[transaction]};
+ else if(query.includes('OperatorStation(')) data={station:['CP-1','CP%1'].includes(variables.id)?{...station,id:variables.id}:null,stationConnectors:[{evseId:1,connectorId:1,status:'AVAILABLE',statusUpdatedAt:'2026-10-08T09:00:00Z'}],stationTransactions:[transaction]};
  else if(query.includes('OperatorNetworkTransactionPage')) data={networkTransactionPage:{content:[{transaction,completeness}],page:variables.page,size:variables.size,totalElements:1,totalPages:1,hasNext:false}};
  else if(query.includes('OperatorTransactionData')) data={transactionCompleteness:completeness,transactionMeterSamples:[]};
- else if(query.includes('OperatorTransaction(')) data={transaction:variables.transactionId==='TX-1'?transaction:null};
+ else if(query.includes('OperatorTransaction(')) data={transaction:['TX-1','TX%1'].includes(variables.transactionId)?{...transaction,transactionId:variables.transactionId}:null};
  else {res.writeHead(400);res.end('Unexpected query');return;}
  res.setHeader('Content-Type','application/json');res.end(JSON.stringify({data}));
 }).listen(4311,'127.0.0.1');

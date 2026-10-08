@@ -1,19 +1,33 @@
 import Link from "next/link";
-import { getOperationsSnapshot } from "@/lib/operations-api";
+import { getOperationsSnapshot, type OperationalStatus } from "@/lib/operations-api";
 
 export const dynamic = "force-dynamic";
 
 export default async function Operations({ searchParams }: {
-  searchParams: Promise<{ after?: string }>;
+  searchParams: Promise<{ after?: string | string[]; status?: string | string[] }>;
 }) {
-  const snapshot = await getOperationsSnapshot((await searchParams).after);
+  const params = await searchParams;
+  const after = Array.isArray(params.after) ? params.after[0] : params.after;
+  const requestedStatus = Array.isArray(params.status) ? params.status[0] : params.status;
+  const status = ["ONLINE", "OFFLINE", "UNAVAILABLE"].includes(requestedStatus ?? "")
+    ? requestedStatus as OperationalStatus : undefined;
+  const snapshot = await getOperationsSnapshot(after, status);
   return <main className="mx-auto max-w-6xl px-6 py-12">
     <nav className="mb-10 flex gap-6" aria-label="Operator navigation">
       <Link href="/">Stations</Link><Link href="/transactions">Transactions</Link>
     </nav>
     <h1 className="text-3xl font-semibold">Operations status</h1>
     <p className="my-4">Event-driven station projection. Updates may arrive after Station Service changes.</p>
-    <Link href="/operations" className="underline">Refresh / first page</Link>
+    <form action="/operations" className="my-6 flex flex-wrap items-end gap-4">
+      <label className="grid gap-2" htmlFor="operational-status">Station status
+        <select id="operational-status" name="status" defaultValue={status ?? ""} className="border p-3">
+          <option value="">All statuses</option>
+          {["ONLINE", "OFFLINE", "UNAVAILABLE"].map(value => <option key={value} value={value}>{value}</option>)}
+        </select>
+      </label>
+      <button className="border px-5 py-3">Apply status filter</button>
+      <Link href="/operations" className="px-3 py-3 underline">Reset / first page</Link>
+    </form>
     {snapshot.state === "unavailable" ? <p role="alert" className="my-8">{snapshot.message}</p> : <>
       <p className="my-6">{snapshot.stations.length} stations on this page</p>
       {snapshot.stations.length === 0 ? <p>No projected stations.</p> :
@@ -29,7 +43,7 @@ export default async function Operations({ searchParams }: {
           </tr>)}</tbody>
         </table></div>}
       {snapshot.hasNextPage && <Link className="mt-6 inline-block underline"
-        href={`/operations?${new URLSearchParams({ after: snapshot.endCursor! })}`}>Next page →</Link>}
+        href={`/operations?${new URLSearchParams({ after: snapshot.endCursor!, ...(status ? { status } : {}) })}`}>Next page →</Link>}
     </>}
   </main>;
 }

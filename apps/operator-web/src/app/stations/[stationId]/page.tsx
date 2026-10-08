@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { decodePathIdentifier } from "@/lib/path-identifier";
 import { notFound } from "next/navigation";
 
 import {
@@ -17,9 +18,9 @@ export default async function StationPage({
 }) {
   const { stationId } = await params;
 
-  const snapshot = await getStationDetail(
-    decodeURIComponent(stationId),
-  );
+  const decodedStationId = decodePathIdentifier(stationId);
+  if (decodedStationId === null) notFound();
+  const snapshot = await getStationDetail(decodedStationId);
 
   if (snapshot.state === "live" && !snapshot.station) {
     notFound();
