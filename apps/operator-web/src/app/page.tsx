@@ -4,7 +4,13 @@ import { getStationSnapshot } from "@/lib/station-api";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+export default async function Home({searchParams}: {
+  searchParams: Promise<{q?: string | string[]; status?: string | string[]}>;
+}) {
+  const params = await searchParams;
+  const query = (Array.isArray(params.q) ? params.q[0] : params.q)?.trim() ?? "";
+  const requestedStatus = Array.isArray(params.status) ? params.status[0] : params.status;
+  const status = ["ONLINE", "OFFLINE"].includes(requestedStatus ?? "") ? requestedStatus : "";
   const snapshot = await getStationSnapshot();
 
   const stations = snapshot.stations;
@@ -25,7 +31,10 @@ export default async function Home() {
           (onlineStations / totalStations) * 100,
         );
 
-  const orderedStations = [...stations].sort(
+  const filteredStations = stations.filter(station =>
+    (!status || station.status === status) &&
+    (!query || `${station.id} ${station.name}`.toLowerCase().includes(query.toLowerCase())));
+  const orderedStations = [...filteredStations].sort(
     (left, right) => {
       if (left.status === right.status) {
         return left.name.localeCompare(right.name);
@@ -210,7 +219,7 @@ export default async function Home() {
 
             <div className="flex items-center gap-5 font-mono text-[11px] uppercase tracking-[0.11em]">
               <span className="text-[#747774]">
-                {totalStations} registered
+                {orderedStations.length} shown / {totalStations} registered
               </span>
 
               {offlineStations > 0 && (
@@ -231,6 +240,19 @@ export default async function Home() {
             </span>
           </div>
 
+          <form action="/" method="get" className="my-6 flex flex-wrap items-end gap-4">
+            <label className="grid flex-1 gap-2">Search stations
+              <input name="q" type="search" defaultValue={query} maxLength={255} placeholder="Station name or identifier" className="min-w-0 border p-3" />
+            </label>
+            <label className="grid gap-2">Connectivity
+              <select aria-label="Connectivity" name="status" defaultValue={status} className="border p-3">
+                <option value="">All stations</option><option value="ONLINE">Online</option><option value="OFFLINE">Offline</option>
+              </select>
+            </label>
+            <button className="border px-5 py-3">Search fleet</button>
+            <Link href="/" className="px-3 py-3 underline">Clear filters</Link>
+            <Link href="/stations/new" className="px-3 py-3 underline">Register station</Link>
+          </form>
           {orderedStations.length > 0 ? (
             <div>
               {orderedStations.map((station) => {
@@ -336,7 +358,7 @@ export default async function Home() {
 
                 <p className="mt-3 text-sm leading-6 text-[#666967]">
                   {snapshot.state === "live"
-                    ? "Station Service is reachable, but no charging stations are registered."
+                    ? query || status ? "No stations match the selected filters." : "Station Service is reachable, but no charging stations are registered."
                     : snapshot.message}
                 </p>
               </div>

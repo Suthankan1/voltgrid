@@ -45,3 +45,11 @@ Remove the test data from the repository root when finished:
 ```sh
 docker compose -p voltgrid-operator-test -f compose.yaml -f compose.operator-test.yaml down --volumes
 ```
+
+## Fleet search and local registration
+
+Search by station name or identifier and filter connectivity from the network page. Network totals retain their meaning while the fleet shows the matching record count.
+
+Registration is read-only by default. To explicitly enable it for a local demo, set `OPERATOR_LOCAL_WRITES=true` alongside a loopback HTTP `STATION_GRAPHQL_URL`. The action checks this setting and local request/backend hosts on every submission. Default dev/start commands bind to loopback. This gate is not shared-environment user authentication; keep writes disabled outside the local demo. No remote charging commands, token administration or destructive mutations are exposed.
+
+The form enforces identifier/name limits, starts a station offline, redirects to its detail view and handles duplicate identifiers. After a network interruption, inspect the fleet before retrying because the backend may have committed the registration.

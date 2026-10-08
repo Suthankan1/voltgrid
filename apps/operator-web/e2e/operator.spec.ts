@@ -73,7 +73,8 @@ test('operator views fit mobile and retain navigation', async ({page}, testInfo)
  for (const [name,route] of [['network','/'],['transactions','/transactions'],['operations','/operations'],['station','/stations/CP-1'],['inspector','/stations/CP-1/transactions/TX-1']]) {
   await page.goto(route);
   await expect(page.getByRole('navigation',{name:'Operator navigation'})).toBeVisible();
-  await expect(page.locator('main')).toBeVisible();
+  await expect(page.locator('main h1')).toBeVisible();
+  await expect(page.locator('main:visible')).toHaveCount(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
   await page.screenshot({path:testInfo.outputPath(`${name}-mobile.png`),fullPage:true});
  }
@@ -83,4 +84,30 @@ test('dark action links retain readable white text', async ({page}) => {
  await page.goto('/');
  const action=page.getByRole('link',{name:'Open transactions →'});
  expect(await action.evaluate(element=>getComputedStyle(element).color)).toBe('rgb(255, 255, 255)');
+});
+
+test('fleet search combines name and connectivity while retaining network totals', async ({page}) => {
+ await page.goto('/');
+ await page.getByLabel('Search stations').fill('Colombo');
+ await page.getByLabel('Connectivity',{exact:true}).selectOption('OFFLINE');
+ await page.getByRole('button',{name:'Search fleet'}).click();
+ await expect(page.getByText('No stations match the selected filters.')).toBeVisible();
+ await page.getByRole('link',{name:'Clear filters'}).click();
+ await page.getByLabel('Connectivity',{exact:true}).selectOption('OFFLINE');
+ await page.getByRole('button',{name:'Search fleet'}).click();
+ await expect(page.getByRole('link',{name:'Kandy Depot →',exact:true})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Colombo Central →',exact:true})).toHaveCount(0);
+});
+test('local registration redirects to the new offline station and reports duplicates', async ({page}) => {
+ await page.goto('/stations/new');
+ await page.getByLabel('Station identifier',{exact:true}).fill('NEW-CP-1');
+ await page.getByLabel('Station name',{exact:true}).fill('New local station');
+ await page.getByRole('button',{name:'Register station',exact:true}).click();
+ await expect(page).toHaveURL(/stations\/NEW-CP-1/);
+ await expect(page.getByRole('heading',{name:'New local station'})).toBeVisible();
+ await page.goto('/stations/new');
+ await page.getByLabel('Station identifier',{exact:true}).fill('NEW-CP-1');
+ await page.getByLabel('Station name',{exact:true}).fill('Duplicate');
+ await page.getByRole('button',{name:'Register station',exact:true}).click();
+ await expect(page.getByRole('alert').filter({hasText:'already registered'})).toBeVisible();
 });
