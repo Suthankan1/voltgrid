@@ -419,4 +419,4 @@ The operator console lives in `apps/operator-web`. It provides a station dashboa
 
 See `apps/operator-web/README.md` for local startup and frontend checks. Browser regression tests cover navigation, filtering, pagination, failures and 404s. A separate live test exercises OCPP → Station → outbox → Kafka → Operations and the operator transaction journey against a disposable local stack. Frontend CI runs client tests, lint, production build/type checks and fixture browser tests; the live stack test is an explicit local verification step.
 
-Implementation and verification checkpoints are recorded in `docs/operator-progress.md`. The backend release remains `v0.1.0`; subsequent frontend slices are individually committed on main.
+Implementation and verification checkpoints are recorded in `docs/operator-progress.md`. The backend milestone remains `v0.1.0`. The operator-console release is documented in [v0.2.0 release notes](docs/releases/v0.2.0.md); subsequent slices are individually committed on main.

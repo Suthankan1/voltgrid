@@ -89,3 +89,12 @@ Passed: 28 client tests, full lint, offline production build/type check, 11 brow
 
 Files: station-api.ts and station-api.test.mjs. Validate station, connector, transaction, completeness, page metadata and meter rows before rendering so malformed responses show unavailable rather than crashing or becoming misleading records.
 Passed: 33 client tests, full lint, offline production build/type check, 11 browser scenarios. Next: final real registration journey and release verification. Short-window remaining 15% at this checkpoint.
+
+023.4 commit: 8338754.
+
+## 023.5 — v0.2.0 release verification
+
+Files: package version, live browser test/config, root README and docs/releases/v0.2.0.md. Live journey now registers through the operator form and uses the actual station ledger query filter.
+Passed: real browser registration → OCPP/gRPC → Kafka projection → complete transaction → filtered ledger and station navigation, against fresh disposable PostgreSQL/Kafka and current verified service JARs. Full lint/type check passed. Final client/browser totals: 33 / 11, plus one real-stack browser scenario. Backend sources/contracts/migrations/Terraform remain unchanged from the verified v0.1.0 milestone.
+Short-window remaining 12% at release verification. No more feature work started; complete the existing release checks, clean temporary resources, sync the original checkout and hand back control.
+Release tag/push/CI status recorded in the external final checkpoint after verification.

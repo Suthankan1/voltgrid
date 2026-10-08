@@ -10,11 +10,11 @@ test('real OCPP, authorization, Kafka projection and operator transaction journe
  }
  const stationId = `OPERATOR-${randomUUID()}`;
  const transactionId = `TX-${randomUUID()}`;
- const registration = await request.post('http://127.0.0.1:18080/graphql', {
-  data:{query:'mutation Register($id: ID!) { registerStation(input: { id: $id, name: "Operator E2E Station" }) { id } }',variables:{id:stationId}},
- });
- expect(registration.ok()).toBeTruthy();
- expect((await registration.json()).errors).toBeUndefined();
+ await page.goto('/stations/new');
+ await page.getByLabel('Station identifier',{exact:true}).fill(stationId);
+ await page.getByLabel('Station name',{exact:true}).fill('Operator E2E Station');
+ await page.getByRole('button',{name:'Register station',exact:true}).click();
+ await expect(page).toHaveURL(new RegExp(`/stations/${stationId}$`));
  const socket = new WebSocket(`ws://127.0.0.1:18080/ocpp/${stationId}`, 'ocpp2.0.1');
  try {
   await new Promise<void>((resolve,reject) => {
@@ -51,7 +51,7 @@ test('real OCPP, authorization, Kafka projection and operator transaction journe
   await page.goto(`/stations/${stationId}/transactions/${transactionId}`);
   await expect(page.getByRole('heading',{name:transactionId,exact:true})).toBeVisible();
   await expect(page.getByText('Complete',{exact:true}).first()).toBeVisible();
-  await page.goto(`/transactions?stationId=${stationId}`);
+  await page.goto(`/transactions?station=${stationId}`);
   await expect(page.getByText(transactionId,{exact:true}).first()).toBeVisible();
   await page.goto('/operations');
   const row=page.getByRole('row').filter({hasText:stationId});
