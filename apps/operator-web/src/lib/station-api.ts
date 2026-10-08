@@ -57,6 +57,7 @@ export async function getStationSnapshot(): Promise<StationSnapshot> {
         query: STATIONS_QUERY,
       }),
       cache: "no-store",
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!response.ok) {
@@ -70,11 +71,13 @@ export async function getStationSnapshot(): Promise<StationSnapshot> {
     const payload =
       (await response.json()) as StationsQueryResponse;
 
+    if (!Array.isArray(payload.data?.stations)) throw new Error("Missing station list");
+
     if (payload.errors?.length) {
       return {
         state: "unavailable",
         stations: [],
-        message: payload.errors[0].message,
+        message: "Station data could not be loaded. Try again shortly.",
       };
     }
 
@@ -200,6 +203,7 @@ export async function getStationDetail(
         },
       }),
       cache: "no-store",
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!response.ok) {
@@ -215,13 +219,15 @@ export async function getStationDetail(
     const payload =
       (await response.json()) as StationDetailQueryResponse;
 
+    if (!payload.data || !("station" in payload.data) || !Array.isArray(payload.data.stationConnectors) || !Array.isArray(payload.data.stationTransactions)) throw new Error("Missing station detail");
+
     if (payload.errors?.length) {
       return {
         state: "unavailable",
         station: null,
         connectors: [],
         transactions: [],
-        message: payload.errors[0].message,
+        message: "Station data could not be loaded. Try again shortly.",
       };
     }
 
@@ -325,6 +331,7 @@ export async function getNetworkTransactions(): Promise<NetworkTransactionSnapsh
         query: NETWORK_TRANSACTIONS_QUERY,
       }),
       cache: "no-store",
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!response.ok) {
@@ -338,11 +345,13 @@ export async function getNetworkTransactions(): Promise<NetworkTransactionSnapsh
     const payload =
       (await response.json()) as NetworkTransactionsResponse;
 
+    if (!Array.isArray(payload.data?.networkTransactions)) throw new Error("Missing transaction list");
+
     if (payload.errors?.length) {
       return {
         state: "unavailable",
         transactions: [],
-        message: payload.errors[0].message,
+        message: "Station data could not be loaded. Try again shortly.",
       };
     }
 
@@ -491,6 +500,7 @@ export async function getNetworkTransactionPage(
         },
       }),
       cache: "no-store",
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!response.ok) {
@@ -509,6 +519,8 @@ export async function getNetworkTransactionPage(
     const payload =
       (await response.json()) as NetworkTransactionPageResponse;
 
+    if (!payload.data?.networkTransactionPage || !Array.isArray(payload.data.networkTransactionPage.content)) throw new Error("Missing transaction page");
+
     if (payload.errors?.length) {
       return {
         state: "unavailable",
@@ -518,7 +530,7 @@ export async function getNetworkTransactionPage(
         totalElements: 0,
         totalPages: 0,
         hasNext: false,
-        message: payload.errors[0].message,
+        message: "Station data could not be loaded. Try again shortly.",
       };
     }
 
@@ -704,6 +716,7 @@ export async function getTransactionInspector(
         variables,
       }),
       cache: "no-store",
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!lookupResponse.ok) {
@@ -716,10 +729,12 @@ export async function getTransactionInspector(
     const lookupPayload =
       (await lookupResponse.json()) as TransactionLookupResponse;
 
+    if (!lookupPayload.data || !("transaction" in lookupPayload.data)) throw new Error("Missing transaction lookup");
+
     if (lookupPayload.errors?.length) {
       return {
         state: "unavailable",
-        message: lookupPayload.errors[0].message,
+        message: "Station data could not be loaded. Try again shortly.",
       };
     }
 
@@ -742,6 +757,7 @@ export async function getTransactionInspector(
         variables,
       }),
       cache: "no-store",
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!dataResponse.ok) {
@@ -754,10 +770,12 @@ export async function getTransactionInspector(
     const dataPayload =
       (await dataResponse.json()) as TransactionDataResponse;
 
+    if (!dataPayload.data?.transactionCompleteness || !Array.isArray(dataPayload.data.transactionMeterSamples)) throw new Error("Missing transaction data");
+
     if (dataPayload.errors?.length) {
       return {
         state: "unavailable",
-        message: dataPayload.errors[0].message,
+        message: "Station data could not be loaded. Try again shortly.",
       };
     }
 

@@ -92,7 +92,7 @@ export default async function Home() {
 
             <div className="flex items-center gap-3">
               <span className="hidden font-mono text-[10px] uppercase tracking-[0.14em] text-[#737674] sm:block">
-                AWS / DEV
+                LOCAL / DEMO
               </span>
 
               <span

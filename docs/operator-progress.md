@@ -32,3 +32,12 @@ Files: operator-web e2e-live/operator.spec.ts, playwright.live.config.ts, packag
 Passed: one Chromium scenario against real services and isolated databases/Kafka, including OCPP BootNotification/Authorize/TransactionEvent, gRPC invalid-token response, durable event projection, transaction integrity, ledger and station navigation. Full ESLint and TypeScript passed before the final locator adjustment; repeat before commit.
 Docker registry DNS prevented image builds. Verification used cached runtime images with freshly Maven-verified JARs mounted read-only. Dedicated compose project: voltgrid-operator-verification; only ports 18080/18081/19090 on loopback. Cleanup after final validation.
 Next: clarify the local runtime label and prevent API failures masquerading as empty/not-found records; add regression coverage.
+
+022.3 commit: ede5f29, pushed to origin/main. Final full ESLint and TypeScript passed.
+
+## 022.4 — Reliable unavailable states and accurate runtime label
+
+Files: operator-web src/lib/station-api.ts, src/app/page.tsx, src/app/transactions/page.tsx, tests/station-api.test.mjs and progress log.
+Missing GraphQL data now returns unavailable rather than a successful empty list or misleading 404. Explicit null records still return not-found. All Station fetches have five-second timeouts; raw GraphQL errors are hidden. Header says LOCAL / DEMO.
+Passed: 18 client tests total, full ESLint, TypeScript, production Webpack build. Browser regressions and live-stack scenario rerun against final build.
+Next: add frontend CI and update the root runtime documentation, then clean up the disposable local stack and sync the original checkout.
