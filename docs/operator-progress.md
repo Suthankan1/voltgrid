@@ -50,3 +50,12 @@ Files: .github/workflows/operator-web-ci.yml, root README and progress log.
 CI uses pinned pnpm, Node 26, client tests, lint, production Webpack build/type checking and isolated Chromium fixture tests. Read-only GitHub permissions. No deploy job, cloud credentials or production resource changes. Live-stack test remains explicit and local.
 The local frontend commands all passed; GitHub-hosted workflow execution must be checked separately.
 Next: final push/remote verification, remove only voltgrid-operator-verification containers/volumes, and fast-forward the original clean checkout. No further functional frontend slice is pending in the requested scope.
+
+022.5 commit: 907a299, pushed; original checkout fast-forwarded to this head. First GitHub frontend run: 37775878353 (in progress at inspection).
+
+## 022.6 — Reproducible disposable live-test startup
+
+Files: compose.operator-test.yaml, operator-web README and e2e-live/operator.spec.ts, progress log. Adds a loopback-only port override and exact dedicated-stack startup/cleanup commands, plus readiness polling in the live test. No backend contract or default infrastructure change.
+Final verification totals: 189 backend/real-process tests, 18 client tests, four fixture browser scenarios and one real-stack browser scenario; all passed. Full frontend lint/type checks and production Webpack build passed. Default Turbopack remains blocked by this environment's port restriction; Docker image rebuild remains blocked by registry DNS, with the real test verified using cached runtimes and freshly built JARs.
+
+GitHub Operator Web CI run 37775878353 passed: install, 18 client tests, lint, production build/type check and four Chromium tests. Final disposable Compose override parsed successfully; lint and TypeScript passed after readiness polling was added.

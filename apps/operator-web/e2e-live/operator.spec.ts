@@ -2,6 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { test, expect } from '@playwright/test';
 
 test('real OCPP, authorization, Kafka projection and operator transaction journey', async ({ page, request }) => {
+ for (const port of [18080,18081]) {
+  await expect.poll(async()=>{
+   try { return (await request.get(`http://127.0.0.1:${port}/actuator/health/readiness`,{timeout:2000})).ok(); }
+   catch { return false; }
+  },{timeout:30000}).toBeTruthy();
+ }
  const stationId = `OPERATOR-${randomUUID()}`;
  const transactionId = `TX-${randomUUID()}`;
  const registration = await request.post('http://127.0.0.1:18080/graphql', {

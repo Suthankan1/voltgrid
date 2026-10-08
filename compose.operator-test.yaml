@@ -1,0 +1,16 @@
+# Use with compose.yaml and a dedicated disposable project name.
+services:
+  station-service:
+    ports: !override ["127.0.0.1:18080:8080"]
+  operations-service:
+    ports: !override ["127.0.0.1:18081:8081"]
+  authorization-service:
+    ports: !override []
+  postgres:
+    ports: !override []
+  authorization-postgres:
+    ports: !override []
+  operations-postgres:
+    ports: !override []
+  kafka:
+    ports: !override []

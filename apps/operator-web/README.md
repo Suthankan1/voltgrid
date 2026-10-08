@@ -30,6 +30,18 @@ After a production build, run `pnpm exec playwright install chromium` and `pnpm 
 
 ## Real local-stack browser test
 
-`pnpm test:e2e:live` requires a disposable local backend stack with Station on loopback port 18080 and Operations on 18081, plus Kafka and the three databases. It starts the console on port 4312, registers a unique station and transaction, and sends OCPP messages. Run only against disposable test data; remove the dedicated stack/volumes after the run.
+Start a dedicated stack from the repository root (Docker Compose must support `!override`):
+
+```sh
+docker compose -p voltgrid-operator-test -f compose.yaml -f compose.operator-test.yaml up -d --build --wait
+```
+
+Then run `pnpm test:e2e:live` in this directory. The override exposes only Station on loopback port 18080 and Operations on 18081; Kafka and all three databases remain internal. It starts the console on port 4312, registers a unique station and transaction, and sends OCPP messages. Run only against disposable test data; remove the dedicated stack/volumes after the run.
 
 The live scenario verifies BootNotification, gRPC rejection of an unknown token, the outbox/Kafka projection, connector state, a complete transaction, ledger rendering and projection-to-station navigation. It does not exercise paid cloud resources.
+
+Remove the test data from the repository root when finished:
+
+```sh
+docker compose -p voltgrid-operator-test -f compose.yaml -f compose.operator-test.yaml down --volumes
+```
