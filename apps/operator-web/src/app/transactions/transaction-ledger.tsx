@@ -91,7 +91,7 @@ export function TransactionLedger({
     <section className="mt-12">
       <div className="flex flex-wrap items-end justify-between gap-5 border-b-2 border-[#17191c] pb-5">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#7c7f7b]">
+          <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-[#7c7f7b]">
             Session ledger
           </p>
 
@@ -111,7 +111,7 @@ export function TransactionLedger({
             {totalElements}
           </p>
 
-          <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-[#858783]">
+          <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#858783]">
             {serverFiltersActive
               ? "matching transactions"
               : "network transactions"}
@@ -122,7 +122,7 @@ export function TransactionLedger({
       <div className="border-b border-[#17191c]/20">
         <div className="grid gap-7 py-6 xl:grid-cols-[220px_1fr]">
           <div>
-            <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783]">
+            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#858783]">
               Page lifecycle
             </p>
 
@@ -158,7 +158,7 @@ export function TransactionLedger({
 
         <div className="grid gap-7 border-t border-[#17191c]/10 py-6 xl:grid-cols-[220px_1fr]">
           <div>
-            <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783]">
+            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#858783]">
               Network integrity
             </p>
 
@@ -187,7 +187,7 @@ export function TransactionLedger({
                       queryFilter,
                       option.value,
                     )}
-                    className={`border px-3.5 py-2 font-mono text-[9px] uppercase tracking-[0.1em] transition-colors ${
+                    className={`border px-3.5 py-2 font-mono text-[11px] uppercase tracking-[0.1em] transition-colors ${
                       active
                         ? "border-[#17191c] bg-[#17191c] text-white"
                         : "border-[#17191c]/20 text-[#626562] hover:border-[#17191c]/50 hover:bg-white"
@@ -223,7 +223,7 @@ export function TransactionLedger({
           )}
 
           <label>
-            <span className="mb-2 block font-mono text-[9px] uppercase tracking-[0.13em] text-[#858783]">
+            <span className="mb-2 block font-mono text-[11px] uppercase tracking-[0.13em] text-[#858783]">
               Station
             </span>
 
@@ -240,7 +240,7 @@ export function TransactionLedger({
           </label>
 
           <label>
-            <span className="mb-2 block font-mono text-[9px] uppercase tracking-[0.13em] text-[#858783]">
+            <span className="mb-2 block font-mono text-[11px] uppercase tracking-[0.13em] text-[#858783]">
               Transaction
             </span>
 
@@ -258,14 +258,14 @@ export function TransactionLedger({
 
           <button
             type="submit"
-            className="h-11 self-end bg-[#17191c] px-5 font-mono text-[9px] uppercase tracking-[0.12em] text-white transition-colors hover:bg-[#2457ff]"
+            className="h-11 self-end bg-[#17191c] px-5 font-mono text-[11px] uppercase tracking-[0.12em] text-white transition-colors hover:bg-[#2457ff]"
           >
             Apply filters
           </button>
 
           <Link
             href="/transactions"
-            className="flex h-11 items-center justify-center self-end border border-[#17191c]/20 px-5 font-mono text-[9px] uppercase tracking-[0.12em] text-[#686b68] transition-colors hover:border-[#17191c]/50 hover:bg-white hover:text-[#17191c]"
+            className="flex h-11 items-center justify-center self-end border border-[#17191c]/20 px-5 font-mono text-[11px] uppercase tracking-[0.12em] text-[#686b68] transition-colors hover:border-[#17191c]/50 hover:bg-white hover:text-[#17191c]"
           >
             Reset
           </Link>
@@ -273,7 +273,7 @@ export function TransactionLedger({
 
         {serverFiltersActive && (
           <div className="mt-5 flex flex-wrap items-center gap-2">
-            <span className="mr-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#92948f]">
+            <span className="mr-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#92948f]">
               Active filters
             </span>
 
@@ -318,7 +318,7 @@ export function TransactionLedger({
         )}
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#17191c]/10 pt-4">
-          <p className="font-mono text-[9px] uppercase tracking-[0.11em] text-[#747774]">
+          <p className="font-mono text-[11px] uppercase tracking-[0.11em] text-[#747774]">
             {visibleTransactions.length}
             <span className="mx-2 text-[#aaa9a3]">
               /
@@ -338,7 +338,7 @@ export function TransactionLedger({
         </div>
       </div>
 
-      <div className="hidden grid-cols-[minmax(240px,1.6fr)_160px_120px_150px_120px_220px] border-b border-[#17191c]/20 px-3 py-3 font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783] lg:grid">
+      <div className="hidden grid-cols-[minmax(240px,1.6fr)_160px_120px_150px_120px_220px] border-b border-[#17191c]/20 px-3 py-3 font-mono text-[11px] uppercase tracking-[0.14em] text-[#858783] lg:grid">
         <span>Transaction</span>
         <span>Station</span>
         <span>Lifecycle</span>
@@ -362,7 +362,7 @@ export function TransactionLedger({
       ) : (
         <div className="grid min-h-52 place-items-center border-b border-[#17191c]/15">
           <div className="max-w-md px-6 text-center">
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#8d908c]">
+            <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-[#8d908c]">
               {unavailableMessage
                 ? "Transaction data unavailable"
                 : transactions.length > 0
@@ -398,12 +398,12 @@ export function TransactionLedger({
           />
 
           <div className="text-center">
-            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5f625f]">
+            <p className="font-mono text-[12px] uppercase tracking-[0.12em] text-[#5f625f]">
               Page {displayedPage} of{" "}
               {totalPages}
             </p>
 
-            <p className="mt-1 font-mono text-[8px] uppercase tracking-[0.1em] text-[#989a96]">
+            <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.1em] text-[#989a96]">
               {totalElements}{" "}
               {totalElements === 1
                 ? "transaction"
@@ -446,7 +446,7 @@ function LifecycleButton({
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`h-10 border-y border-l border-[#17191c]/25 px-5 font-mono text-[9px] uppercase tracking-[0.11em] transition-colors ${
+      className={`h-10 border-y border-l border-[#17191c]/25 px-5 font-mono text-[11px] uppercase tracking-[0.11em] transition-colors ${
         last
           ? "border-r"
           : ""
@@ -471,7 +471,7 @@ function FilterChip({
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-2 border border-[#17191c]/20 bg-white/60 px-3 py-1.5 font-mono text-[8px] uppercase tracking-[0.09em] text-[#626562] transition-colors hover:border-[#17191c]/45 hover:text-[#17191c]"
+      className="inline-flex items-center gap-2 border border-[#17191c]/20 bg-white/60 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.09em] text-[#626562] transition-colors hover:border-[#17191c]/45 hover:text-[#17191c]"
     >
       {label}
 
@@ -514,7 +514,7 @@ function TransactionRow({
       }`}
     >
       <div className="min-w-0">
-        <p className="mb-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#92948f] lg:hidden">
+        <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#92948f] lg:hidden">
           Transaction
         </p>
 
@@ -535,7 +535,7 @@ function TransactionRow({
           </span>
         </Link>
 
-        <p className="mt-1.5 font-mono text-[8px] uppercase tracking-[0.09em] text-[#92948f]">
+        <p className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.09em] text-[#92948f]">
           EVSE{" "}
           {String(
             transaction.evseId,
@@ -551,7 +551,7 @@ function TransactionRow({
       </div>
 
       <div>
-        <p className="mb-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#92948f] lg:hidden">
+        <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#92948f] lg:hidden">
           Station
         </p>
 
@@ -566,7 +566,7 @@ function TransactionRow({
       </div>
 
       <div>
-        <p className="mb-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#92948f] lg:hidden">
+        <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#92948f] lg:hidden">
           Lifecycle
         </p>
 
@@ -578,7 +578,7 @@ function TransactionRow({
       </div>
 
       <div>
-        <p className="mb-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#92948f] lg:hidden">
+        <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#92948f] lg:hidden">
           Integrity
         </p>
 
@@ -593,7 +593,7 @@ function TransactionRow({
       </div>
 
       <div>
-        <p className="mb-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#92948f] lg:hidden">
+        <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#92948f] lg:hidden">
           Sequence
         </p>
 
@@ -606,17 +606,17 @@ function TransactionRow({
       </div>
 
       <div className="lg:text-right">
-        <p className="mb-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#92948f] lg:hidden">
+        <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#92948f] lg:hidden">
           Timing
         </p>
 
-        <p className="font-mono text-[10px] text-[#5f625f]">
+        <p className="font-mono text-[12px] text-[#5f625f]">
           {formatTimestamp(
             transaction.startedAt,
           )}
         </p>
 
-        <p className="mt-1 font-mono text-[8px] uppercase tracking-[0.09em] text-[#969894]">
+        <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.09em] text-[#969894]">
           {transaction.endedAt
             ? `Ended ${formatTimestamp(
                 transaction.endedAt,
@@ -647,7 +647,7 @@ function StatusBadge({
       />
 
       <span
-        className={`font-mono text-[9px] uppercase tracking-[0.1em] ${
+        className={`font-mono text-[11px] uppercase tracking-[0.1em] ${
           active
             ? "text-[#2457ff]"
             : "text-[#5f625f]"
@@ -678,7 +678,7 @@ function IntegrityBadge({
         />
 
         <span
-          className={`font-mono text-[9px] uppercase tracking-[0.1em] ${
+          className={`font-mono text-[11px] uppercase tracking-[0.1em] ${
             status === "INCOMPLETE"
               ? "text-[#b83c30]"
               : status === "COMPLETE"
@@ -694,7 +694,7 @@ function IntegrityBadge({
         </span>
       </div>
 
-      <p className="mt-1 font-mono text-[8px] uppercase tracking-[0.08em] text-[#989a96]">
+      <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-[#989a96]">
         {integrityDetail(
           status,
           missingSequenceNumbers,
@@ -736,7 +736,7 @@ function PaginationLink({
 
   if (!enabled) {
     return (
-      <span className="border border-[#17191c]/10 px-4 py-2 font-mono text-[9px] uppercase tracking-[0.12em] text-[#aaa9a3]">
+      <span className="border border-[#17191c]/10 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.12em] text-[#aaa9a3]">
         {label}
       </span>
     );
@@ -750,7 +750,7 @@ function PaginationLink({
         queryFilter,
         integrityFilter,
       )}
-      className="border border-[#17191c]/25 px-4 py-2 font-mono text-[9px] uppercase tracking-[0.12em] transition-colors hover:border-[#17191c] hover:bg-white"
+      className="border border-[#17191c]/25 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.12em] transition-colors hover:border-[#17191c] hover:bg-white"
     >
       {label}
     </Link>

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import {
@@ -153,73 +152,12 @@ export default async function TransactionsPage({
 
   return (
     <div className="min-h-screen bg-[#f2f0ea] text-[#17191c]">
-      <header className="border-b border-[#17191c]/15 bg-[#f7f5ef]">
-        <div className="mx-auto max-w-[1600px]">
-          <div className="flex min-h-16 items-center justify-between px-5 sm:px-7 lg:px-10">
-            <Link
-              href="/"
-              className="flex items-center gap-3"
-            >
-              <div className="grid h-9 w-9 place-items-center bg-[#17191c] text-sm font-bold tracking-tight text-white">
-                VG
-              </div>
 
-              <div>
-                <p className="text-[15px] font-semibold tracking-[-0.02em]">
-                  VoltGrid
-                </p>
-
-                <p className="text-[10px] uppercase tracking-[0.16em] text-[#747774]">
-                  Network operations
-                </p>
-              </div>
-            </Link>
-
-            <div className="flex items-center gap-3">
-              <span className="hidden font-mono text-[10px] uppercase tracking-[0.14em] text-[#737674] sm:block">
-                LOCAL / DEMO
-              </span>
-
-              <span
-                className={`h-2.5 w-2.5 ${
-                  snapshot.state === "live"
-                    ? "bg-[#16a36a]"
-                    : "bg-[#ef7d32]"
-                }`}
-              />
-            </div>
-          </div>
-
-          <nav className="flex overflow-x-auto border-t border-[#17191c]/10 px-5 sm:px-7 lg:px-10">
-            <Link
-              href="/"
-              className="flex min-w-fit items-center gap-3 border-x border-[#17191c]/10 px-5 py-3 text-sm text-[#5f625f] transition-colors hover:bg-white/60 hover:text-[#17191c]"
-            >
-              <span className="font-mono text-[9px] text-[#989a96]">
-                01
-              </span>
-
-              Network
-            </Link>
-
-            <div className="relative flex min-w-fit items-center gap-3 border-r border-[#17191c]/10 bg-white px-5 py-3 text-sm">
-              <span className="font-mono text-[9px] text-[#989a96]">
-                02
-              </span>
-
-              Transactions
-
-              <span className="absolute inset-x-0 bottom-0 h-[3px] bg-[#2457ff]" />
-            </div>
-          </nav>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-[1600px] px-5 py-8 sm:px-7 lg:px-10">
+      <main id="main-content" tabIndex={-1} className="mx-auto max-w-[1600px] px-5 py-8 sm:px-7 lg:px-10">
         <section className="border-y border-[#17191c]/20">
           <div className="grid gap-8 py-8 lg:grid-cols-[1fr_auto] lg:items-end">
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#2457ff]">
+              <p className="font-mono text-[12px] uppercase tracking-[0.18em] text-[#2457ff]">
                 Network sessions
               </p>
 
@@ -242,7 +180,7 @@ export default async function TransactionsPage({
                 )}`}
               />
 
-              <span className="font-mono text-[9px] uppercase tracking-[0.13em] text-[#747774]">
+              <span className="font-mono text-[11px] uppercase tracking-[0.13em] text-[#747774]">
                 {snapshot.state === "live"
                   ? "Live data"
                   : "Service unavailable"}
@@ -290,7 +228,7 @@ export default async function TransactionsPage({
 
           <div className="grid border-t border-[#17191c]/15 lg:grid-cols-[220px_1fr]">
             <div className="py-5 lg:border-r lg:border-[#17191c]/15 lg:pr-6">
-              <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783]">
+              <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#858783]">
                 Session condition
               </p>
             </div>
@@ -379,7 +317,7 @@ function SummaryMetric({
         {label}
       </p>
 
-      <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-[#92948f]">
+      <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#92948f]">
         {detail}
       </p>
     </div>

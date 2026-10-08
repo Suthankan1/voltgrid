@@ -68,3 +68,10 @@ Baseline clean main at 01d9eaa. Full local operator-console release target; pres
 
 Files: operations-api.ts, operations/page.tsx, station/transaction detail routes, operations client tests, browser fixture/spec. Status filtering resets the cursor and persists on the next page. Repeated query values use the first value. This Next.js version passes encoded params; route IDs retain a single guarded decode, with valid percent identifiers verified. Raw malformed URLs are rejected within Next.js before page code; no claim is made that page guards control those responses. The browser regression caught and corrected an initial decoding assumption before push.
 Passed: 19 client tests, full lint, production Webpack build/type check and six Chromium scenarios. Next: shared navigation, recovery states and deterministic offline font setup.
+
+023.1 commit: 94c535b, pushed.
+
+## 023.2 — Shared responsive shell and recovery
+
+Files: operator-navigation.tsx, layout, all operator pages, list loading boundaries, error/not-found screens, globals.css, package.json, browser specs. Shared navigation/refresh, keyboard skip link/focus, readable labels, reduced-motion support, local system fonts and default Webpack build. Removed conflicting global anchor colors after mobile screenshot exposed invisible dark-button text. Scoped loaders to list views to preserve detail HTTP 404s.
+Passed: offline production build/type check, full lint, nine Chromium scenarios including mobile no-overflow, keyboard focus and link contrast. Screenshots inspected. Next: station search and an explicitly enabled local registration flow.

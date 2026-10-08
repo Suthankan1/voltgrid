@@ -12,10 +12,7 @@ export default async function Operations({ searchParams }: {
   const status = ["ONLINE", "OFFLINE", "UNAVAILABLE"].includes(requestedStatus ?? "")
     ? requestedStatus as OperationalStatus : undefined;
   const snapshot = await getOperationsSnapshot(after, status);
-  return <main className="mx-auto max-w-6xl px-6 py-12">
-    <nav className="mb-10 flex gap-6" aria-label="Operator navigation">
-      <Link href="/">Stations</Link><Link href="/transactions">Transactions</Link>
-    </nav>
+  return <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-6 py-12">
     <h1 className="text-3xl font-semibold">Operations status</h1>
     <p className="my-4">Event-driven station projection. Updates may arrive after Station Service changes.</p>
     <form action="/operations" className="my-6 flex flex-wrap items-end gap-4">
@@ -31,7 +28,7 @@ export default async function Operations({ searchParams }: {
     {snapshot.state === "unavailable" ? <p role="alert" className="my-8">{snapshot.message}</p> : <>
       <p className="my-6">{snapshot.stations.length} stations on this page</p>
       {snapshot.stations.length === 0 ? <p>No projected stations.</p> :
-        <div className="overflow-x-auto"><table className="w-full text-left">
+        <div role="region" aria-label="Station status table" tabIndex={0} className="overflow-x-auto"><table className="w-full text-left">
           <caption className="sr-only">Projected station statuses</caption>
           <thead><tr>{["Station", "Status", "Status changed", "Projection updated"].map(label =>
             <th key={label} scope="col" className="border-b p-3">{label}</th>)}</tr></thead>

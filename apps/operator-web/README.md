@@ -22,7 +22,7 @@ pnpm exec tsc --noEmit
 pnpm build
 ```
 
-Tests require Node 22.18+ for native TypeScript stripping. If Turbopack cannot bind its worker port in a restricted environment, use `pnpm exec next build --webpack`. The existing font setup downloads Google Fonts during a build and requires network access.
+Tests require Node 22.18+ for native TypeScript stripping. The default build uses Webpack for reproducibility in restricted environments. System fonts remove build-time font downloads.
 
 ## Browser regression tests
 

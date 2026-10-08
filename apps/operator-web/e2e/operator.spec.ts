@@ -49,3 +49,38 @@ test('literal percent identifiers are decoded once', async ({page}) => {
  expect((await page.goto('/stations/CP%251/transactions/TX%251'))?.status()).toBe(200);
  await expect(page.getByRole('heading',{name:'TX%1',exact:true})).toBeVisible();
 });
+
+test('shared navigation, keyboard skip link and refresh work on every view', async ({page}) => {
+ for (const route of ['/', '/transactions','/operations','/stations/CP-1']) {
+  await page.goto(route);
+  const navigation=page.getByRole('navigation',{name:'Operator navigation'});
+  await expect(navigation.getByRole('link',{name:'Operations',exact:true})).toBeVisible();
+  await expect(page.locator('main#main-content')).toHaveCount(1);
+  await page.getByRole('button',{name:'Refresh data'}).click();
+  await expect(page.getByRole('button',{name:'Refresh data'})).toBeEnabled();
+ }
+ await page.goto('/');
+ await page.keyboard.press('Tab');
+ await expect(page.getByRole('link',{name:'Skip to main content'})).toBeFocused();
+ await page.keyboard.press('Enter');
+ await expect(page.locator('#main-content')).toBeFocused();
+ await page.goto('/stations/missing');
+ await expect(page.getByRole('heading',{name:'This station or transaction could not be found.'})).toBeVisible();
+});
+
+test('operator views fit mobile and retain navigation', async ({page}, testInfo) => {
+ await page.setViewportSize({width:390,height:844});
+ for (const [name,route] of [['network','/'],['transactions','/transactions'],['operations','/operations'],['station','/stations/CP-1'],['inspector','/stations/CP-1/transactions/TX-1']]) {
+  await page.goto(route);
+  await expect(page.getByRole('navigation',{name:'Operator navigation'})).toBeVisible();
+  await expect(page.locator('main')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+  await page.screenshot({path:testInfo.outputPath(`${name}-mobile.png`),fullPage:true});
+ }
+});
+
+test('dark action links retain readable white text', async ({page}) => {
+ await page.goto('/');
+ const action=page.getByRole('link',{name:'Open transactions →'});
+ expect(await action.evaluate(element=>getComputedStyle(element).color)).toBe('rgb(255, 255, 255)');
+});

@@ -68,73 +68,12 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-[#f2f0ea] text-[#17191c]">
-      <header className="border-b border-[#17191c]/15 bg-[#f7f5ef]">
-        <div className="mx-auto max-w-[1600px]">
-          <div className="flex min-h-16 items-center justify-between px-5 sm:px-7 lg:px-10">
-            <Link
-              href="/"
-              className="flex items-center gap-3"
-            >
-              <div className="grid h-9 w-9 place-items-center bg-[#17191c] text-sm font-bold tracking-tight text-white">
-                VG
-              </div>
 
-              <div>
-                <p className="text-[15px] font-semibold tracking-[-0.02em]">
-                  VoltGrid
-                </p>
-
-                <p className="text-[10px] uppercase tracking-[0.16em] text-[#747774]">
-                  Network operations
-                </p>
-              </div>
-            </Link>
-
-            <div className="flex items-center gap-3">
-              <span className="hidden font-mono text-[10px] uppercase tracking-[0.14em] text-[#737674] sm:block">
-                LOCAL / DEMO
-              </span>
-
-              <span
-                className={`h-2.5 w-2.5 ${
-                  snapshot.state === "live"
-                    ? "bg-[#16a36a]"
-                    : "bg-[#ef7d32]"
-                }`}
-              />
-            </div>
-          </div>
-
-          <nav className="flex overflow-x-auto border-t border-[#17191c]/10 px-5 sm:px-7 lg:px-10">
-            <div className="relative flex min-w-fit items-center gap-3 border-x border-[#17191c]/10 bg-white px-5 py-3 text-sm">
-              <span className="font-mono text-[9px] text-[#989a96]">
-                01
-              </span>
-
-              Network
-
-              <span className="absolute inset-x-0 bottom-0 h-[3px] bg-[#2457ff]" />
-            </div>
-
-            <Link
-              href="/transactions"
-              className="flex min-w-fit items-center gap-3 border-r border-[#17191c]/10 px-5 py-3 text-sm text-[#5f625f] transition-colors hover:bg-white/60 hover:text-[#17191c]"
-            >
-              <span className="font-mono text-[9px] text-[#989a96]">
-                02
-              </span>
-
-              Transactions
-            </Link>
-          </nav>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-[1600px] px-5 py-8 sm:px-7 lg:px-10">
+      <main id="main-content" tabIndex={-1} className="mx-auto max-w-[1600px] px-5 py-8 sm:px-7 lg:px-10">
         <section className="border-y border-[#17191c]/20">
           <div className="grid gap-8 py-9 lg:grid-cols-[1fr_auto] lg:items-end">
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#2457ff]">
+              <p className="font-mono text-[12px] uppercase tracking-[0.18em] text-[#2457ff]">
                 Network overview
               </p>
 
@@ -158,7 +97,7 @@ export default async function Home() {
                 }`}
               />
 
-              <span className="font-mono text-[9px] uppercase tracking-[0.13em] text-[#747774]">
+              <span className="font-mono text-[11px] uppercase tracking-[0.13em] text-[#747774]">
                 {snapshot.state === "live"
                   ? "Live station data"
                   : "Service unavailable"}
@@ -206,7 +145,7 @@ export default async function Home() {
                 />
 
                 <div>
-                  <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783]">
+                  <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#858783]">
                     Network condition
                   </p>
 
@@ -224,7 +163,7 @@ export default async function Home() {
             <div className="py-6 lg:pl-8">
               <div className="flex items-end justify-between gap-4">
                 <div>
-                  <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783]">
+                  <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#858783]">
                     Connectivity
                   </p>
 
@@ -233,7 +172,7 @@ export default async function Home() {
                   </p>
                 </div>
 
-                <p className="font-mono text-[9px] uppercase tracking-[0.1em] text-[#92948f]">
+                <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-[#92948f]">
                   {onlineStations}/{totalStations} online
                 </p>
               </div>
@@ -253,7 +192,7 @@ export default async function Home() {
         <section className="mt-14">
           <div className="flex flex-wrap items-end justify-between gap-5 border-b-2 border-[#17191c] pb-5">
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#777a78]">
+              <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-[#777a78]">
                 Fleet
               </p>
 
@@ -269,7 +208,7 @@ export default async function Home() {
               </p>
             </div>
 
-            <div className="flex items-center gap-5 font-mono text-[9px] uppercase tracking-[0.11em]">
+            <div className="flex items-center gap-5 font-mono text-[11px] uppercase tracking-[0.11em]">
               <span className="text-[#747774]">
                 {totalStations} registered
               </span>
@@ -282,7 +221,7 @@ export default async function Home() {
             </div>
           </div>
 
-          <div className="hidden grid-cols-[150px_minmax(240px,1fr)_220px_180px] border-b border-[#17191c]/20 px-3 py-3 font-mono text-[9px] uppercase tracking-[0.14em] text-[#777a78] sm:grid">
+          <div className="hidden grid-cols-[150px_minmax(240px,1fr)_220px_180px] border-b border-[#17191c]/20 px-3 py-3 font-mono text-[11px] uppercase tracking-[0.14em] text-[#777a78] sm:grid">
             <span>Status</span>
             <span>Station</span>
             <span>Identifier</span>
@@ -308,7 +247,7 @@ export default async function Home() {
                     }`}
                   >
                     <div>
-                      <p className="mb-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#92948f] sm:hidden">
+                      <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#92948f] sm:hidden">
                         Status
                       </p>
 
@@ -322,7 +261,7 @@ export default async function Home() {
                         />
 
                         <span
-                          className={`font-mono text-[9px] uppercase tracking-[0.1em] ${
+                          className={`font-mono text-[11px] uppercase tracking-[0.1em] ${
                             offline
                               ? "text-[#b83c30]"
                               : "text-[#167451]"
@@ -336,7 +275,7 @@ export default async function Home() {
                     </div>
 
                     <div className="min-w-0">
-                      <p className="mb-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#92948f] sm:hidden">
+                      <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#92948f] sm:hidden">
                         Station
                       </p>
 
@@ -363,7 +302,7 @@ export default async function Home() {
                     </div>
 
                     <div>
-                      <p className="mb-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#92948f] sm:hidden">
+                      <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#92948f] sm:hidden">
                         Identifier
                       </p>
 
@@ -377,7 +316,7 @@ export default async function Home() {
                         href={`/stations/${encodeURIComponent(
                           station.id,
                         )}`}
-                        className="inline-flex items-center border border-[#17191c]/20 px-3.5 py-2 font-mono text-[9px] uppercase tracking-[0.1em] text-[#5f625f] transition-colors hover:border-[#17191c] hover:bg-white hover:text-[#17191c]"
+                        className="inline-flex items-center border border-[#17191c]/20 px-3.5 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-[#5f625f] transition-colors hover:border-[#17191c] hover:bg-white hover:text-[#17191c]"
                       >
                         {offline
                           ? "Investigate →"
@@ -391,7 +330,7 @@ export default async function Home() {
           ) : (
             <div className="grid min-h-52 place-items-center border-b border-[#17191c]/15">
               <div className="max-w-md px-6 text-center">
-                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#8b8d89]">
+                <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-[#8b8d89]">
                   No station records
                 </p>
 
@@ -408,7 +347,7 @@ export default async function Home() {
         <section className="mt-12 border-y border-[#17191c]/15">
           <div className="flex flex-wrap items-center justify-between gap-5 py-6">
             <div>
-              <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783]">
+              <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#858783]">
                 Charging sessions
               </p>
 
@@ -420,7 +359,7 @@ export default async function Home() {
 
             <Link
               href="/transactions"
-              className="bg-[#17191c] px-5 py-3 font-mono text-[9px] uppercase tracking-[0.12em] text-white transition-colors hover:bg-[#2457ff]"
+              className="bg-[#17191c] px-5 py-3 font-mono text-[11px] uppercase tracking-[0.12em] text-white transition-colors hover:bg-[#2457ff]"
             >
               Open transactions →
             </Link>
@@ -429,7 +368,7 @@ export default async function Home() {
 
         <Link href="/operations" className="mt-8 inline-block underline">View Operations status →</Link>
 
-        <footer className="mt-12 flex flex-wrap justify-between gap-4 border-t border-[#17191c]/20 py-5 font-mono text-[8px] uppercase tracking-[0.12em] text-[#92948f]">
+        <footer className="mt-12 flex flex-wrap justify-between gap-4 border-t border-[#17191c]/20 py-5 font-mono text-[11px] uppercase tracking-[0.12em] text-[#92948f]">
           <span>
             VoltGrid / Operator Console
           </span>
@@ -487,7 +426,7 @@ function SummaryMetric({
         {label}
       </p>
 
-      <p className="mt-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#92948f]">
+      <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#92948f]">
         {detail}
       </p>
     </div>

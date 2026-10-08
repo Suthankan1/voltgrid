@@ -47,17 +47,17 @@ export default async function TransactionPage({
     "unavailable"
   ) {
     return (
-      <main className="min-h-screen bg-[#f2f0ea] px-5 py-10 text-[#17191c] sm:px-7 lg:px-10">
+      <main id="main-content" tabIndex={-1} className="min-h-screen bg-[#f2f0ea] px-5 py-10 text-[#17191c] sm:px-7 lg:px-10">
         <div className="mx-auto max-w-[1600px]">
           <Link
             href="/transactions"
-            className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#2457ff]"
+            className="font-mono text-[12px] uppercase tracking-[0.14em] text-[#2457ff]"
           >
             ← Transactions
           </Link>
 
           <div className="mt-14 border-y border-[#17191c]/20 py-14">
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#ef7d32]">
+            <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-[#ef7d32]">
               Transaction data
               interrupted
             </p>
@@ -107,38 +107,13 @@ export default async function TransactionPage({
 
   return (
     <div className="min-h-screen bg-[#f2f0ea] text-[#17191c]">
-      <header className="border-b border-[#17191c]/15 bg-[#f7f5ef]">
-        <div className="mx-auto flex min-h-16 max-w-[1600px] items-center justify-between gap-5 px-5 sm:px-7 lg:px-10">
-          <Link
-            href="/transactions"
-            className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#5f625f] transition-colors hover:text-[#2457ff]"
-          >
-            ← Transactions
-          </Link>
 
-          <div className="flex items-center gap-3">
-            <span className="hidden font-mono text-[9px] uppercase tracking-[0.14em] text-[#898b88] sm:inline">
-              Transaction inspector
-            </span>
-
-            <span
-              className={`h-2.5 w-2.5 ${
-                transaction.status ===
-                "ACTIVE"
-                  ? "bg-[#2457ff]"
-                  : "bg-[#8f918e]"
-              }`}
-            />
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-[1600px] px-5 py-8 sm:px-7 lg:px-10">
+      <main id="main-content" tabIndex={-1} className="mx-auto max-w-[1600px] px-5 py-8 sm:px-7 lg:px-10">
         <section className="border-y border-[#17191c]/20">
           <div className="grid gap-10 py-9 lg:grid-cols-[1fr_auto] lg:items-end">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-3">
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#2457ff]">
+                <p className="font-mono text-[12px] uppercase tracking-[0.18em] text-[#2457ff]">
                   Charging transaction
                 </p>
 
@@ -161,7 +136,7 @@ export default async function TransactionPage({
                 }
               </h1>
 
-              <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-[10px] uppercase tracking-[0.1em] text-[#777a76]">
+              <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-[12px] uppercase tracking-[0.1em] text-[#777a76]">
                 <Link
                   href={`/stations/${encodeURIComponent(
                     transaction.stationId,
@@ -198,7 +173,7 @@ export default async function TransactionPage({
             </div>
 
             <div className="lg:text-right">
-              <p className="font-mono text-[9px] uppercase tracking-[0.13em] text-[#92948f]">
+              <p className="font-mono text-[11px] uppercase tracking-[0.13em] text-[#92948f]">
                 Session duration
               </p>
 
@@ -257,7 +232,7 @@ export default async function TransactionPage({
         <section className="mt-14">
           <div className="flex flex-wrap items-end justify-between gap-5 border-b-2 border-[#17191c] pb-5">
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#7c7f7b]">
+              <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-[#7c7f7b]">
                 Delivery integrity
               </p>
 
@@ -276,7 +251,7 @@ export default async function TransactionPage({
 
           <div className="grid border-b border-[#17191c]/15 lg:grid-cols-[280px_1fr]">
             <div className="py-7 lg:border-r lg:border-[#17191c]/15 lg:pr-8">
-              <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783]">
+              <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#858783]">
                 Integrity assessment
               </p>
 
@@ -299,7 +274,7 @@ export default async function TransactionPage({
               {completeness.firstSequenceNumber ===
               null ? (
                 <div className="py-6">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#8b8e89]">
+                  <p className="font-mono text-[12px] uppercase tracking-[0.14em] text-[#8b8e89]">
                     Sequence origin
                     unknown
                   </p>
@@ -370,7 +345,7 @@ export default async function TransactionPage({
                                 )}
 
                               <div
-                                className={`relative z-10 grid h-9 w-9 place-items-center border font-mono text-[10px] ${
+                                className={`relative z-10 grid h-9 w-9 place-items-center border font-mono text-[12px] ${
                                   missing
                                     ? "border-[#df4c35] bg-[#f2f0ea] text-[#df4c35]"
                                     : "border-[#17191c] bg-[#17191c] text-white"
@@ -382,7 +357,7 @@ export default async function TransactionPage({
                               </div>
 
                               <p
-                                className={`mt-2 font-mono text-[9px] ${
+                                className={`mt-2 font-mono text-[11px] ${
                                   missing
                                     ? "text-[#df4c35]"
                                     : "text-[#858783]"
@@ -431,7 +406,7 @@ export default async function TransactionPage({
                     .missingSequenceNumbers
                     .length > 0 && (
                     <div className="mt-5 border-l-2 border-[#df4c35] pl-4">
-                      <p className="font-mono text-[9px] uppercase tracking-[0.13em] text-[#a14a39]">
+                      <p className="font-mono text-[11px] uppercase tracking-[0.13em] text-[#a14a39]">
                         Missing event
                         receipts
                       </p>
@@ -459,7 +434,7 @@ export default async function TransactionPage({
         <section className="mt-14">
           <div className="flex flex-wrap items-end justify-between gap-5 border-b-2 border-[#17191c] pb-5">
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#7c7f7b]">
+              <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-[#7c7f7b]">
                 Meter trace
               </p>
 
@@ -468,7 +443,7 @@ export default async function TransactionPage({
               </h2>
             </div>
 
-            <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-[#747773]">
+            <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#747773]">
               {
                 meterSamples.length
               }{" "}
@@ -500,7 +475,7 @@ export default async function TransactionPage({
           <div className="mt-9">
             <div className="flex items-end justify-between border-b border-[#17191c]/20 pb-3">
               <div>
-                <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783]">
+                <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#858783]">
                   Measurement log
                 </p>
 
@@ -515,7 +490,7 @@ export default async function TransactionPage({
             {meterSamples.length >
             0 ? (
               <div>
-                <div className="hidden grid-cols-[180px_90px_minmax(240px,1fr)_180px_180px] border-b border-[#17191c]/20 px-3 py-3 font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783] lg:grid">
+                <div className="hidden grid-cols-[180px_90px_minmax(240px,1fr)_180px_180px] border-b border-[#17191c]/20 px-3 py-3 font-mono text-[11px] uppercase tracking-[0.14em] text-[#858783] lg:grid">
                   <span>
                     Sampled
                   </span>
@@ -554,7 +529,7 @@ export default async function TransactionPage({
             ) : (
               <div className="grid min-h-44 place-items-center border-b border-[#17191c]/15">
                 <div className="max-w-md px-6 text-center">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#8d908c]">
+                  <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-[#8d908c]">
                     No meter samples
                   </p>
 
@@ -573,7 +548,7 @@ export default async function TransactionPage({
         <footer className="mt-14 flex flex-wrap items-center justify-between gap-5 border-t border-[#17191c]/20 py-6">
           <Link
             href="/transactions"
-            className="font-mono text-[9px] uppercase tracking-[0.12em] text-[#5f625f] transition-colors hover:text-[#2457ff]"
+            className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#5f625f] transition-colors hover:text-[#2457ff]"
           >
             ← Network transactions
           </Link>
@@ -582,7 +557,7 @@ export default async function TransactionPage({
             href={`/stations/${encodeURIComponent(
               transaction.stationId,
             )}`}
-            className="font-mono text-[9px] uppercase tracking-[0.12em] text-[#5f625f] transition-colors hover:text-[#2457ff]"
+            className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#5f625f] transition-colors hover:text-[#2457ff]"
           >
             Station inspector →
           </Link>
@@ -603,7 +578,7 @@ function OverviewMetric({
 }) {
   return (
     <div className="border-b border-[#17191c]/15 py-5 sm:border-r sm:px-6 sm:first:pl-0 xl:border-b-0 xl:last:border-r-0">
-      <p className="font-mono text-[8px] uppercase tracking-[0.13em] text-[#92948f]">
+      <p className="font-mono text-[11px] uppercase tracking-[0.13em] text-[#92948f]">
         {label}
       </p>
 
@@ -640,7 +615,7 @@ function LifecycleBadge({
         }`}
       />
 
-      <span className="font-mono text-[8px] uppercase tracking-[0.11em]">
+      <span className="font-mono text-[11px] uppercase tracking-[0.11em]">
         {active
           ? "Active"
           : "Ended"}
@@ -673,8 +648,8 @@ function IntegrityBadge({
       <span
         className={`font-mono uppercase tracking-[0.11em] ${
           large
-            ? "text-[9px]"
-            : "text-[8px]"
+            ? "text-[11px]"
+            : "text-[11px]"
         }`}
       >
         {formatCompletenessLabel(
@@ -706,7 +681,7 @@ function FeaturedReading({
           : "md:pr-8"
       }`}
     >
-      <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#858783]">
+      <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#858783]">
         {label}
       </p>
 
@@ -718,7 +693,7 @@ function FeaturedReading({
             )}
           </p>
 
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[8px] uppercase tracking-[0.1em] text-[#92948f]">
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[11px] uppercase tracking-[0.1em] text-[#92948f]">
             <span>
               seq #
               {
@@ -753,7 +728,7 @@ function SequenceMetric({
 }) {
   return (
     <div className="bg-[#f2f0ea] px-5 py-5">
-      <p className="font-mono text-[8px] uppercase tracking-[0.13em] text-[#92948f]">
+      <p className="font-mono text-[11px] uppercase tracking-[0.13em] text-[#92948f]">
         {label}
       </p>
 
@@ -778,7 +753,7 @@ function MeterSampleRow({
   return (
     <article className="grid gap-5 border-b border-[#17191c]/15 px-3 py-5 lg:grid-cols-[180px_90px_minmax(240px,1fr)_180px_180px] lg:items-center">
       <DataCell label="Sampled">
-        <p className="font-mono text-[10px] text-[#5f625f]">
+        <p className="font-mono text-[12px] text-[#5f625f]">
           {formatTimestamp(
             sample.sampledAt,
           )}
@@ -801,7 +776,7 @@ function MeterSampleRow({
           )}
         </p>
 
-        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[8px] uppercase tracking-[0.09em] text-[#8b8d89]">
+        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[11px] uppercase tracking-[0.09em] text-[#8b8d89]">
           {sample.phase && (
             <span>
               {sample.phase}
@@ -827,7 +802,7 @@ function MeterSampleRow({
       </DataCell>
 
       <DataCell label="Context">
-        <p className="font-mono text-[9px] uppercase tracking-[0.08em] text-[#6f726e]">
+        <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#6f726e]">
           {sample.context ??
             "—"}
         </p>
@@ -846,7 +821,7 @@ function DataCell({
 }) {
   return (
     <div>
-      <p className="mb-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#969894] lg:hidden">
+      <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#969894] lg:hidden">
         {label}
       </p>
 
