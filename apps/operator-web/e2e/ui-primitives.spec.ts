@@ -7,6 +7,9 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type * as ButtonModule from "../src/components/ui/button";
 import type * as CardModule from "../src/components/ui/card";
+import type * as FormFieldModule from "../src/components/ui/form-field";
+import type * as InputModule from "../src/components/ui/input";
+import type * as SelectModule from "../src/components/ui/select";
 
 function loadUiModule<T>(relPath: string): T {
   const absPath = path.resolve(process.cwd(), relPath);
@@ -28,6 +31,9 @@ function loadUiModule<T>(relPath: string): T {
 const { Button, IconButton } = loadUiModule<typeof ButtonModule>("src/components/ui/button.tsx");
 const { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } =
   loadUiModule<typeof CardModule>("src/components/ui/card.tsx");
+const { FormField } = loadUiModule<typeof FormFieldModule>("src/components/ui/form-field.tsx");
+const { Input } = loadUiModule<typeof InputModule>("src/components/ui/input.tsx");
+const { Select } = loadUiModule<typeof SelectModule>("src/components/ui/select.tsx");
 
 async function mountIsolatedHarness(page: Page, bodyMarkup: string) {
   await page.goto("/");
@@ -132,6 +138,98 @@ test("action and surface primitives render cleanly with keyboard focus and 44px 
   const pendingBtn = page.getByRole("button", { name: "Registering…" });
   await expect(pendingBtn).toBeDisabled();
   await expect(pendingBtn).toHaveAttribute("aria-busy", "true");
+
+  expect(consoleErrors).toEqual([]);
+});
+
+test("form primitives associate labels, errors, support native select keyboard usage, and reflow at 200% text size", async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on("console", msg => {
+    if (msg.type() === "error") consoleErrors.push(msg.text());
+  });
+
+  const markup = renderToStaticMarkup(
+    React.createElement(
+      Card,
+      { as: "section", "aria-labelledby": "form-title" },
+      React.createElement(CardTitle, { id: "form-title" }, "Register station"),
+      React.createElement(
+        CardContent,
+        { className: "grid gap-4" },
+        React.createElement(
+          FormField as React.ElementType,
+          {
+            label: "Station identifier",
+            htmlFor: "station-id",
+            description: "OCPP identifier used by the charger.",
+            error: "Enter a valid station identifier.",
+            required: true,
+          },
+          ((fieldProps: FormFieldModule.FormFieldControlProps) =>
+            React.createElement(Input, {
+              ...fieldProps,
+              name: "id",
+              mono: true,
+              defaultValue: "CP-1",
+            })) as unknown as React.ReactNode,
+        ),
+        React.createElement(
+          FormField as React.ElementType,
+          {
+            label: "Connectivity",
+            htmlFor: "station-connectivity",
+          },
+          ((fieldProps: FormFieldModule.FormFieldControlProps) =>
+            React.createElement(Select, {
+              ...fieldProps,
+              name: "status",
+              options: [
+                { value: "", label: "All stations" },
+                { value: "ONLINE", label: "Online" },
+                { value: "OFFLINE", label: "Offline" },
+              ],
+            })) as unknown as React.ReactNode,
+        ),
+        React.createElement(
+          FormField as React.ElementType,
+          {
+            label: "Protocol",
+            htmlFor: "station-protocol",
+          },
+          ((fieldProps: FormFieldModule.FormFieldControlProps) =>
+            React.createElement(Input, {
+              ...fieldProps,
+              readOnly: true,
+              value: "OCPP 2.0.1",
+            })) as unknown as React.ReactNode,
+        ),
+      ),
+    ),
+  );
+
+  await mountIsolatedHarness(page, markup);
+
+  const idInput = page.getByLabel(/Station identifier/);
+  await expect(idInput).toHaveAttribute("aria-invalid", "true");
+  await expect(idInput).toHaveAttribute("aria-describedby", "station-id-description station-id-error");
+  const idBox = await idInput.boundingBox();
+  expect(idBox!.height).toBeGreaterThanOrEqual(44);
+
+  const selectEl = page.getByLabel("Connectivity");
+  await selectEl.selectOption("OFFLINE");
+  await expect(selectEl).toHaveValue("OFFLINE");
+
+  const readOnlyInput = page.getByLabel("Protocol");
+  await expect(readOnlyInput).toHaveAttribute("readonly", "");
+
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = "200%";
+  });
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+    expect(hasOverflow).toBe(false);
+  }
 
   expect(consoleErrors).toEqual([]);
 });
