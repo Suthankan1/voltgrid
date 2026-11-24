@@ -27,7 +27,7 @@ const ICON_BUTTON_SIZE_CLASSES: Record<ButtonSize, string> = {
 };
 
 const BASE_CONTROL_CLASSES =
-  "inline-flex items-center justify-center gap-2 rounded-[var(--vg-radius-md)] font-sans font-semibold transition-colors duration-[var(--vg-transition-fast)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)] disabled:cursor-not-allowed disabled:opacity-55";
+  "inline-flex items-center justify-center gap-2 rounded-[var(--vg-radius-md)] font-sans font-semibold transition-colors duration-[var(--vg-transition-fast)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)] disabled:cursor-not-allowed disabled:opacity-65";
 
 function PendingSpinner() {
   return (
