@@ -26,8 +26,19 @@
   --vg-neutral-soft: #eae7ec;
   --vg-focus: #795a88;
 
-  --vg-font-sans: system-ui, sans-serif;
-  --vg-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --vg-font-sans: "Manrope", system-ui, sans-serif;
+  --vg-font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Font size / line height / weight. Use with font: var(--vg-type-body). */
+  --vg-type-page: 650 1.75rem/2.25rem var(--vg-font-sans);
+  --vg-type-section: 650 1.25rem/1.75rem var(--vg-font-sans);
+  --vg-type-card: 600 1rem/1.5rem var(--vg-font-sans);
+  --vg-type-body: 400 0.875rem/1.375rem var(--vg-font-sans);
+  --vg-type-action: 600 0.875rem/1.25rem var(--vg-font-sans);
+  --vg-type-support: 400 0.8125rem/1.25rem var(--vg-font-sans);
+  --vg-type-caption: 500 0.75rem/1.125rem var(--vg-font-sans);
+  --vg-type-metric: 700 2rem/2.5rem var(--vg-font-sans);
+  --vg-type-technical: 400 0.8125rem/1.25rem var(--vg-font-mono);
 
   --vg-space-4: 0.25rem;
   --vg-space-8: 0.5rem;

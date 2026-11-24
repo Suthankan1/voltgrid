@@ -1,11 +1,12 @@
 @import "tailwindcss";
 @import "./design-tokens.css";
+@import "./typography.css";
 
 :root {
   --background: #f2f0ea;
   --foreground: #17191c;
-  --font-operator-sans: Arial, Helvetica, sans-serif;
-  --font-operator-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-operator-sans: var(--vg-font-sans);
+  --font-operator-mono: var(--vg-font-mono);
 }
 
 @theme inline {
