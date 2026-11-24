@@ -10,6 +10,7 @@ import type * as CardModule from "../src/components/ui/card";
 import type * as FormFieldModule from "../src/components/ui/form-field";
 import type * as InputModule from "../src/components/ui/input";
 import type * as SelectModule from "../src/components/ui/select";
+import type * as StatusModule from "../src/components/ui/status-indicator";
 
 function loadUiModule<T>(relPath: string): T {
   const absPath = path.resolve(process.cwd(), relPath);
@@ -34,6 +35,13 @@ const { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } 
 const { FormField } = loadUiModule<typeof FormFieldModule>("src/components/ui/form-field.tsx");
 const { Input } = loadUiModule<typeof InputModule>("src/components/ui/input.tsx");
 const { Select } = loadUiModule<typeof SelectModule>("src/components/ui/select.tsx");
+const {
+  StationStatusIndicator,
+  ConnectorStatusIndicator,
+  SessionLifecycleIndicator,
+  SessionCompletenessIndicator,
+  OperationsStatusIndicator,
+} = loadUiModule<typeof StatusModule>("src/components/ui/status-indicator.tsx");
 
 async function mountIsolatedHarness(page: Page, bodyMarkup: string) {
   await page.goto("/");
@@ -231,5 +239,48 @@ test("form primitives associate labels, errors, support native select keyboard u
     expect(hasOverflow).toBe(false);
   }
 
+  expect(consoleErrors).toEqual([]);
+});
+
+test("operational status indicators preserve domain separation and non-color semantics", async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on("console", msg => {
+    if (msg.type() === "error") consoleErrors.push(msg.text());
+  });
+
+  const markup = renderToStaticMarkup(
+    React.createElement(
+      Card,
+      { as: "section", "aria-labelledby": "status-title" },
+      React.createElement(CardTitle, { id: "status-title" }, "Operational statuses"),
+      React.createElement(
+        CardContent,
+        { className: "flex flex-wrap gap-2" },
+        React.createElement(StationStatusIndicator, { status: "ONLINE" }),
+        React.createElement(StationStatusIndicator, { status: "OFFLINE" }),
+        React.createElement(ConnectorStatusIndicator, { status: "AVAILABLE" }),
+        React.createElement(ConnectorStatusIndicator, { status: "OCCUPIED" }),
+        React.createElement(ConnectorStatusIndicator, { status: "RESERVED" }),
+        React.createElement(ConnectorStatusIndicator, { status: "UNAVAILABLE" }),
+        React.createElement(ConnectorStatusIndicator, { status: "FAULTED" }),
+        React.createElement(SessionLifecycleIndicator, { status: "ACTIVE" }),
+        React.createElement(SessionLifecycleIndicator, { status: "ENDED" }),
+        React.createElement(SessionCompletenessIndicator, { status: "IN_PROGRESS" }),
+        React.createElement(SessionCompletenessIndicator, { status: "COMPLETE" }),
+        React.createElement(SessionCompletenessIndicator, { status: "INCOMPLETE" }),
+        React.createElement(SessionCompletenessIndicator, { status: "UNKNOWN" }),
+        React.createElement(OperationsStatusIndicator, { status: "UNAVAILABLE" }),
+      ),
+    ),
+  );
+
+  await mountIsolatedHarness(page, markup);
+
+  for (const label of ["Online", "Offline", "Available", "Occupied", "Reserved", "Unavailable", "Faulted", "Active", "Ended", "In progress", "Complete", "Missing data", "Unknown"]) {
+    await expect(page.getByText(label, { exact: true }).first()).toBeVisible();
+  }
+
+  const iconCount = await page.locator("svg[aria-hidden='true']").count();
+  expect(iconCount).toBe(14);
   expect(consoleErrors).toEqual([]);
 });
