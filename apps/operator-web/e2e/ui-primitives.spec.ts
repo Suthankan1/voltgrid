@@ -4,16 +4,26 @@ import path from "node:path";
 import vm from "node:vm";
 import ts from "typescript";
 import React from "react";
+import * as jsxRuntime from "react/jsx-runtime";
 import { renderToStaticMarkup } from "react-dom/server";
+import NextLink from "next/link";
 import type * as ButtonModule from "../src/components/ui/button";
 import type * as CardModule from "../src/components/ui/card";
 import type * as FormFieldModule from "../src/components/ui/form-field";
 import type * as InputModule from "../src/components/ui/input";
 import type * as SelectModule from "../src/components/ui/select";
 import type * as StatusModule from "../src/components/ui/status-indicator";
+import type * as AlertModule from "../src/components/ui/alert";
+import type * as EmptyStateModule from "../src/components/ui/empty-state";
+import type * as ErrorStateModule from "../src/components/ui/error-state";
+import type * as SkeletonModule from "../src/components/ui/skeleton";
+import type * as MetricCardModule from "../src/components/ui/metric-card";
+
+const uiLoadCache = new Map<string, unknown>();
 
 function loadUiModule<T>(relPath: string): T {
   const absPath = path.resolve(process.cwd(), relPath);
+  if (uiLoadCache.has(absPath)) return uiLoadCache.get(absPath) as T;
   const source = readFileSync(absPath, "utf8");
   const { outputText } = ts.transpileModule(source, {
     compilerOptions: {
@@ -24,8 +34,24 @@ function loadUiModule<T>(relPath: string): T {
     },
   });
   const mod = { exports: {} as T };
+  uiLoadCache.set(absPath, mod.exports);
+  const externalModules: Record<string, unknown> = {
+    react: React,
+    "react/jsx-runtime": jsxRuntime,
+    "next/link": NextLink,
+  };
+  const localRequire = (id: string) => {
+    if (id.startsWith("./")) {
+      return loadUiModule(path.relative(process.cwd(), path.resolve(path.dirname(absPath), `${id}.tsx`)));
+    }
+    if (id in externalModules) {
+      return externalModules[id];
+    }
+    throw new Error(`Unsupported module in UI test loader: ${id}`);
+  };
   const fn = vm.runInThisContext(`(function(exports, require, module) {\n${outputText}\n})`);
-  fn(mod.exports, require, mod);
+  fn(mod.exports, localRequire, mod);
+  uiLoadCache.set(absPath, mod.exports);
   return mod.exports;
 }
 
@@ -42,6 +68,11 @@ const {
   SessionCompletenessIndicator,
   OperationsStatusIndicator,
 } = loadUiModule<typeof StatusModule>("src/components/ui/status-indicator.tsx");
+const { Alert } = loadUiModule<typeof AlertModule>("src/components/ui/alert.tsx");
+const { EmptyState } = loadUiModule<typeof EmptyStateModule>("src/components/ui/empty-state.tsx");
+const { ErrorState } = loadUiModule<typeof ErrorStateModule>("src/components/ui/error-state.tsx");
+const { Skeleton, SkeletonGroup } = loadUiModule<typeof SkeletonModule>("src/components/ui/skeleton.tsx");
+const { MetricCard } = loadUiModule<typeof MetricCardModule>("src/components/ui/metric-card.tsx");
 
 async function mountIsolatedHarness(page: Page, bodyMarkup: string) {
   await page.goto("/");
@@ -282,5 +313,80 @@ test("operational status indicators preserve domain separation and non-color sem
 
   const iconCount = await page.locator("svg[aria-hidden='true']").count();
   expect(iconCount).toBe(14);
+  expect(consoleErrors).toEqual([]);
+});
+
+test("feedback, skeleton, reduced-motion, and metric primitives render cleanly across desktop and mobile", async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on("console", msg => {
+    if (msg.type() === "error") consoleErrors.push(msg.text());
+  });
+
+  const markup = renderToStaticMarkup(
+    React.createElement(
+      "div",
+      { className: "grid gap-4" },
+      React.createElement(
+        "div",
+        { className: "grid gap-4 sm:grid-cols-2" },
+        React.createElement(MetricCard, {
+          label: "Offline stations",
+          value: 0,
+          description: "Reported from full station snapshot",
+          href: "/stations?status=OFFLINE",
+          linkLabel: "Inspect offline stations",
+        }),
+        React.createElement(MetricCard, {
+          label: "Fleet connectivity",
+          value: null,
+          unknownLabel: "N/A",
+          description: "Zero registered stations",
+        }),
+      ),
+      React.createElement(
+        Alert,
+        { variant: "warning", title: "Missing session records", announce: "assertive" },
+        "Sequence records 4 through 6 have not been received.",
+      ),
+      React.createElement(EmptyState, {
+        title: "No matching stations",
+        description: "Adjust filters to view registered equipment.",
+        kind: "no-matches",
+        action: React.createElement(Button, { variant: "secondary" }, "Clear filters"),
+      }),
+      React.createElement(ErrorState, {
+        title: "Unable to load station details",
+        message: "Station API could not be reached.",
+        onRetry: () => {},
+      }),
+      React.createElement(
+        SkeletonGroup,
+        { label: "Loading station telemetry", className: "grid gap-2" },
+        React.createElement(Skeleton, { variant: "heading" }),
+        React.createElement(Skeleton, { variant: "text" }),
+      ),
+    ),
+  );
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await mountIsolatedHarness(page, markup);
+
+  await expect(page.getByText("0", { exact: true })).toBeVisible();
+  await expect(page.getByText("N/A", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Inspect offline stations/ })).toHaveAttribute("href", "/stations?status=OFFLINE");
+  await expect(page.getByRole("alert")).toHaveCount(2);
+  await expect(page.getByRole("status", { name: "Loading station telemetry" })).toHaveAttribute("aria-busy", "true");
+
+  const skeletonAnim = await page.locator("[role='status'] span[aria-hidden='true']").first().evaluate(
+    el => getComputedStyle(el).animationName,
+  );
+  expect(skeletonAnim).toBe("none");
+
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+    expect(hasOverflow).toBe(false);
+  }
+
   expect(consoleErrors).toEqual([]);
 });
