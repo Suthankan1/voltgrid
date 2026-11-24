@@ -1,0 +1,58 @@
+/* VoltGrid Orchid & Clay — UI-101A. Opt-in tokens; legacy styles remain unchanged. */
+:root {
+  --vg-brand: #43284f;
+  --vg-brand-hover: #593965;
+  --vg-brand-pressed: #321b3c;
+  --vg-brand-muted: #795a88;
+  --vg-brand-soft: #e8ddf0;
+  --vg-accent: #f3bb94;
+  --vg-canvas: #f8f6f3;
+  --vg-surface: #ffffff;
+  --vg-surface-subtle: #f5f0f7;
+  --vg-border: #e4dfe6;
+  --vg-border-control: #795a88;
+  --vg-text-primary: #27232d;
+  --vg-text-secondary: #665e6c;
+  --vg-text-inverse: #ffffff;
+  --vg-success: #216b50;
+  --vg-success-soft: #e8f2eb;
+  --vg-warning: #946000;
+  --vg-warning-soft: #faf0dd;
+  --vg-danger: #b83f46;
+  --vg-danger-soft: #f9e7e7;
+  --vg-info: #684675;
+  --vg-info-soft: #e8ddf0;
+  --vg-neutral: #625e69;
+  --vg-neutral-soft: #eae7ec;
+  --vg-focus: #795a88;
+
+  --vg-font-sans: system-ui, sans-serif;
+  --vg-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --vg-space-4: 0.25rem;
+  --vg-space-8: 0.5rem;
+  --vg-space-12: 0.75rem;
+  --vg-space-16: 1rem;
+  --vg-space-24: 1.5rem;
+  --vg-space-32: 2rem;
+  --vg-space-48: 3rem;
+  --vg-space-64: 4rem;
+  --vg-radius-sm: 6px;
+  --vg-radius-md: 8px;
+  --vg-radius-lg: 12px;
+  --vg-radius-xl: 16px;
+  --vg-sidebar-width: 240px;
+  --vg-sidebar-compact: 72px;
+  --vg-topbar-height: 64px;
+  --vg-transition-fast: 120ms;
+  --vg-transition-normal: 180ms;
+  --vg-transition-slow: 240ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --vg-transition-fast: 0ms;
+    --vg-transition-normal: 0ms;
+    --vg-transition-slow: 0ms;
+  }
+}
