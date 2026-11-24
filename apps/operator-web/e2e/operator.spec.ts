@@ -115,3 +115,26 @@ test('local registration redirects to the new offline station and reports duplic
  await page.getByRole('button',{name:'Register station',exact:true}).click();
  await expect(page.getByRole('alert').filter({hasText:'already registered'})).toBeVisible();
 });
+
+test('Voltmark brand assets and favicons load cleanly without metadata regressions', async ({page, request}) => {
+ await page.goto('/');
+ await expect(page).toHaveTitle('VoltGrid Operator Console');
+ const iconHrefs = await page.locator('head link[rel*="icon"]').evaluateAll(links =>
+  links.map(link => ({rel: link.getAttribute('rel'), href: link.getAttribute('href'), type: link.getAttribute('type')}))
+ );
+ expect(iconHrefs.some(icon => icon.href?.includes('icon.svg') && icon.type === 'image/svg+xml')).toBe(true);
+ expect(iconHrefs.some(icon => icon.href?.includes('favicon.ico'))).toBe(true);
+
+ for (const icon of iconHrefs) {
+  const response = await request.get(icon.href!);
+  expect(response.ok()).toBe(true);
+ }
+
+ for (const asset of ['/brand/voltmark.svg', '/brand/voltmark-reversed.svg', '/brand/voltmark-monochrome.svg']) {
+  const response = await request.get(asset);
+  expect(response.ok()).toBe(true);
+  expect(response.headers()['content-type']).toContain('image/svg+xml');
+  const body = await response.text();
+  expect(body).toContain('viewBox="0 0 80 80"');
+ }
+});
