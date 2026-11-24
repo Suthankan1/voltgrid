@@ -1,6 +1,6 @@
 # VoltGrid Experience Redesign
 
-Status: UX-001 specification complete; UX-002 consolidated; implementation and user validation pending.
+Status: UX-001/002 complete; UX-003 prototype created; Prototype V3 design approved after internal qualitative feedback. External usability testing deferred by owner until working frontend; UI-101 authorized. Formal internal scorecard and V3 regression evidence remain pending.
 Baseline: [main at f4708fb](https://github.com/Suthankan1/voltgrid/commit/f4708fb558226d8dfc43bcb2893b39f33782bab4).
 Approved direction: simplicity first for technical and non-technical audiences; Orchid & Clay; Voltmark.
 
@@ -26,4 +26,4 @@ Do not delete historical release documents. No new backend work, cloud deploymen
 - [Registration boundary](../../apps/operator-web/src/lib/station-registration.ts)
 - [Frontend scripts](../../apps/operator-web/package.json)
 
-Change this specification through reviewed documentation changes; record rationale, affected requirements and tests. No implementation or test pass is claimed here.
+Change this specification through reviewed documentation changes; record rationale, affected requirements and tests. See implementation roadmap for implementation evidence; no usability validation or release approval is claimed here.

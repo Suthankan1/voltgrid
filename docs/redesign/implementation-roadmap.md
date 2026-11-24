@@ -1,7 +1,7 @@
 # Implementation roadmap
 
 ## Milestones
-UX-001 complete as specification. UX-002 documentation consolidation. UX-003 high-fidelity interactive prototype using fictional fixtures, clearly labeled; all P0 tasks and error states. UX-004 formative user testing and iteration (preserve baseline for comparison). Do not start production frontend until prototype feedback and design changes reviewed.
+UX-001 complete as specification. UX-002 documentation consolidation. UX-003 high-fidelity interactive prototype using fictional fixtures, clearly labeled; all P0 tasks and error states. UX-004 internal qualitative feedback led to V3: retain simple V1 station layout and use realistic-looking generic charger illustrations only. Owner approved V3 and explicitly deferred external testing until the working frontend. Formal internal scorecard and V3 regression verification remain pending. Production implementation may begin; G7 user validation remains a mandatory release gate. Preserve baseline for comparison.
 
 | Slice | Deliverable | Exit evidence |
 |---|---|---|
@@ -25,4 +25,4 @@ Retain Next.js 16.3.5, React 19.2.8, TypeScript, Tailwind 4, pnpm 12.4.2 and rep
 Before each slice inspect actual code, document contract mismatch and choose safe frontend limitation rather than silently adding backend functionality. Review affected requirements and tests. Keep old route behavior compatible. Capture visual baselines only after review. Update this documentation if prototype validation changes design. Track evidence in PR/commit notes. No release number assigned. No public deployment or authentication claim.
 
 ## Next action
-Review UX-002 documentation; then UX-003 prototype. Do not treat diagrams, fictional records, or approved brand as shipped implementation. No frontend or backend code has been changed by UX-002.
+Begin UI-101 in small slices: A semantic CSS tokens (no page restyling); B locally hosted licensed fonts; C Voltmark assets; D accessible primitives and verification. Revisit external usability testing on the working frontend before release. Do not treat diagrams, fictional records, or approved brand as shipped implementation.

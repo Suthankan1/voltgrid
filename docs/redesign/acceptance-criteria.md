@@ -3,6 +3,8 @@
 All targets are proposed gates, not achieved measurements.
 
 ## User validation
+Owner decision (2026-11-24): external usability testing deferred until working frontend is available; internal V3 approval is qualitative only, not a completed formal evaluation. V3 regression verification remains pending. G7 and all release thresholds remain unchanged; no validation waiver or release readiness claim.
+
 Initial 10 participants (4 nontechnical, 4 technical, 2 management-oriented), ideally including real infrastructure operators and prior feedback participants plus newcomers. Formative rounds before final evaluation. Equivalent data/devices/task complexity for old/new; counterbalance order or separate groups to reduce learning bias. Record unaided/assisted/failed, elapsed time, navigation errors, hesitation, critical errors, post-task ease (1–7), SUS; report denominators and missing results. No coaching during timed tasks. Consent for observations/recording; avoid private or production data.
 
 | Task | Target |
@@ -36,7 +38,7 @@ Production build, documented hardware/network/fixture and repeated lab runs. Cor
 | Shell | Active links, breadcrumbs, keyboard drawer/focus, responsive navigation, legacy redirects and identifier safety |
 | Overview | Full snapshot counts, zero denominator, offline filter links, empty vs unavailable, refresh |
 | Stations | Search + status, no matches, back/URL context, read-only registration |
-| Station | Null vs failed lookup, partial sections, EVSE identity, offline last reported, tabs |
+| Station | Null vs failed lookup, partial sections, EVSE identity, realistic generic charger illustrations with simple cards, offline last reported, tabs |
 | Registration | Trim, exact regex, max lengths, duplicate, pending double-submit, uncertain verification, server gate and request host, confirmed success |
 | Sessions | Exact supported filters, page scope active, reset page, server counts, composite IDs |
 | Session | Valid/invalid timing, integrity independent of lifecycle, late event refresh, raw samples and compatible streams, no fabricated gaps or totals |
