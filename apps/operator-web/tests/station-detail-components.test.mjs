@@ -52,6 +52,9 @@ function loadModule(relPath) {
 const { buildStationDetailModel } = loadModule("lib/station-detail-model.ts");
 const { StationDetailHeader } = loadModule("components/stations/station-detail-header.tsx");
 const { StationConnectorsSection } = loadModule("components/stations/station-connectors-section.tsx");
+const { StationOverviewSection } = loadModule("components/stations/station-overview-section.tsx");
+const { StationSessionsSection } = loadModule("components/stations/station-sessions-section.tsx");
+const { StationConnectionSection } = loadModule("components/stations/station-connection-section.tsx");
 const { StationDetailLoading } = loadModule("components/stations/station-detail-loading.tsx");
 
 test("StationDetailHeader renders back return link, protocol badge, active section, and offline guidance", () => {
@@ -112,4 +115,69 @@ test("StationConnectorsSection renders composite EVSE cards, offline last-report
   const loadingHtml = renderToStaticMarkup(React.createElement(StationDetailLoading));
   assert.match(loadingHtml, /role="status"/);
   assert.match(loadingHtml, /aria-busy="true"/);
+});
+
+test("StationOverviewSection preserves independent sections on partial failures and uses Unknown for failed counts", () => {
+  const partialTxFailure = buildStationDetailModel({
+    state: "live",
+    station: { id: "CP-1", name: "Colombo Central", status: "ONLINE" },
+    connectors: {
+      state: "live",
+      items: [
+        { evseId: 1, connectorId: 1, status: "AVAILABLE", statusUpdatedAt: "2026-10-08T09:00:00Z" },
+      ],
+    },
+    transactions: { state: "unavailable", items: [], message: "Session query timed out." },
+  });
+
+  const overviewHtml = renderToStaticMarkup(
+    React.createElement(StationOverviewSection, { model: partialTxFailure }),
+  );
+  assert.match(overviewHtml, /EVSE 1 · Connector 1/);
+  assert.match(overviewHtml, />Unknown<\/p>/);
+  assert.match(overviewHtml, /Unable to load charging sessions/);
+  assert.match(overviewHtml, /Session query timed out\./);
+  assert.doesNotMatch(overviewHtml, /No charging sessions yet/);
+});
+
+test("StationSessionsSection and StationConnectionSection enforce encoded links, valid duration, and secret boundaries", () => {
+  const fullModel = buildStationDetailModel({
+    state: "live",
+    station: { id: "CP%1", name: "Colombo Central", status: "ONLINE" },
+    connectors: { state: "live", items: [] },
+    transactions: {
+      state: "live",
+      items: [
+        {
+          stationId: "CP%1",
+          transactionId: "TX%1",
+          evseId: 2,
+          connectorId: 1,
+          status: "ENDED",
+          startedAt: "2026-10-08T08:00:00Z",
+          endedAt: "2026-10-08T09:30:00Z",
+          lastSequenceNumber: 4,
+        },
+      ],
+    },
+  });
+
+  const sessionsHtml = renderToStaticMarkup(
+    React.createElement(StationSessionsSection, { model: fullModel }),
+  );
+  assert.match(sessionsHtml, /href="\/stations\/CP%251\/transactions\/TX%251"/);
+  assert.match(sessionsHtml, /EVSE 2 · Connector 1/);
+  assert.match(sessionsHtml, /Duration 1h 30m/);
+  assert.doesNotMatch(sessionsHtml, /Complete/);
+
+  const connectionHtml = renderToStaticMarkup(
+    React.createElement(StationConnectionSection, { model: fullModel }),
+  );
+  assert.match(connectionHtml, />CP%1</);
+  assert.match(connectionHtml, /OCPP 2\.0\.1/);
+  assert.match(connectionHtml, />\/ocpp\/CP%1</);
+  assert.match(connectionHtml, /Copy station ID/);
+  assert.match(connectionHtml, /Copy OCPP path/);
+  assert.match(connectionHtml, /No public WebSocket gateway URL is configured/);
+  assert.doesNotMatch(connectionHtml, /graphql/i);
 });
