@@ -74,6 +74,12 @@ test('real OCPP, authorization, Kafka projection and operator transaction journe
    ],
   });
   await call('TransactionEvent',{eventType:'Ended',timestamp:endedAt,triggerReason:'StopAuthorized',seqNo:2,transactionInfo:{transactionId}});
+
+  const incompleteTxId = `TX-GAP-${randomUUID()}`;
+  const gapStartedAt = new Date(Date.now() + 4000).toISOString();
+  const gapEndedAt = new Date(Date.now() + 5000).toISOString();
+  await call('TransactionEvent',{eventType:'Started',timestamp:gapStartedAt,triggerReason:'CablePluggedIn',seqNo:0,transactionInfo:{transactionId:incompleteTxId,chargingState:'EVConnected'},evse:{id:1,connectorId:1}});
+  await call('TransactionEvent',{eventType:'Ended',timestamp:gapEndedAt,triggerReason:'StopAuthorized',seqNo:2,transactionInfo:{transactionId:incompleteTxId}});
   await page.goto('/');
   await page.getByRole('link',{name:'Operator E2E Station',exact:true}).and(page.locator(`a[href="/stations/${stationId}"]`)).click();
   await expect(page.getByRole('heading',{name:'Operator E2E Station'})).toBeVisible();
@@ -101,9 +107,27 @@ test('real OCPP, authorization, Kafka projection and operator transaction journe
   await expect(page).toHaveURL(new RegExp(`/stations/${stationId}/sessions/${transactionId}\\?returnTo=`));
   await expect(page.getByRole('heading',{name:`Session ${transactionId}`,exact:true})).toBeVisible();
   await page.goto('/operations');
+  await expect(page).toHaveURL(/\/diagnostics$/);
+  await page.getByLabel('Exact station lookup',{exact:true}).fill(stationId);
+  await page.getByRole('button',{name:'Apply filters'}).click();
+  await expect(page).toHaveURL(new RegExp(`/diagnostics\\?stationId=${stationId}$`));
   const row=page.getByRole('row').filter({hasText:stationId});
-  await expect(row).toContainText('ONLINE');
+  await expect(row).toContainText('Online');
   await row.getByRole('link',{name:stationId,exact:true}).click();
   await expect(page.getByRole('heading',{name:'Operator E2E Station'})).toBeVisible();
+
+  await page.goto('/attention');
+  await expect(page.getByRole('heading',{name:'Needs attention',exact:true})).toBeVisible();
+  await expect(page.getByText(incompleteTxId,{exact:true}).first()).toBeVisible();
+  await page.getByRole('link',{name:`Inspect technical sequence details for session ${incompleteTxId} at ${stationId}`}).click();
+  await expect(page).toHaveURL(new RegExp(`/stations/${stationId}/sessions/${incompleteTxId}\\?section=technical&returnTo=%2Fattention$`));
+  await expect(page.getByRole('heading',{name:'OCPP sequence completeness audit'})).toBeVisible();
+
+  await page.goto('/help');
+  await expect(page.getByRole('heading',{name:'Help',exact:true})).toBeVisible();
+  const nav = page.getByRole('navigation',{name:'Primary navigation'});
+  for (const label of ['Overview','Charging stations','Charging sessions','Needs attention','Diagnostics','Help']) {
+   await expect(nav.getByRole('link',{name:label,exact:true})).toBeVisible();
+  }
  } finally { socket.close(); }
 });

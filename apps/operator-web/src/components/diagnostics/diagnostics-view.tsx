@@ -55,7 +55,7 @@ export function DiagnosticsView({ model }: DiagnosticsViewProps) {
         className="overflow-hidden"
       >
         <div className="border-b border-[color:var(--vg-border)] p-5 sm:p-6">
-          <CardHeader>
+          <CardHeader className="flex-col sm:flex-row">
             <div className="min-w-0 flex-1">
               <CardTitle id="diagnostics-records-title">
                 Operational projection records
@@ -66,7 +66,7 @@ export function DiagnosticsView({ model }: DiagnosticsViewProps) {
                   : "Ordered ascending by station identifier via cursor pagination."}
               </CardDescription>
             </div>
-            <div className="space-y-0.5 text-left sm:text-right">
+            <div className="w-full space-y-0.5 text-left sm:w-auto sm:text-right">
               <p className="font-sans text-[0.8125rem] font-semibold text-[color:var(--vg-text-primary)]">
                 {scopeSummary}
               </p>

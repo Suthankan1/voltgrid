@@ -1,11 +1,19 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import type { OperationalStatus } from "@/lib/operations-api";
-import type { DiagnosticsFilterParams } from "@/lib/diagnostics-model";
+import {
+  buildDiagnosticsHref,
+  normalizeDiagnosticsParams,
+  type DiagnosticsFilterParams,
+} from "@/lib/diagnostics-model";
 
 export interface DiagnosticsControlsProps {
   filters: DiagnosticsFilterParams;
@@ -30,8 +38,19 @@ export function DiagnosticsControls({
   filters,
   hasActiveFilters,
 }: DiagnosticsControlsProps) {
+  const router = useRouter();
   const showReset = hasActiveFilters || Boolean(filters.after);
   const formKey = `${filters.status}:${filters.stationId}`;
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const normalized = normalizeDiagnosticsParams({
+      status: String(formData.get("status") ?? ""),
+      stationId: String(formData.get("stationId") ?? ""),
+    });
+    router.push(buildDiagnosticsHref(normalized));
+  }
 
   return (
     <Card
@@ -55,6 +74,7 @@ export function DiagnosticsControls({
         key={formKey}
         action="/diagnostics"
         method="get"
+        onSubmit={handleSubmit}
         className="space-y-4"
       >
         <div className="grid gap-4 sm:grid-cols-2">
