@@ -76,12 +76,12 @@ test("cross-browser responsive matrix across all 8 viewports, navigation modes, 
       await page.keyboard.press("Escape");
       await expect(menuBtn).toBeFocused();
     } else if (width < 1280) {
-      await page.goto("/");
+      await page.goto("/", { waitUntil: "networkidle" });
       await expect(
         page.locator('aside[aria-label="Workspace sidebar"]'),
       ).toHaveAttribute("data-collapsed", "true");
     } else {
-      await page.goto("/");
+      await page.goto("/", { waitUntil: "networkidle" });
       await expect(
         page.locator('aside[aria-label="Workspace sidebar"]'),
       ).toHaveAttribute("data-collapsed", "false");
@@ -90,24 +90,26 @@ test("cross-browser responsive matrix across all 8 viewports, navigation modes, 
 
   // Verify native controls: registration form, native selects, Help disclosures, and 200% zoom
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto("/stations/new");
+  await page.goto("/stations/new", { waitUntil: "networkidle" });
   const longId = `CP-${testInfo.project.name.toUpperCase()}-` + "X".repeat(60);
   await page.getByLabel("Station name", { exact: true }).fill("Long Cross Browser Station " + "Hub ".repeat(6));
   await page.getByLabel("Station identifier", { exact: true }).fill(longId);
   await page.getByRole("button", { name: "Register station", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Station registered" })).toBeVisible();
+  await page.waitForLoadState("networkidle");
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
 
-  await page.goto("/diagnostics");
+  await page.goto("/diagnostics", { waitUntil: "networkidle" });
   await page.getByLabel("Projected status").selectOption("OFFLINE");
   await page.getByRole("button", { name: "Apply filters" }).click();
   await expect(page).toHaveURL(/\/diagnostics\?status=OFFLINE$/);
+  await page.waitForLoadState("networkidle");
 
-  await page.goto("/help");
+  await page.goto("/help", { waitUntil: "networkidle" });
   const summary = page
     .locator("summary", { hasText: "Station remains offline after registration" })
     .first();
@@ -118,7 +120,7 @@ test("cross-browser responsive matrix across all 8 viewports, navigation modes, 
   ).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/sessions");
+  await page.goto("/sessions", { waitUntil: "networkidle" });
   await page.evaluate(() => {
     document.documentElement.style.fontSize = "200%";
   });
