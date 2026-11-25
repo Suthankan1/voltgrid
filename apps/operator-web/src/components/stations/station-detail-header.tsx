@@ -27,6 +27,10 @@ const SECTION_LINKS: Array<{
  */
 export function StationDetailHeader({ model }: StationDetailHeaderProps) {
   const backHref = model.returnPath ?? "/stations";
+  const backLabel =
+    backHref === "/attention"
+      ? "Back to Needs attention"
+      : "Back to charging stations";
 
   return (
     <header className="space-y-5">
@@ -35,7 +39,7 @@ export function StationDetailHeader({ model }: StationDetailHeaderProps) {
           href={backHref}
           className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--vg-radius-md)] px-2 py-1.5 font-sans text-[0.875rem] font-semibold text-[color:var(--vg-brand)] underline-offset-4 hover:bg-[color:var(--vg-brand-soft)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
         >
-          ← Back to charging stations
+          ← {backLabel}
         </Link>
       </div>
 

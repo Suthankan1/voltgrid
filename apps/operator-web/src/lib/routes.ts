@@ -248,7 +248,11 @@ export function sanitizeStationsReturnPath(
   if (!sanitized) {
     return null;
   }
-  if (sanitized === "/stations" || sanitized.startsWith("/stations?")) {
+  if (
+    sanitized === "/stations" ||
+    sanitized.startsWith("/stations?") ||
+    sanitized === "/attention"
+  ) {
     return sanitized;
   }
   return null;

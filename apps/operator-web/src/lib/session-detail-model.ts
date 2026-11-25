@@ -47,12 +47,16 @@ export function normalizeSessionDetailSection(
 
 /**
  * Validates internal return paths for canonical session detail pages,
- * permitting `/sessions...` directory URLs or the matching parent station URL.
+ * permitting `/sessions...` directory URLs, `/attention`, or the matching parent station URL.
  */
 export function sanitizeSessionDetailReturnPath(
   raw: string | string[] | undefined,
   stationId: string,
 ): string | null {
+  if (raw === "/attention" || (Array.isArray(raw) && raw[0] === "/attention")) {
+    return "/attention";
+  }
+
   const safeSessionsPath = sanitizeSessionsDirectoryReturnPath(raw);
   if (safeSessionsPath) {
     return safeSessionsPath;
@@ -62,6 +66,10 @@ export function sanitizeSessionDetailReturnPath(
   const safeInternal = sanitizeInternalReturnPath(candidate);
   if (!safeInternal) {
     return null;
+  }
+
+  if (safeInternal === "/attention") {
+    return "/attention";
   }
 
   const parsed = new URL(safeInternal, "http://voltgrid.invalid");
@@ -841,9 +849,11 @@ export function buildSessionDetailModel(
   );
   const backLinkHref = safeReturn ?? stationHref;
   const backLinkLabel =
-    safeReturn && safeReturn.startsWith("/sessions")
-      ? "Back to Charging sessions"
-      : `Back to ${transaction.stationId}`;
+    safeReturn === "/attention"
+      ? "Back to Needs attention"
+      : safeReturn && safeReturn.startsWith("/sessions")
+        ? "Back to Charging sessions"
+        : `Back to ${transaction.stationId}`;
 
   const startedAtUtc = formatUtcDateTime(transaction.startedAt);
   const endedAtUtc = formatUtcDateTime(transaction.endedAt);
