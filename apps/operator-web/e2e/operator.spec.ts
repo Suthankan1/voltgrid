@@ -45,7 +45,7 @@ test('Operations filter resets the cursor and persists on next page', async ({pa
  await expect(page.getByRole('table').getByText('Offline',{exact:true}).first()).toBeVisible();
  await page.getByRole('link',{name:'Next page'}).click();
  await expect(page).toHaveURL(/status=OFFLINE/);
- await page.getByRole('link',{name:'Reset filters'}).click();
+ await page.locator('form').getByRole('link',{name:'Reset filters'}).click();
  await expect(page.getByRole('combobox',{name:'Projected status',exact:true})).toHaveValue('');
  await page.goto('/operations?status=ONLINE&status=OFFLINE');
  await expect(page).toHaveURL(/\/diagnostics\?status=ONLINE$/);
@@ -61,7 +61,7 @@ test('literal percent identifiers are decoded once', async ({page}) => {
  await expect(page.getByRole('heading',{name:'Session TX%1',exact:true})).toBeVisible();
 });
 
-test('shared navigation, keyboard skip link and refresh work on every view', async ({page}) => {
+test('shared navigation, keyboard skip link and refresh work on every view', async ({page, browserName}) => {
  for (const route of ['/', '/sessions','/operations','/stations/CP-1']) {
   await page.goto(route);
   const navigation=page.getByRole('navigation',{name:'Primary navigation'});
@@ -71,7 +71,7 @@ test('shared navigation, keyboard skip link and refresh work on every view', asy
   await expect(page.getByRole('button',{name:'Refresh data'})).toBeEnabled();
  }
  await page.goto('/');
- await page.keyboard.press('Tab');
+ await page.keyboard.press(browserName === 'webkit' ? 'Alt+Tab' : 'Tab');
  await expect(page.getByRole('link',{name:'Skip to main content'})).toBeFocused();
  await page.keyboard.press('Enter');
  await expect(page.locator('#main-content')).toBeFocused();
@@ -114,18 +114,19 @@ test('fleet search combines name and connectivity in the stations directory whil
  await expect(page.getByRole('link',{name:'Kandy Depot',exact:true})).toBeVisible();
  await expect(page.getByRole('link',{name:'Colombo Central',exact:true})).toHaveCount(0);
 });
-test('local registration confirms new offline station with connection guidance and reports duplicates', async ({page}) => {
+test('local registration confirms new offline station with connection guidance and reports duplicates', async ({page, browserName}) => {
+ const stationId = `NEW-CP-${browserName.toUpperCase()}-1`;
  await page.goto('/stations/new');
- await page.getByLabel('Station identifier',{exact:true}).fill('NEW-CP-1');
+ await page.getByLabel('Station identifier',{exact:true}).fill(stationId);
  await page.getByLabel('Station name',{exact:true}).fill('New local station');
  await page.getByRole('button',{name:'Register station',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Station registered'})).toBeVisible();
- await expect(page.getByText('/ocpp/NEW-CP-1')).toBeVisible();
+ await expect(page.getByText(`/ocpp/${stationId}`)).toBeVisible();
  await page.getByRole('link',{name:'Inspect station details'}).click();
- await expect(page).toHaveURL(/stations\/NEW-CP-1/);
+ await expect(page).toHaveURL(new RegExp(`stations/${stationId}`));
  await expect(page.getByRole('heading',{name:'New local station'})).toBeVisible();
  await page.goto('/stations/new');
- await page.getByLabel('Station identifier',{exact:true}).fill('NEW-CP-1');
+ await page.getByLabel('Station identifier',{exact:true}).fill(stationId);
  await page.getByLabel('Station name',{exact:true}).fill('Duplicate');
  await page.getByRole('button',{name:'Register station',exact:true}).click();
  await expect(page.getByRole('alert').filter({hasText:'already registered'})).toBeVisible();

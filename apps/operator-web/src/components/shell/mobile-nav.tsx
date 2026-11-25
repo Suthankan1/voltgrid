@@ -69,19 +69,18 @@ export function MobileNav() {
       );
       if (focusables.length === 0) return;
 
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
       const active = document.activeElement as HTMLElement | null;
+      const currentIndex = active ? focusables.indexOf(active) : -1;
+      const step = event.shiftKey ? -1 : 1;
+      const nextIndex =
+        currentIndex === -1
+          ? event.shiftKey
+            ? focusables.length - 1
+            : 0
+          : (currentIndex + step + focusables.length) % focusables.length;
 
-      if (event.shiftKey) {
-        if (!active || active === first || !drawerRef.current.contains(active)) {
-          event.preventDefault();
-          last.focus();
-        }
-      } else if (!active || active === last || !drawerRef.current.contains(active)) {
-        event.preventDefault();
-        first.focus();
-      }
+      event.preventDefault();
+      focusables[nextIndex]?.focus();
     }
 
     document.addEventListener("keydown", handleKeyDown);
