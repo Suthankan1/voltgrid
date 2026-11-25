@@ -66,6 +66,9 @@ test("sessions directory adapts across all 7 viewports, 200% zoom, reduced motio
   ] as const) {
     await page.setViewportSize({ width, height });
     await page.goto("/sessions");
+    await expect(
+      page.getByRole("heading", { name: "Charging sessions", exact: true }),
+    ).toBeVisible();
     await page.evaluate(() => {
       document.documentElement.style.fontSize = "200%";
     });
@@ -84,10 +87,13 @@ test("sessions directory adapts across all 7 viewports, 200% zoom, reduced motio
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto("/sessions");
+  await expect(
+    page.getByRole("heading", { name: "Charging sessions", exact: true }),
+  ).toBeVisible();
 
   // Keyboard focus & Enter filter submit on toolbar
   const stationInput = page.getByLabel("Station identifier", { exact: true });
-  await stationInput.focus();
+  await stationInput.click();
   await expect(stationInput).toBeFocused();
   await stationInput.fill("CP-1");
   await page.keyboard.press("Enter");
