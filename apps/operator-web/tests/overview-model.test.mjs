@@ -8,8 +8,12 @@ import vm from "node:vm";
 const require = createRequire(import.meta.url);
 const ts = require("typescript");
 
-function loadOverviewModule() {
-  const absPath = path.resolve(new URL("../src/lib/overview-model.ts", import.meta.url).pathname);
+const libDir = path.resolve(new URL("../src/lib", import.meta.url).pathname);
+const cache = new Map();
+
+function loadTs(relPath) {
+  const absPath = path.resolve(libDir, relPath);
+  if (cache.has(absPath)) return cache.get(absPath);
   const source = readFileSync(absPath, "utf8");
   const { outputText } = ts.transpileModule(source, {
     compilerOptions: {
@@ -19,8 +23,16 @@ function loadOverviewModule() {
     },
   });
   const mod = { exports: {} };
+  cache.set(absPath, mod.exports);
+  const localRequire = id => {
+    if (id.startsWith("./")) {
+      return loadTs(`${id.slice(2)}.ts`);
+    }
+    return require(id);
+  };
   const fn = vm.runInThisContext(`(function(exports, require, module) {\n${outputText}\n})`);
-  fn(mod.exports, require, mod);
+  fn(mod.exports, localRequire, mod);
+  cache.set(absPath, mod.exports);
   return mod.exports;
 }
 
@@ -29,7 +41,7 @@ const {
   buildOverviewModel,
   formatUtcRetrievalTime,
   normalizeOverviewFilters,
-} = loadOverviewModule();
+} = loadTs("overview-model.ts");
 
 test("empty network produces valid zero counts and null (N/A) connectivity", () => {
   const model = buildOverviewModel(

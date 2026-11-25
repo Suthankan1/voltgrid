@@ -1,4 +1,11 @@
 import type { Station, StationSnapshot, StationStatus } from "./station-api";
+import {
+  compareStationsDeterministic,
+  filterAndSortStations,
+  formatUtcRetrievalTime,
+  normalizeStationFilterParams,
+  summarizeStationSnapshot,
+} from "./station-snapshot-utils";
 
 export const DEFAULT_OVERVIEW_PREVIEW_LIMIT = 6;
 
@@ -32,36 +39,16 @@ export interface OverviewPresentationModel {
   previewLimit: number;
 }
 
-function stationSortRank(status: string): number {
-  if (status === "OFFLINE") return 0;
-  if (status === "ONLINE") return 2;
-  return 1;
-}
-
-export function compareStationsForOverview(left: Station, right: Station): number {
-  const rankDiff = stationSortRank(left.status) - stationSortRank(right.status);
-  if (rankDiff !== 0) return rankDiff;
-
-  const nameDiff = left.name.localeCompare(right.name, "en", {
-    sensitivity: "base",
-  });
-  if (nameDiff !== 0) return nameDiff;
-
-  return left.id.localeCompare(right.id, "en");
-}
+export const compareStationsForOverview = compareStationsDeterministic;
+export { formatUtcRetrievalTime };
 
 export function normalizeOverviewFilters(raw: {
   q?: string | string[];
   status?: string | string[];
   all?: string | string[];
 }): OverviewFilters {
-  const rawQuery = Array.isArray(raw.q) ? raw.q[0] : raw.q;
-  const rawStatus = Array.isArray(raw.status) ? raw.status[0] : raw.status;
+  const { query, status } = normalizeStationFilterParams(raw);
   const rawAll = Array.isArray(raw.all) ? raw.all[0] : raw.all;
-
-  const query = rawQuery?.trim() ?? "";
-  const status: "" | StationStatus =
-    rawStatus === "ONLINE" || rawStatus === "OFFLINE" ? rawStatus : "";
   const showAll = rawAll === "1" || rawAll === "true";
 
   return { query, status, showAll };
@@ -84,23 +71,6 @@ export function buildOverviewHref(
   const queryString = params.toString();
   const base = queryString ? `/?${queryString}` : "/";
   return hash ? `${base}#${hash}` : base;
-}
-
-export function formatUtcRetrievalTime(iso: string): string | null {
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: "UTC",
-    timeZoneName: "short",
-  }).format(parsed);
 }
 
 /**
@@ -138,50 +108,16 @@ export function buildOverviewModel(
     };
   }
 
-  const stations = snapshot.stations;
-  let onlineStations = 0;
-  let offlineStations = 0;
-  let unknownStatusStations = 0;
-
-  for (const station of stations) {
-    if (station.status === "ONLINE") {
-      onlineStations += 1;
-    } else if (station.status === "OFFLINE") {
-      offlineStations += 1;
-    } else {
-      unknownStatusStations += 1;
-    }
-  }
-
-  const totalStations = stations.length;
-  const connectivityPercent =
-    totalStations === 0
-      ? null
-      : Math.round((onlineStations / totalStations) * 100);
+  const summary = summarizeStationSnapshot(snapshot.stations);
 
   const conditionKind: OverviewConditionKind =
-    totalStations === 0
+    summary.totalStations === 0
       ? "empty"
-      : offlineStations > 0 || unknownStatusStations > 0
+      : summary.offlineStations > 0 || summary.unknownStatusStations > 0
         ? "attention"
         : "all-online";
 
-  const normalizedQuery = filters.query.toLowerCase();
-  const matchingStations = stations
-    .filter(station => {
-      if (filters.status && station.status !== filters.status) {
-        return false;
-      }
-      if (
-        normalizedQuery &&
-        !`${station.id} ${station.name}`.toLowerCase().includes(normalizedQuery)
-      ) {
-        return false;
-      }
-      return true;
-    })
-    .slice()
-    .sort(compareStationsForOverview);
+  const matchingStations = filterAndSortStations(snapshot.stations, filters);
 
   const shouldShowAll = filters.showAll || hasActiveFilters;
   const visibleStations = shouldShowAll
@@ -194,11 +130,11 @@ export function buildOverviewModel(
     availability: "live",
     errorMessage: null,
     retrievedAtIso: options.retrievedAtIso ?? null,
-    totalStations,
-    onlineStations,
-    offlineStations,
-    unknownStatusStations,
-    connectivityPercent,
+    totalStations: summary.totalStations,
+    onlineStations: summary.onlineStations,
+    offlineStations: summary.offlineStations,
+    unknownStatusStations: summary.unknownStatusStations,
+    connectivityPercent: summary.connectivityPercent,
     conditionKind,
     hasActiveFilters,
     filters,
