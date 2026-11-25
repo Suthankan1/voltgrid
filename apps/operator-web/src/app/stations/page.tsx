@@ -1,27 +1,25 @@
+import { Suspense } from "react";
+import { StationsDirectoryErrorState } from "@/components/stations/stations-directory-error-state";
 import { StationsDirectoryHeader } from "@/components/stations/stations-directory-header";
+import { StationsDirectoryLoading } from "@/components/stations/stations-directory-loading";
 import { StationsDirectorySummary } from "@/components/stations/stations-directory-summary";
 import { StationsDirectoryView } from "@/components/stations/stations-directory-view";
-import { ErrorState } from "@/components/ui/error-state";
 import { getStationSnapshot } from "@/lib/station-api";
 import { localRegistrationEnabled } from "@/lib/station-registration";
 import {
   buildStationsDirectoryModel,
   formatUtcRetrievalTime,
   normalizeStationDirectoryFilters,
+  type StationDirectoryFilters,
 } from "@/lib/stations-directory-model";
 
 export const dynamic = "force-dynamic";
 
-export default async function StationsDirectoryPage({
-  searchParams,
+async function StationsDirectoryContent({
+  filters,
 }: {
-  searchParams: Promise<{
-    q?: string | string[];
-    status?: string | string[];
-  }>;
+  filters: StationDirectoryFilters;
 }) {
-  const params = await searchParams;
-  const filters = normalizeStationDirectoryFilters(params);
   const snapshot = await getStationSnapshot();
   const registrationEnabled = localRegistrationEnabled();
   const retrievedAtIso =
@@ -42,12 +40,7 @@ export default async function StationsDirectoryPage({
         registrationEnabled={registrationEnabled}
         errorFallback={
           model.errorMessage ? (
-            <ErrorState
-              headingAs="h3"
-              title="Unable to load charging stations"
-              message={model.errorMessage}
-              guidance="Check that Station Service is running, then refresh this page."
-            />
+            <StationsDirectoryErrorState message={model.errorMessage} />
           ) : null
         }
       />
@@ -61,5 +54,23 @@ export default async function StationsDirectoryPage({
         <span>Authoritative source: Station Service</span>
       </footer>
     </div>
+  );
+}
+
+export default async function StationsDirectoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    q?: string | string[];
+    status?: string | string[];
+  }>;
+}) {
+  const params = await searchParams;
+  const filters = normalizeStationDirectoryFilters(params);
+
+  return (
+    <Suspense fallback={<StationsDirectoryLoading />}>
+      <StationsDirectoryContent filters={filters} />
+    </Suspense>
   );
 }
