@@ -78,18 +78,22 @@ test("Sidebar renders approved Workspace and Support groups and avoids broken li
   assert.match(html, />Workspace<\/p>/);
   assert.match(html, />Support<\/p>/);
   assert.match(html, /aria-current="page"[^>]*href="\/"/);
+  assert.match(html, /href="\/stations"[^>]*>.*Charging stations/);
   assert.match(html, /href="\/transactions"[^>]*>.*Charging sessions/);
   assert.match(html, /href="\/operations"[^>]*>.*Diagnostics/);
 
-  assert.doesNotMatch(html, /href="\/stations"/);
   assert.doesNotMatch(html, /href="\/attention"/);
   assert.doesNotMatch(html, /href="\/help"/);
-  assert.match(html, /aria-disabled="true"[^>]*>.*Charging stations/);
   assert.match(html, /aria-disabled="true"[^>]*>.*Needs attention/);
   assert.match(html, /aria-disabled="true"[^>]*>.*Help/);
 });
 
-test("Sidebar highlights Charging sessions on nested session routes and context on station routes", () => {
+test("Sidebar highlights Charging stations on /stations and preserves context on station detail routes", () => {
+  const { Sidebar: DirectorySidebar } = loadTsx("components/shell/sidebar.tsx", "/stations");
+  const directoryHtml = renderToStaticMarkup(React.createElement(DirectorySidebar));
+  assert.match(directoryHtml, /aria-current="page"[^>]*>.*Charging stations/);
+  assert.doesNotMatch(directoryHtml, /aria-current="page"[^>]*href="\/"/);
+
   const { Sidebar: SessionSidebar } = loadTsx("components/shell/sidebar.tsx", "/stations/CP-1/transactions/TX-1");
   const sessionHtml = renderToStaticMarkup(React.createElement(SessionSidebar));
   assert.match(sessionHtml, /aria-current="page"[^>]*href="\/transactions"/);
@@ -102,11 +106,16 @@ test("Sidebar highlights Charging sessions on nested session routes and context 
 });
 
 test("TopBar renders contextual breadcrumbs with single-decoded identifiers and refresh control", () => {
+  const { TopBar: DirectoryTopBar } = loadTsx("components/shell/top-bar.tsx", "/stations");
+  const directoryHtml = renderToStaticMarkup(React.createElement(DirectoryTopBar));
+  assert.match(directoryHtml, /href="\/">Overview<\/a>/);
+  assert.match(directoryHtml, /aria-current="page"[^>]*>Charging stations<\/span>/);
+
   const { TopBar: StationTopBar } = loadTsx("components/shell/top-bar.tsx", "/stations/CP%251");
   const stationHtml = renderToStaticMarkup(React.createElement(StationTopBar));
   assert.match(stationHtml, /<nav aria-label="Breadcrumb"/);
   assert.match(stationHtml, /href="\/">Overview<\/a>/);
-  assert.match(stationHtml, />Stations<\/span>/);
+  assert.match(stationHtml, /href="\/stations">Stations<\/a>/);
   assert.match(stationHtml, /aria-current="page"[^>]*>CP%1<\/span>/);
   assert.doesNotMatch(stationHtml, /Colombo Central/);
   assert.match(stationHtml, />Refresh data<\/span>/);

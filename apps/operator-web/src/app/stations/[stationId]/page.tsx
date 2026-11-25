@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { decodePathIdentifier } from "@/lib/path-identifier";
+import { sanitizeStationsReturnPath } from "@/lib/routes";
 import { notFound } from "next/navigation";
 
 import {
@@ -11,12 +12,20 @@ export const dynamic = "force-dynamic";
 
 export default async function StationPage({
   params,
+  searchParams,
 }: {
   params: Promise<{
     stationId: string;
   }>;
+  searchParams?: Promise<{
+    returnTo?: string | string[];
+  }>;
 }) {
   const { stationId } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const directoryReturnPath = sanitizeStationsReturnPath(
+    resolvedSearchParams?.returnTo,
+  );
 
   const decodedStationId = decodePathIdentifier(stationId);
   if (decodedStationId === null) notFound();
@@ -31,10 +40,12 @@ export default async function StationPage({
       <div className="py-4 text-[#17191c]">
         <div className="mx-auto max-w-[1500px]">
           <Link
-            href="/"
+            href={directoryReturnPath ?? "/stations"}
             className="font-mono text-[11px] uppercase tracking-[0.15em] text-[#2457ff]"
           >
-            ← Network
+            {directoryReturnPath
+              ? "← Back to filtered stations"
+              : "← Charging stations"}
           </Link>
 
           <div className="mt-16 border-y border-[#17191c]/20 py-14">
@@ -104,6 +115,16 @@ export default async function StationPage({
 
   return (
     <div className="text-[#17191c]">
+      {directoryReturnPath ? (
+        <div className="mb-4">
+          <Link
+            href={directoryReturnPath}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--vg-radius-sm)] font-mono text-[11px] uppercase tracking-[0.15em] text-[#2457ff] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
+          >
+            ← Back to filtered stations
+          </Link>
+        </div>
+      ) : null}
       <div>
         <section className="grid border-y border-[#17191c]/20 lg:grid-cols-[1.35fr_0.65fr]">
           <div className="py-9 lg:border-r lg:border-[#17191c]/20 lg:pr-12">

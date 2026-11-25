@@ -12,10 +12,10 @@ test("desktop sidebar displays approved hierarchy, active states, and collapse t
 
   const nav = sidebar.getByRole("navigation", { name: "Primary navigation" });
   await expect(nav.getByRole("link", { name: "Overview", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(nav.getByRole("link", { name: "Charging stations", exact: true })).toHaveAttribute("href", "/stations");
   await expect(nav.getByRole("link", { name: "Charging sessions", exact: true })).toBeVisible();
   await expect(nav.getByRole("link", { name: "Diagnostics", exact: true })).toBeVisible();
 
-  await expect(nav.getByRole("link", { name: "Charging stations" })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "Needs attention" })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "Help" })).toHaveCount(0);
 
@@ -30,6 +30,12 @@ test("desktop sidebar displays approved hierarchy, active states, and collapse t
   await sidebar.getByRole("button", { name: "Expand sidebar" }).click();
   await expect(sidebar).toHaveAttribute("data-collapsed", "false");
   await expect.poll(async () => Math.round((await sidebar.boundingBox())!.width)).toBe(240);
+
+  await page.goto("/stations");
+  await expect(nav.getByRole("link", { name: "Charging stations", exact: true })).toHaveAttribute("aria-current", "page");
+
+  await page.goto("/stations/CP-1");
+  await expect(nav.getByRole("link", { name: "Charging stations", exact: true })).toHaveAttribute("data-context-active", "true");
 
   await page.goto("/stations/CP-1/transactions/TX-1");
   await expect(nav.getByRole("link", { name: "Charging sessions", exact: true })).toHaveAttribute("aria-current", "page");
@@ -107,7 +113,7 @@ test("contextual top bar displays accurate breadcrumbs and refresh preserves URL
   await page.goto("/stations/CP%251");
   const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb" });
   await expect(breadcrumb.getByRole("link", { name: "Overview" })).toHaveAttribute("href", "/");
-  await expect(breadcrumb.getByText("Stations", { exact: true })).toBeVisible();
+  await expect(breadcrumb.getByRole("link", { name: "Stations", exact: true })).toHaveAttribute("href", "/stations");
   await expect(breadcrumb.getByText("CP%1", { exact: true })).toHaveAttribute("aria-current", "page");
 
   await page.goto("/stations/CP%251/transactions/TX%251");

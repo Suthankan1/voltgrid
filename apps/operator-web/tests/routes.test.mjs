@@ -45,6 +45,7 @@ const {
   buildStationHref,
   resolveRouteMeta,
   sanitizeInternalReturnPath,
+  sanitizeStationsReturnPath,
 } = loadTs("routes.ts");
 
 test("decodePathIdentifier decodes once and rejects malformed percent sequences", () => {
@@ -61,8 +62,17 @@ test("route builders encode special and literal-percent identifiers safely", () 
 });
 
 test("resolveRouteMeta handles static /stations/new, encoded dynamic routes, and malformed IDs", () => {
+  const dirMeta = resolveRouteMeta("/stations");
+  assert.equal(dirMeta.activeNav, "stations");
+  assert.equal(dirMeta.contextNav, null);
+  assert.deepEqual(dirMeta.breadcrumbs, [
+    { label: "Overview", href: "/" },
+    { label: "Charging stations", current: true },
+  ]);
+
   const newMeta = resolveRouteMeta("/stations/new");
   assert.equal(newMeta.contextNav, "stations");
+  assert.equal(newMeta.breadcrumbs[1]?.href, "/stations");
   assert.deepEqual(
     newMeta.breadcrumbs.map(b => b.label),
     ["Overview", "Stations", "Add station"],
@@ -87,12 +97,21 @@ test("sanitizeInternalReturnPath prevents open redirects and preserves safe quer
   assert.equal(sanitizeInternalReturnPath("javascript:alert(1)"), "/");
   assert.equal(sanitizeInternalReturnPath("/stations/CP-1\nHeader: bad"), "/");
   assert.equal(sanitizeInternalReturnPath(undefined, "/transactions"), "/transactions");
+
+  assert.equal(sanitizeStationsReturnPath("/stations?status=OFFLINE"), "/stations?status=OFFLINE");
+  assert.equal(sanitizeStationsReturnPath("/stations"), "/stations");
+  assert.equal(sanitizeStationsReturnPath("/operations?status=OFFLINE"), null);
+  assert.equal(sanitizeStationsReturnPath("https://evil.example/stations"), null);
 });
 
-test("route compatibility plan keeps redirects inactive for unimplemented canonical routes", () => {
+test("route compatibility plan activates /stations and keeps unimplemented routes inactive", () => {
   for (const entry of ROUTE_COMPATIBILITY_PLAN) {
-    assert.equal(entry.redirectActive, false, `unexpected premature redirect on ${entry.canonical}`);
+    if (entry.canonical === "/stations") {
+      assert.equal(entry.redirectActive, true);
+    } else {
+      assert.equal(entry.redirectActive, false, `unexpected premature redirect on ${entry.canonical}`);
+    }
   }
   const activeNavTargets = NAV_ITEMS.filter(item => item.href !== null).map(item => item.href);
-  assert.deepEqual(activeNavTargets, ["/", "/transactions", "/operations"]);
+  assert.deepEqual(activeNavTargets, ["/", "/stations", "/transactions", "/operations"]);
 });

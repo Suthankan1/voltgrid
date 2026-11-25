@@ -184,11 +184,14 @@ export function MobileNav() {
                             <Link
                               href={item.href}
                               aria-current={active ? "page" : undefined}
+                              data-context-active={!active && contextActive ? "true" : undefined}
                               onClick={() => dismissDrawer(false)}
                               className={`flex min-h-11 items-center gap-3 rounded-[var(--vg-radius-md)] px-3 py-2 font-sans text-[0.875rem] leading-[1.25rem] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)] ${
                                 active
                                   ? "border-l-[3px] border-[color:var(--vg-brand)] bg-[color:var(--vg-brand-soft)] font-semibold text-[color:var(--vg-brand)]"
-                                  : "text-[color:var(--vg-text-primary)] hover:bg-[color:var(--vg-surface-subtle)]"
+                                  : contextActive
+                                    ? "border-l-[3px] border-[color:var(--vg-border-control)] bg-[color:var(--vg-surface-subtle)] font-semibold text-[color:var(--vg-text-primary)]"
+                                    : "text-[color:var(--vg-text-primary)] hover:bg-[color:var(--vg-surface-subtle)]"
                               }`}
                             >
                               <NavDestinationIcon id={item.id} />

@@ -37,9 +37,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     group: "workspace",
     label: "Charging stations",
     canonicalHref: "/stations",
-    href: null,
-    deferredTo: "UI-104",
-    statusNote: "Standalone station directory deferred to UI-104; station list is currently on Overview.",
+    href: "/stations",
   },
   {
     id: "sessions",
@@ -143,9 +141,9 @@ export const ROUTE_COMPATIBILITY_PLAN: readonly RouteMigrationEntry[] = [
   },
   {
     canonical: "/stations",
-    legacy: null,
-    activeDuringUi102: null,
-    redirectActive: false,
+    legacy: "/?q=...&status=...",
+    activeDuringUi102: "/stations",
+    redirectActive: true,
     targetMilestone: "UI-104",
   },
   {
@@ -233,6 +231,20 @@ export function sanitizeInternalReturnPath(
   }
 }
 
+export function sanitizeStationsReturnPath(
+  candidate: string | string[] | null | undefined,
+): string | null {
+  const raw = Array.isArray(candidate) ? candidate[0] : candidate;
+  const sanitized = sanitizeInternalReturnPath(raw, "");
+  if (!sanitized) {
+    return null;
+  }
+  if (sanitized === "/stations" || sanitized.startsWith("/stations?")) {
+    return sanitized;
+  }
+  return null;
+}
+
 export function isNavItemActive(
   item: NavItem,
   routeMeta: RouteMeta,
@@ -244,7 +256,7 @@ export function isNavItemContextActive(
   item: NavItem,
   routeMeta: RouteMeta,
 ): boolean {
-  return item.href === null && routeMeta.contextNav === item.id;
+  return routeMeta.contextNav === item.id && routeMeta.activeNav !== item.id;
 }
 
 /**
@@ -284,13 +296,24 @@ export function resolveRouteMeta(pathname: string): RouteMeta {
     };
   }
 
+  if (cleanPath === "/stations") {
+    return {
+      activeNav: "stations",
+      contextNav: null,
+      breadcrumbs: [
+        { label: "Overview", href: "/" },
+        { label: "Charging stations", current: true },
+      ],
+    };
+  }
+
   if (cleanPath === "/stations/new") {
     return {
       activeNav: null,
       contextNav: "stations",
       breadcrumbs: [
         { label: "Overview", href: "/" },
-        { label: "Stations" },
+        { label: "Stations", href: "/stations" },
         { label: "Add station", current: true },
       ],
     };
@@ -329,7 +352,7 @@ export function resolveRouteMeta(pathname: string): RouteMeta {
         contextNav: "stations",
         breadcrumbs: [
           { label: "Overview", href: "/" },
-          { label: "Stations" },
+          { label: "Stations", href: "/stations" },
           { label: stationLabel, mono: true, current: true },
         ],
       };
