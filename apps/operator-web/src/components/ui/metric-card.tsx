@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import { Card } from "./card";
 
 export type MetricValue = number | string | null | undefined;
@@ -13,6 +13,8 @@ export interface MetricCardProps extends HTMLAttributes<HTMLDivElement> {
   unknownLabel?: string;
   /** Optional supporting explanation (for example denominator scope or retrieval note). */
   description?: string;
+  /** Optional restrained decorative icon rendered with `aria-hidden="true"`. */
+  icon?: ReactNode;
   /** Optional internal route for semantic navigation from the metric card. */
   href?: string;
   /** Accessible link label rendered when `href` is provided. */
@@ -47,6 +49,7 @@ export function MetricCard({
   value,
   unknownLabel = "Unknown",
   description,
+  icon,
   href,
   linkLabel = "View details",
   className,
@@ -61,9 +64,19 @@ export function MetricCard({
       className={className}
       {...props}
     >
-      <p className="font-sans text-[0.8125rem] font-medium leading-[1.25rem] text-[color:var(--vg-text-secondary)]">
-        {label}
-      </p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-sans text-[0.8125rem] font-medium leading-[1.25rem] text-[color:var(--vg-text-secondary)]">
+          {label}
+        </p>
+        {icon ? (
+          <span
+            aria-hidden="true"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--vg-radius-md)] bg-[color:var(--vg-surface-subtle)] text-[color:var(--vg-brand)]"
+          >
+            {icon}
+          </span>
+        ) : null}
+      </div>
       <p
         className={`mt-2 font-sans text-[2rem] font-bold leading-[2.5rem] tabular-nums ${
           display.isUnknown

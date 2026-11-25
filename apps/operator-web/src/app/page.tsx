@@ -1,48 +1,34 @@
 import Link from "next/link";
 
+import { OverviewHeader } from "@/components/overview/overview-header";
+import { OverviewMetrics } from "@/components/overview/overview-metrics";
+import {
+  buildOverviewModel,
+  normalizeOverviewFilters,
+} from "@/lib/overview-model";
 import { getStationSnapshot } from "@/lib/station-api";
+import { localRegistrationEnabled } from "@/lib/station-registration";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home({searchParams}: {
-  searchParams: Promise<{q?: string | string[]; status?: string | string[]}>;
+  searchParams: Promise<{q?: string | string[]; status?: string | string[]; all?: string | string[]}>;
 }) {
   const params = await searchParams;
-  const query = (Array.isArray(params.q) ? params.q[0] : params.q)?.trim() ?? "";
-  const requestedStatus = Array.isArray(params.status) ? params.status[0] : params.status;
-  const status = ["ONLINE", "OFFLINE"].includes(requestedStatus ?? "") ? requestedStatus : "";
+  const filters = normalizeOverviewFilters(params);
+  const query = filters.query;
+  const status = filters.status;
   const snapshot = await getStationSnapshot();
+  const registrationEnabled = localRegistrationEnabled();
+  const model = buildOverviewModel(snapshot, filters, {
+    retrievedAtIso: snapshot.state === "live" ? new Date().toISOString() : null,
+  });
 
-  const stations = snapshot.stations;
-
-  const totalStations = stations.length;
-
-  const onlineStations = stations.filter(
-    (station) => station.status === "ONLINE",
-  ).length;
-
-  const offlineStations =
-    totalStations - onlineStations;
-
-  const connectivity =
-    totalStations === 0
-      ? 0
-      : Math.round(
-          (onlineStations / totalStations) * 100,
-        );
-
-  const filteredStations = stations.filter(station =>
-    (!status || station.status === status) &&
-    (!query || `${station.id} ${station.name}`.toLowerCase().includes(query.toLowerCase())));
-  const orderedStations = [...filteredStations].sort(
-    (left, right) => {
-      if (left.status === right.status) {
-        return left.name.localeCompare(right.name);
-      }
-
-      return left.status === "OFFLINE" ? -1 : 1;
-    },
-  );
+  const totalStations = model.totalStations ?? 0;
+  const onlineStations = model.onlineStations ?? 0;
+  const offlineStations = model.offlineStations ?? 0;
+  const connectivity = model.connectivityPercent ?? 0;
+  const orderedStations = model.visibleStations;
 
   const condition =
     snapshot.state === "unavailable"
@@ -76,74 +62,13 @@ export default async function Home({searchParams}: {
             };
 
   return (
-    <div className="text-[#17191c]">
-      <div>
+    <div className="space-y-6">
+      <OverviewHeader registrationEnabled={registrationEnabled} />
+      <OverviewMetrics model={model} />
+
+      <div className="text-[#17191c]">
         <section className="border-y border-[#17191c]/20">
-          <div className="grid gap-8 py-9 lg:grid-cols-[1fr_auto] lg:items-end">
-            <div>
-              <p className="font-mono text-[12px] uppercase tracking-[0.18em] text-[#2457ff]">
-                Network overview
-              </p>
-
-              <h1 className="mt-3 max-w-4xl text-[clamp(2.7rem,6vw,5.7rem)] font-medium leading-[0.9] tracking-[-0.065em]">
-                Charging network
-              </h1>
-
-              <p className="mt-5 max-w-2xl text-sm leading-6 text-[#666967]">
-                Monitor charging-station connectivity
-                and investigate network availability
-                from the Station Service read model.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span
-                className={`h-2.5 w-2.5 ${
-                  snapshot.state === "live"
-                    ? "bg-[#16a36a]"
-                    : "bg-[#ef7d32]"
-                }`}
-              />
-
-              <span className="font-mono text-[11px] uppercase tracking-[0.13em] text-[#747774]">
-                {snapshot.state === "live"
-                  ? "Live station data"
-                  : "Service unavailable"}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid border-t border-[#17191c]/15 sm:grid-cols-3">
-            <SummaryMetric
-              value={totalStations}
-              label="Registered stations"
-              detail="network total"
-            />
-
-            <SummaryMetric
-              value={onlineStations}
-              label="Online"
-              detail="currently connected"
-              tone={
-                onlineStations > 0
-                  ? "healthy"
-                  : "default"
-              }
-            />
-
-            <SummaryMetric
-              value={offlineStations}
-              label="Offline"
-              detail="requires attention"
-              tone={
-                offlineStations > 0
-                  ? "attention"
-                  : "default"
-              }
-            />
-          </div>
-
-          <div className="grid border-t border-[#17191c]/15 lg:grid-cols-[1fr_320px]">
+          <div className="grid lg:grid-cols-[1fr_320px]">
             <div className="py-6 lg:border-r lg:border-[#17191c]/15 lg:pr-8">
               <div className="flex items-start gap-4">
                 <span
@@ -399,57 +324,6 @@ export default async function Home({searchParams}: {
           </span>
         </footer>
       </div>
-    </div>
-  );
-}
-
-function SummaryMetric({
-  value,
-  label,
-  detail,
-  tone = "default",
-}: {
-  value: number;
-  label: string;
-  detail: string;
-  tone?:
-    | "default"
-    | "healthy"
-    | "attention";
-}) {
-  return (
-    <div className="border-b border-[#17191c]/15 py-6 sm:border-r sm:border-b-0 sm:px-6 sm:first:pl-0 sm:last:border-r-0">
-      <div className="flex items-baseline gap-3">
-        <p
-          className={`font-mono text-3xl tracking-[-0.04em] ${
-            tone === "healthy"
-              ? "text-[#167451]"
-              : tone === "attention"
-                ? "text-[#c54435]"
-                : ""
-          }`}
-        >
-          {value}
-        </p>
-
-        {tone !== "default" && (
-          <span
-            className={`h-2 w-2 ${
-              tone === "healthy"
-                ? "bg-[#16a36a]"
-                : "bg-[#c54435]"
-            }`}
-          />
-        )}
-      </div>
-
-      <p className="mt-3 text-sm font-medium">
-        {label}
-      </p>
-
-      <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#92948f]">
-        {detail}
-      </p>
     </div>
   );
 }
