@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, type ButtonSize } from "@/components/ui/button";
 
 export interface CopyValueButtonProps {
   value: string;
   label: string;
   ariaLabel?: string;
+  size?: ButtonSize;
 }
 
 /**
@@ -17,6 +18,7 @@ export function CopyValueButton({
   value,
   label,
   ariaLabel,
+  size = "sm",
 }: CopyValueButtonProps) {
   const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle");
 
@@ -37,7 +39,7 @@ export function CopyValueButton({
     <div className="inline-flex items-center gap-2">
       <Button
         variant="secondary"
-        size="sm"
+        size={size}
         aria-label={ariaLabel ?? label}
         onClick={handleCopy}
       >
