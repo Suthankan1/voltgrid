@@ -54,8 +54,14 @@ test('real OCPP, authorization, Kafka projection and operator transaction journe
   await page.goto(`/stations/${stationId}/transactions/${transactionId}`);
   await expect(page.getByRole('heading',{name:transactionId,exact:true})).toBeVisible();
   await expect(page.getByText('Complete',{exact:true}).first()).toBeVisible();
-  await page.goto(`/transactions?station=${stationId}`);
+  await page.goto('/sessions');
+  await expect(page.getByRole('heading',{name:'Charging sessions',exact:true})).toBeVisible();
   await expect(page.getByText(transactionId,{exact:true}).first()).toBeVisible();
+  await page.goto(`/transactions?station=${stationId}`);
+  await expect(page).toHaveURL(new RegExp(`/sessions\\?stationId=${stationId}$`));
+  await expect(page.getByText(transactionId,{exact:true}).first()).toBeVisible();
+  await page.getByRole('link',{name:`Inspect session ${transactionId} at ${stationId}`}).click();
+  await expect(page.getByRole('heading',{name:transactionId,exact:true})).toBeVisible();
   await page.goto('/operations');
   const row=page.getByRole('row').filter({hasText:stationId});
   await expect(row).toContainText('ONLINE');

@@ -100,7 +100,7 @@ test("mobile navigation drawer opens, traps focus, locks scroll, closes on Escap
     await menuButton.click();
     await expect(dialog).toBeVisible();
     await dialog.getByRole("link", { name: "Charging sessions" }).click();
-    await expect(page).toHaveURL(/\/transactions/);
+    await expect(page).toHaveURL(/\/sessions$/);
     await expect(dialog).toBeHidden();
     expect(await page.evaluate(() => document.body.style.overflow)).toBe("");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -117,7 +117,7 @@ test("contextual top bar displays accurate breadcrumbs and refresh preserves URL
   await expect(breadcrumb.getByText("CP%1", { exact: true })).toHaveAttribute("aria-current", "page");
 
   await page.goto("/stations/CP%251/transactions/TX%251");
-  await expect(breadcrumb.getByRole("link", { name: "Charging sessions" })).toHaveAttribute("href", "/transactions");
+  await expect(breadcrumb.getByRole("link", { name: "Charging sessions" })).toHaveAttribute("href", "/sessions");
   await expect(breadcrumb.getByRole("link", { name: "CP%1" })).toHaveAttribute("href", "/stations/CP%251");
   await expect(breadcrumb.getByText("TX%1", { exact: true })).toHaveAttribute("aria-current", "page");
 
@@ -149,12 +149,12 @@ test("route compatibility preserves static /stations/new, malformed ID 404s, bac
 
   await page.goto("/");
   await page.getByRole("link", { name: "Charging sessions", exact: true }).click();
-  await expect(page).toHaveURL(/\/transactions/);
+  await expect(page).toHaveURL(/\/sessions$/);
   await page.getByRole("link", { name: "Diagnostics", exact: true }).click();
   await expect(page).toHaveURL(/\/operations/);
 
   await page.goBack();
-  await expect(page).toHaveURL(/\/transactions/);
+  await expect(page).toHaveURL(/\/sessions$/);
   await page.goForward();
   await expect(page).toHaveURL(/\/operations/);
 

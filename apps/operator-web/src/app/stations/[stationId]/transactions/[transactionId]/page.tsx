@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { decodePathIdentifier } from "@/lib/path-identifier";
+import { sanitizeSessionsDirectoryReturnPath } from "@/lib/sessions-directory-model";
 import { notFound } from "next/navigation";
 
 import {
@@ -12,14 +13,22 @@ export const dynamic = "force-dynamic";
 
 export default async function TransactionPage({
   params,
+  searchParams,
 }: {
   params: Promise<{
     stationId: string;
     transactionId: string;
   }>;
+  searchParams?: Promise<{
+    returnTo?: string | string[];
+  }>;
 }) {
   const { stationId, transactionId } =
     await params;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const backHref =
+    sanitizeSessionsDirectoryReturnPath(resolvedSearchParams.returnTo) ??
+    "/sessions";
 
   const decodedStationId =
     decodePathIdentifier(stationId);
@@ -50,10 +59,10 @@ export default async function TransactionPage({
       <div className="py-4 text-[#17191c]">
         <div className="mx-auto max-w-[1600px]">
           <Link
-            href="/transactions"
+            href={backHref}
             className="font-mono text-[12px] uppercase tracking-[0.14em] text-[#2457ff]"
           >
-            ← Transactions
+            ← Charging sessions
           </Link>
 
           <div className="mt-14 border-y border-[#17191c]/20 py-14">
@@ -546,10 +555,10 @@ export default async function TransactionPage({
 
         <footer className="mt-14 flex flex-wrap items-center justify-between gap-5 border-t border-[#17191c]/20 py-6">
           <Link
-            href="/transactions"
+            href={backHref}
             className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#5f625f] transition-colors hover:text-[#2457ff]"
           >
-            ← Network transactions
+            ← Charging sessions
           </Link>
 
           <Link

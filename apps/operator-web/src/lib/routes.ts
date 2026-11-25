@@ -44,9 +44,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     group: "workspace",
     label: "Charging sessions",
     canonicalHref: "/sessions",
-    href: "/transactions",
-    deferredTo: "UI-107",
-    statusNote: "Routes to existing /transactions view until /sessions is implemented in UI-107.",
+    href: "/sessions",
   },
   {
     id: "attention",
@@ -174,8 +172,8 @@ export const ROUTE_COMPATIBILITY_PLAN: readonly RouteMigrationEntry[] = [
   {
     canonical: "/sessions",
     legacy: "/transactions",
-    activeDuringUi102: "/transactions",
-    redirectActive: false,
+    activeDuringUi102: "/sessions",
+    redirectActive: true,
     targetMilestone: "UI-107",
   },
   {
@@ -348,7 +346,7 @@ export function resolveRouteMeta(pathname: string): RouteMeta {
         contextNav: null,
         breadcrumbs: [
           { label: "Overview", href: "/" },
-          { label: "Charging sessions", href: "/transactions" },
+          { label: "Charging sessions", href: "/sessions" },
           ...(decodedStationId
             ? [{ label: stationLabel, href: buildStationHref(decodedStationId), mono: true }]
             : [{ label: stationLabel, mono: true }]),

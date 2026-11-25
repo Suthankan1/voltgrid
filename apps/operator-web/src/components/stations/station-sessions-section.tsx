@@ -11,6 +11,7 @@ import type {
   SessionPresentationItem,
   StationDetailPresentationModel,
 } from "@/lib/station-detail-model";
+import { buildSessionsDirectoryHref } from "@/lib/sessions-directory-model";
 import { StationDetailRetryState } from "./station-detail-retry-state";
 
 export interface StationSessionsRecordsProps {
@@ -177,11 +178,19 @@ export function StationSessionsSection({ model }: StationSessionsSectionProps) {
               Sessions recorded for this charging station. Active sessions remain open until an end event arrives; ended status does not confirm data completeness.
             </CardDescription>
           </div>
-          <p className="font-sans text-[0.8125rem] font-medium text-[color:var(--vg-text-secondary)]">
-            {isLive
-              ? `${total} recorded (${active} active)`
-              : "Unavailable"}
-          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="font-sans text-[0.8125rem] font-medium text-[color:var(--vg-text-secondary)]">
+              {isLive
+                ? `${total} recorded (${active} active)`
+                : "Unavailable"}
+            </p>
+            <Link
+              href={buildSessionsDirectoryHref({ stationId: model.station.id })}
+              className="inline-flex min-h-11 items-center rounded-[var(--vg-radius-md)] border border-[color:var(--vg-border-control)] bg-[color:var(--vg-surface)] px-3 py-2 font-sans text-[0.8125rem] font-semibold text-[color:var(--vg-brand)] hover:bg-[color:var(--vg-surface-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
+            >
+              Inspect in Charging sessions →
+            </Link>
+          </div>
         </CardHeader>
       </div>
 

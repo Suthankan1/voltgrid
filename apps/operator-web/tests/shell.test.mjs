@@ -79,7 +79,7 @@ test("Sidebar renders approved Workspace and Support groups and avoids broken li
   assert.match(html, />Support<\/p>/);
   assert.match(html, /aria-current="page"[^>]*href="\/"/);
   assert.match(html, /href="\/stations"[^>]*>.*Charging stations/);
-  assert.match(html, /href="\/transactions"[^>]*>.*Charging sessions/);
+  assert.match(html, /href="\/sessions"[^>]*>.*Charging sessions/);
   assert.match(html, /href="\/operations"[^>]*>.*Diagnostics/);
 
   assert.doesNotMatch(html, /href="\/attention"/);
@@ -96,7 +96,7 @@ test("Sidebar highlights Charging stations on /stations and preserves context on
 
   const { Sidebar: SessionSidebar } = loadTsx("components/shell/sidebar.tsx", "/stations/CP-1/transactions/TX-1");
   const sessionHtml = renderToStaticMarkup(React.createElement(SessionSidebar));
-  assert.match(sessionHtml, /aria-current="page"[^>]*href="\/transactions"/);
+  assert.match(sessionHtml, /aria-current="page"[^>]*href="\/sessions"/);
   assert.doesNotMatch(sessionHtml, /aria-current="page"[^>]*href="\/"/);
 
   const { Sidebar: StationSidebar } = loadTsx("components/shell/sidebar.tsx", "/stations/CP-1");
@@ -122,7 +122,7 @@ test("TopBar renders contextual breadcrumbs with single-decoded identifiers and 
 
   const { TopBar: SessionTopBar } = loadTsx("components/shell/top-bar.tsx", "/stations/CP%251/transactions/TX%251");
   const sessionHtml = renderToStaticMarkup(React.createElement(SessionTopBar));
-  assert.match(sessionHtml, /href="\/transactions">Charging sessions<\/a>/);
+  assert.match(sessionHtml, /href="\/sessions">Charging sessions<\/a>/);
   assert.match(sessionHtml, /href="\/stations\/CP%251">CP%1<\/a>/);
   assert.match(sessionHtml, /aria-current="page"[^>]*>TX%1<\/span>/);
 });

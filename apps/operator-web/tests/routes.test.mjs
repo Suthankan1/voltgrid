@@ -104,14 +104,14 @@ test("sanitizeInternalReturnPath prevents open redirects and preserves safe quer
   assert.equal(sanitizeStationsReturnPath("https://evil.example/stations"), null);
 });
 
-test("route compatibility plan activates /stations and keeps unimplemented routes inactive", () => {
+test("route compatibility plan activates /stations and /sessions and keeps unimplemented routes inactive", () => {
   for (const entry of ROUTE_COMPATIBILITY_PLAN) {
-    if (entry.canonical === "/stations") {
+    if (entry.canonical === "/stations" || entry.canonical === "/sessions") {
       assert.equal(entry.redirectActive, true);
     } else {
       assert.equal(entry.redirectActive, false, `unexpected premature redirect on ${entry.canonical}`);
     }
   }
   const activeNavTargets = NAV_ITEMS.filter(item => item.href !== null).map(item => item.href);
-  assert.deepEqual(activeNavTargets, ["/", "/stations", "/transactions", "/operations"]);
+  assert.deepEqual(activeNavTargets, ["/", "/stations", "/sessions", "/operations"]);
 });

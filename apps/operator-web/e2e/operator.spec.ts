@@ -8,11 +8,11 @@ test('dashboard to station details and transaction inspector', async ({ page }) 
  await expect(page.getByRole('heading',{name:'TX-1',exact:true})).toBeVisible();
  await expect(page.getByText('Integrity assessment',{exact:true})).toBeVisible();
 });
-test('transaction ledger renders and active filter excludes ended sessions', async ({ page }) => {
- await page.goto('/transactions');
- await expect(page.getByRole('heading',{name:'Transaction operations'})).toBeVisible();
+test('charging sessions directory renders and current-page active filter excludes ended sessions', async ({ page }) => {
+ await page.goto('/sessions');
+ await expect(page.getByRole('heading',{name:'Charging sessions',exact:true})).toBeVisible();
  await expect(page.getByText('TX-1',{exact:true}).first()).toBeVisible();
- await page.getByRole('button',{name:'Active',exact:true}).click();
+ await page.getByRole('button',{name:'Active on page',exact:true}).click();
  await expect(page.getByText('TX-1',{exact:true})).toHaveCount(0);
 });
 test('Operations navigation, cursor pagination and failure state', async ({ page }) => {
@@ -53,7 +53,7 @@ test('literal percent identifiers are decoded once', async ({page}) => {
 });
 
 test('shared navigation, keyboard skip link and refresh work on every view', async ({page}) => {
- for (const route of ['/', '/transactions','/operations','/stations/CP-1']) {
+ for (const route of ['/', '/sessions','/operations','/stations/CP-1']) {
   await page.goto(route);
   const navigation=page.getByRole('navigation',{name:'Primary navigation'});
   await expect(navigation.getByRole('link',{name:'Diagnostics',exact:true})).toBeVisible();
@@ -72,7 +72,7 @@ test('shared navigation, keyboard skip link and refresh work on every view', asy
 
 test('operator views fit mobile and retain navigation', async ({page}, testInfo) => {
  await page.setViewportSize({width:390,height:844});
- for (const [name,route] of [['network','/'],['transactions','/transactions'],['operations','/operations'],['station','/stations/CP-1'],['inspector','/stations/CP-1/transactions/TX-1']]) {
+ for (const [name,route] of [['network','/'],['sessions','/sessions'],['operations','/operations'],['station','/stations/CP-1'],['inspector','/stations/CP-1/transactions/TX-1']]) {
   await page.goto(route);
   await expect(page.getByRole('button',{name:/Menu/i})).toBeVisible();
   await expect(page.locator('main h1')).toBeVisible();
