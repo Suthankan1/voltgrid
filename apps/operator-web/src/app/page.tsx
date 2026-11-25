@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { OverviewHeader } from "@/components/overview/overview-header";
 import { OverviewMetrics } from "@/components/overview/overview-metrics";
+import { OverviewSummaries } from "@/components/overview/overview-summaries";
 import {
   buildOverviewModel,
   normalizeOverviewFilters,
@@ -25,104 +26,17 @@ export default async function Home({searchParams}: {
   });
 
   const totalStations = model.totalStations ?? 0;
-  const onlineStations = model.onlineStations ?? 0;
   const offlineStations = model.offlineStations ?? 0;
-  const connectivity = model.connectivityPercent ?? 0;
   const orderedStations = model.visibleStations;
-
-  const condition =
-    snapshot.state === "unavailable"
-      ? {
-          title: "Station data unavailable",
-          detail: snapshot.message,
-          tone: "unavailable" as const,
-        }
-      : totalStations === 0
-        ? {
-            title: "No stations registered",
-            detail:
-              "Station Service is reachable, but the network does not contain any registered charging stations.",
-            tone: "neutral" as const,
-          }
-        : offlineStations > 0
-          ? {
-              title: "Attention required",
-              detail: `${offlineStations} ${
-                offlineStations === 1
-                  ? "station is"
-                  : "stations are"
-              } currently offline.`,
-              tone: "attention" as const,
-            }
-          : {
-              title: "Network fully connected",
-              detail:
-                "Every registered charging station is currently online.",
-              tone: "healthy" as const,
-            };
 
   return (
     <div className="space-y-6">
       <OverviewHeader registrationEnabled={registrationEnabled} />
       <OverviewMetrics model={model} />
+      <OverviewSummaries model={model} />
 
       <div className="text-[#17191c]">
-        <section className="border-y border-[#17191c]/20">
-          <div className="grid lg:grid-cols-[1fr_320px]">
-            <div className="py-6 lg:border-r lg:border-[#17191c]/15 lg:pr-8">
-              <div className="flex items-start gap-4">
-                <span
-                  className={`mt-1.5 h-3 w-3 shrink-0 ${conditionTone(
-                    condition.tone,
-                  )}`}
-                />
-
-                <div>
-                  <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#858783]">
-                    Network condition
-                  </p>
-
-                  <p className="mt-2 text-lg font-medium tracking-[-0.03em]">
-                    {condition.title}
-                  </p>
-
-                  <p className="mt-2 max-w-xl text-sm leading-6 text-[#686b68]">
-                    {condition.detail}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="py-6 lg:pl-8">
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#858783]">
-                    Connectivity
-                  </p>
-
-                  <p className="mt-2 font-mono text-3xl tracking-[-0.045em]">
-                    {connectivity}%
-                  </p>
-                </div>
-
-                <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-[#92948f]">
-                  {onlineStations}/{totalStations} online
-                </p>
-              </div>
-
-              <div className="mt-5 h-1.5 w-full overflow-hidden bg-[#d8d6cf]">
-                <div
-                  className="h-full bg-[#2457ff]"
-                  style={{
-                    width: `${connectivity}%`,
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-14">
+        <section className="mt-8">
           <div className="flex flex-wrap items-end justify-between gap-5 border-b-2 border-[#17191c] pb-5">
             <div>
               <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-[#777a78]">
@@ -326,26 +240,4 @@ export default async function Home({searchParams}: {
       </div>
     </div>
   );
-}
-
-function conditionTone(
-  tone:
-    | "unavailable"
-    | "attention"
-    | "healthy"
-    | "neutral",
-) {
-  switch (tone) {
-    case "unavailable":
-      return "bg-[#ef7d32]";
-
-    case "attention":
-      return "bg-[#df4c35]";
-
-    case "healthy":
-      return "bg-[#16a36a]";
-
-    case "neutral":
-      return "bg-[#92948f]";
-  }
 }
