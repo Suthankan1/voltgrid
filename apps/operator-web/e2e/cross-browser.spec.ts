@@ -27,11 +27,21 @@ test("cross-browser responsive matrix across all 8 viewports, navigation modes, 
   const consoleErrors: string[] = [];
   const pageErrors: string[] = [];
 
+  const isWebKitAbortedRscPrefetch = (text: string) =>
+    /^(?:https?:)?\/*127\.0\.0\.1:4310\/.*\?_rsc=.*due to access control checks\.?$/.test(
+      text,
+    );
+
   page.on("console", (msg) => {
-    if (msg.type() === "error") consoleErrors.push(msg.text());
+    const text = msg.text();
+    if (msg.type() === "error" && !isWebKitAbortedRscPrefetch(text)) {
+      consoleErrors.push(text);
+    }
   });
   page.on("pageerror", (err) => {
-    pageErrors.push(err.message);
+    if (!isWebKitAbortedRscPrefetch(err.message)) {
+      pageErrors.push(err.message);
+    }
   });
 
   // Verify expanded, compact, and mobile navigation + zero horizontal overflow across all 8 viewports
