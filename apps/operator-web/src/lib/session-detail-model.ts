@@ -1056,8 +1056,12 @@ export function buildSessionDetailModel(
       return normalized;
     });
 
-    const plottableCount = streamSamples.filter(s => s.plottable).length;
-    const latestSample = streamSamples[streamSamples.length - 1] ?? null;
+    const plottableList = streamSamples.filter(s => s.plottable);
+    const plottableCount = plottableList.length;
+    const latestSample =
+      plottableList[plottableList.length - 1] ??
+      streamSamples[streamSamples.length - 1] ??
+      null;
     const geometry = buildStreamGeometry(
       streamSamples,
       displayUnit,
