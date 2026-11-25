@@ -74,7 +74,7 @@ test('operator views fit mobile and retain navigation', async ({page}, testInfo)
  await page.setViewportSize({width:390,height:844});
  for (const [name,route] of [['network','/'],['transactions','/transactions'],['operations','/operations'],['station','/stations/CP-1'],['inspector','/stations/CP-1/transactions/TX-1']]) {
   await page.goto(route);
-  await expect(page.getByRole('navigation',{name:'Mobile navigation'})).toBeVisible();
+  await expect(page.getByRole('button',{name:/Menu/i})).toBeVisible();
   await expect(page.locator('main h1')).toBeVisible();
   await expect(page.locator('main:visible')).toHaveCount(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);

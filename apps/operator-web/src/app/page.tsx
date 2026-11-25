@@ -229,7 +229,7 @@ export default async function Home({searchParams}: {
             </div>
           </div>
 
-          <div className="hidden grid-cols-[150px_minmax(240px,1fr)_220px_180px] border-b border-[#17191c]/20 px-3 py-3 font-mono text-[11px] uppercase tracking-[0.14em] text-[#777a78] sm:grid">
+          <div className="hidden grid-cols-[150px_minmax(240px,1fr)_220px_180px] border-b border-[#17191c]/20 px-3 py-3 font-mono text-[11px] uppercase tracking-[0.14em] text-[#777a78] lg:grid">
             <span>Status</span>
             <span>Station</span>
             <span>Identifier</span>
@@ -261,14 +261,14 @@ export default async function Home({searchParams}: {
                 return (
                   <article
                     key={station.id}
-                    className={`grid gap-5 border-b px-3 py-5 transition-colors sm:grid-cols-[150px_minmax(240px,1fr)_220px_180px] sm:items-center ${
+                    className={`grid gap-5 border-b px-3 py-5 transition-colors lg:grid-cols-[150px_minmax(240px,1fr)_220px_180px] lg:items-center ${
                       offline
                         ? "border-[#df4c35]/30 bg-[#df4c35]/[0.025]"
                         : "border-[#17191c]/15 hover:bg-white/65"
                     }`}
                   >
                     <div>
-                      <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#92948f] sm:hidden">
+                      <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#92948f] lg:hidden">
                         Status
                       </p>
 
@@ -296,7 +296,7 @@ export default async function Home({searchParams}: {
                     </div>
 
                     <div className="min-w-0">
-                      <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#92948f] sm:hidden">
+                      <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#92948f] lg:hidden">
                         Station
                       </p>
 
@@ -323,7 +323,7 @@ export default async function Home({searchParams}: {
                     </div>
 
                     <div>
-                      <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#92948f] sm:hidden">
+                      <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[#92948f] lg:hidden">
                         Identifier
                       </p>
 
@@ -332,7 +332,7 @@ export default async function Home({searchParams}: {
                       </p>
                     </div>
 
-                    <div className="sm:text-right">
+                    <div className="lg:text-right">
                       <Link
                         href={`/stations/${encodeURIComponent(
                           station.id,

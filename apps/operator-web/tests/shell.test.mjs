@@ -101,6 +101,14 @@ test("Sidebar highlights Charging sessions on nested session routes and context 
   assert.doesNotMatch(stationHtml, /aria-current="page"/);
 });
 
+test("MobileNav renders menu trigger and hides dialog until opened", () => {
+  const { MobileNav } = loadTsx("components/shell/mobile-nav.tsx", "/");
+  const closedHtml = renderToStaticMarkup(React.createElement(MobileNav));
+  assert.match(closedHtml, /aria-expanded="false"/);
+  assert.match(closedHtml, />Open navigation <\/span>Menu/);
+  assert.doesNotMatch(closedHtml, /role="dialog"/);
+});
+
 test("MainContent and PageHeader render semantic heading and porcelain tokens", () => {
   const mainHtml = renderToStaticMarkup(
     React.createElement(
