@@ -157,10 +157,17 @@ test("overview handles empty network, read-only registration, unavailable API re
     await expect(page.getByText("Showing 6 of 8 stations").first()).toBeVisible();
     await expect(page.getByText("2 offline", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: /Anuradhapura Regional Transit/ })).toHaveAttribute("href", "/stations/LONG%25ID-1");
+    await expect(page.getByRole("link", { name: "Negombo Hub", exact: true })).toHaveCount(0);
 
-    await page.getByRole("link", { name: "Show all 8 stations" }).click();
-    await expect(page.getByText("Showing 8 of 8 stations").first()).toBeVisible();
+    await page.getByRole("link", { name: "View all stations" }).click();
+    await expect(page).toHaveURL(/\/stations$/);
+    await expect(page.getByText("Showing 8 of 8 stations")).toBeVisible();
     await expect(page.getByRole("link", { name: "Negombo Hub", exact: true })).toBeVisible();
+
+    // Legacy overview filter query redirects safely to canonical /stations directory
+    await page.goto("http://127.0.0.1:4323/?q=Anuradhapura&status=OFFLINE&next=https://evil.example");
+    await expect(page).toHaveURL("http://127.0.0.1:4323/stations?q=Anuradhapura&status=OFFLINE");
+    await expect(page.getByText("Showing 1 of 1 matching (8 total)")).toBeVisible();
 
     await page.setViewportSize({ width: 390, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

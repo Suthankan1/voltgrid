@@ -129,7 +129,7 @@ export function OverviewSummaries({ model }: OverviewSummariesProps) {
               </p>
               {offline > 0 ? (
                 <Link
-                  href="/?status=OFFLINE#stations"
+                  href="/stations?status=OFFLINE"
                   className="inline-flex min-h-11 items-center gap-1 rounded-[var(--vg-radius-sm)] font-sans text-[0.875rem] font-semibold leading-[1.25rem] text-[color:var(--vg-brand)] underline-offset-4 hover:text-[color:var(--vg-brand-hover)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
                 >
                   <span>Inspect offline stations</span>

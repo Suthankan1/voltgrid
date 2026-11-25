@@ -88,17 +88,20 @@ test('dark action links retain readable white text', async ({page}) => {
  expect(await action.evaluate(element=>getComputedStyle(element).color)).toBe('rgb(255, 255, 255)');
 });
 
-test('fleet search combines name and connectivity while retaining network totals', async ({page}) => {
+test('fleet search combines name and connectivity in the stations directory while retaining network totals', async ({page}) => {
  await page.goto('/');
+ await page.getByRole('link',{name:'Browse stations'}).click();
+ await expect(page).toHaveURL(/\/stations$/);
  await page.getByLabel('Search stations').fill('Colombo');
  await page.getByLabel('Connectivity',{exact:true}).selectOption('OFFLINE');
- await page.getByRole('button',{name:'Search fleet'}).click();
+ await page.getByRole('button',{name:'Apply filters'}).click();
  await expect(page.getByText('No stations match the selected filters.')).toBeVisible();
  await page.getByRole('link',{name:'Clear filters'}).click();
  await expect(page.getByLabel('Search stations')).toHaveValue('');
  await expect(page.getByLabel('Connectivity',{exact:true})).toHaveValue('');
  await page.getByLabel('Connectivity',{exact:true}).selectOption('OFFLINE');
- await page.getByRole('button',{name:'Search fleet'}).click();
+ await page.getByRole('button',{name:'Apply filters'}).click();
+ await expect(page).toHaveURL(/\/stations\?.*status=OFFLINE/);
  await expect(page.getByRole('link',{name:'Kandy Depot',exact:true})).toBeVisible();
  await expect(page.getByRole('link',{name:'Colombo Central',exact:true})).toHaveCount(0);
 });

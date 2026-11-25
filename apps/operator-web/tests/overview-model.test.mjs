@@ -37,16 +37,13 @@ function loadTs(relPath) {
 }
 
 const {
-  buildOverviewHref,
   buildOverviewModel,
   formatUtcRetrievalTime,
-  normalizeOverviewFilters,
 } = loadTs("overview-model.ts");
 
 test("empty network produces valid zero counts and null (N/A) connectivity", () => {
   const model = buildOverviewModel(
     { state: "live", stations: [] },
-    normalizeOverviewFilters({}),
     { retrievedAtIso: "2026-10-08T09:00:00Z" },
   );
 
@@ -60,32 +57,26 @@ test("empty network produces valid zero counts and null (N/A) connectivity", () 
 });
 
 test("all-online and all-offline networks calculate exact percentages and conditions", () => {
-  const allOnline = buildOverviewModel(
-    {
-      state: "live",
-      stations: [
-        { id: "CP-1", name: "Colombo Central", status: "ONLINE" },
-        { id: "CP-2", name: "Galle Harbor", status: "ONLINE" },
-      ],
-    },
-    normalizeOverviewFilters({}),
-  );
+  const allOnline = buildOverviewModel({
+    state: "live",
+    stations: [
+      { id: "CP-1", name: "Colombo Central", status: "ONLINE" },
+      { id: "CP-2", name: "Galle Harbor", status: "ONLINE" },
+    ],
+  });
   assert.equal(allOnline.totalStations, 2);
   assert.equal(allOnline.onlineStations, 2);
   assert.equal(allOnline.offlineStations, 0);
   assert.equal(allOnline.connectivityPercent, 100);
   assert.equal(allOnline.conditionKind, "all-online");
 
-  const allOffline = buildOverviewModel(
-    {
-      state: "live",
-      stations: [
-        { id: "CP-3", name: "Kandy Depot", status: "OFFLINE" },
-        { id: "CP-4", name: "Negombo Hub", status: "OFFLINE" },
-      ],
-    },
-    normalizeOverviewFilters({}),
-  );
+  const allOffline = buildOverviewModel({
+    state: "live",
+    stations: [
+      { id: "CP-3", name: "Kandy Depot", status: "OFFLINE" },
+      { id: "CP-4", name: "Negombo Hub", status: "OFFLINE" },
+    ],
+  });
   assert.equal(allOffline.totalStations, 2);
   assert.equal(allOffline.onlineStations, 0);
   assert.equal(allOffline.offlineStations, 2);
@@ -93,33 +84,28 @@ test("all-online and all-offline networks calculate exact percentages and condit
   assert.equal(allOffline.conditionKind, "attention");
 });
 
-test("mixed connectivity rounds percentage and keeps totals independent of list filters", () => {
-  const snapshot = {
+test("mixed connectivity rounds percentage accurately", () => {
+  const model = buildOverviewModel({
     state: "live",
     stations: [
       { id: "CP-1", name: "Colombo Central", status: "ONLINE" },
       { id: "CP-2", name: "Kandy Depot", status: "OFFLINE" },
       { id: "CP-3", name: "Galle Plaza", status: "ONLINE" },
     ],
-  };
+  });
 
-  const filtered = buildOverviewModel(
-    snapshot,
-    normalizeOverviewFilters({ q: "Colombo", status: "OFFLINE" }),
-  );
-  assert.equal(filtered.totalStations, 3);
-  assert.equal(filtered.onlineStations, 2);
-  assert.equal(filtered.offlineStations, 1);
-  assert.equal(filtered.connectivityPercent, 67);
-  assert.equal(filtered.filteredCount, 0);
-  assert.deepEqual(filtered.visibleStations, []);
+  assert.equal(model.totalStations, 3);
+  assert.equal(model.onlineStations, 2);
+  assert.equal(model.offlineStations, 1);
+  assert.equal(model.connectivityPercent, 67);
 });
 
 test("unavailable snapshot produces unknown (null) metrics rather than zero", () => {
-  const model = buildOverviewModel(
-    { state: "unavailable", stations: [], message: "Station API could not be reached." },
-    normalizeOverviewFilters({}),
-  );
+  const model = buildOverviewModel({
+    state: "unavailable",
+    stations: [],
+    message: "Station API could not be reached.",
+  });
   assert.equal(model.availability, "unavailable");
   assert.equal(model.totalStations, null);
   assert.equal(model.onlineStations, null);
@@ -131,16 +117,13 @@ test("unavailable snapshot produces unknown (null) metrics rather than zero", ()
 });
 
 test("unknown status values are never silently treated as online or offline", () => {
-  const model = buildOverviewModel(
-    {
-      state: "live",
-      stations: [
-        { id: "CP-1", name: "Station A", status: "ONLINE" },
-        { id: "CP-2", name: "Station B", status: "UNEXPECTED" },
-      ],
-    },
-    normalizeOverviewFilters({}),
-  );
+  const model = buildOverviewModel({
+    state: "live",
+    stations: [
+      { id: "CP-1", name: "Station A", status: "ONLINE" },
+      { id: "CP-2", name: "Station B", status: "UNEXPECTED" },
+    ],
+  });
   assert.equal(model.totalStations, 2);
   assert.equal(model.onlineStations, 1);
   assert.equal(model.offlineStations, 0);
@@ -149,7 +132,7 @@ test("unknown status values are never silently treated as online or offline", ()
   assert.equal(model.conditionKind, "attention");
 });
 
-test("station ordering prioritizes offline deterministically without mutating source array and supports preview expansion", () => {
+test("station preview orders offline deterministically without mutating source array and bounds results", () => {
   const original = [
     { id: "CP-1", name: "Zulu Online", status: "ONLINE" },
     { id: "CP-2", name: "Beta Offline", status: "OFFLINE" },
@@ -164,35 +147,18 @@ test("station ordering prioritizes offline deterministically without mutating so
 
   const preview = buildOverviewModel(
     { state: "live", stations: original },
-    normalizeOverviewFilters({}),
     { previewLimit: 6 },
   );
 
   // Source array order must remain untouched
   assert.deepEqual(original, snapshotCopy);
   assert.equal(preview.isTruncated, true);
-  assert.equal(preview.filteredCount, 8);
+  assert.equal(preview.totalStations, 8);
   assert.equal(preview.visibleStations.length, 6);
   assert.deepEqual(
     preview.visibleStations.slice(0, 3).map(s => s.id),
     ["CP-4", "CP-2", "CP-8"],
   );
-
-  const expanded = buildOverviewModel(
-    { state: "live", stations: original },
-    normalizeOverviewFilters({ all: "1" }),
-    { previewLimit: 6 },
-  );
-  assert.equal(expanded.isTruncated, false);
-  assert.equal(expanded.visibleStations.length, 8);
-});
-
-test("buildOverviewHref and formatUtcRetrievalTime preserve filters and UTC formatting", () => {
-  assert.equal(
-    buildOverviewHref({ query: "Kandy", status: "OFFLINE", showAll: true }, "stations"),
-    "/?q=Kandy&status=OFFLINE&all=1#stations",
-  );
-  assert.equal(buildOverviewHref({}), "/");
   assert.match(formatUtcRetrievalTime("2026-10-08T09:00:00Z"), /Oct 08, 2026, 09:00 UTC/);
   assert.equal(formatUtcRetrievalTime("not-a-date"), null);
 });

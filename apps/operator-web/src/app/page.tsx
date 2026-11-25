@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { OverviewErrorState } from "@/components/overview/overview-error-state";
 import { OverviewHeader } from "@/components/overview/overview-header";
@@ -8,20 +9,19 @@ import { OverviewSummaries } from "@/components/overview/overview-summaries";
 import {
   buildOverviewModel,
   formatUtcRetrievalTime,
-  normalizeOverviewFilters,
-  type OverviewFilters,
 } from "@/lib/overview-model";
 import { getStationSnapshot } from "@/lib/station-api";
 import { localRegistrationEnabled } from "@/lib/station-registration";
+import { resolveLegacyOverviewRedirectTarget } from "@/lib/stations-directory-model";
 
 export const dynamic = "force-dynamic";
 
-async function OverviewContent({ filters }: { filters: OverviewFilters }) {
+async function OverviewContent() {
   const snapshot = await getStationSnapshot();
   const registrationEnabled = localRegistrationEnabled();
   const retrievedAtIso =
     snapshot.state === "live" ? new Date().toISOString() : null;
-  const model = buildOverviewModel(snapshot, filters, { retrievedAtIso });
+  const model = buildOverviewModel(snapshot, { retrievedAtIso });
   const formattedRetrievedAt = model.retrievedAtIso
     ? formatUtcRetrievalTime(model.retrievedAtIso)
     : null;
@@ -63,11 +63,14 @@ export default async function Home({
   }>;
 }) {
   const params = await searchParams;
-  const filters = normalizeOverviewFilters(params);
+  const legacyRedirect = resolveLegacyOverviewRedirectTarget(params);
+  if (legacyRedirect) {
+    redirect(legacyRedirect);
+  }
 
   return (
     <Suspense fallback={<OverviewLoading />}>
-      <OverviewContent filters={filters} />
+      <OverviewContent />
     </Suspense>
   );
 }

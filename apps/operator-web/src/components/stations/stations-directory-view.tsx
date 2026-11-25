@@ -97,7 +97,7 @@ export function StationsDirectoryView({
               <Button type="submit" variant="secondary">
                 Apply filters
               </Button>
-              {model.hasActiveFilters ? (
+              {model.hasActiveFilters && model.directoryState === "results" ? (
                 <Link
                   href="/stations"
                   className="inline-flex min-h-11 items-center rounded-[var(--vg-radius-md)] px-3 py-2 font-sans text-[0.875rem] font-semibold text-[color:var(--vg-brand)] underline-offset-4 hover:bg-[color:var(--vg-brand-soft)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"

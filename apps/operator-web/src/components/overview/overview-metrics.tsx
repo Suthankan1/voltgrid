@@ -34,8 +34,8 @@ export interface OverviewMetricsProps {
 }
 
 /**
- * Three primary network metric cards derived from the full Station Service snapshot.
- * Links target existing filtered views on `/` until UI-104 introduces `/stations`.
+ * Three primary network metric cards derived from the full Station Service snapshot,
+ * linking directly to filtered views in the dedicated `/stations` directory.
  */
 export function OverviewMetrics({ model }: OverviewMetricsProps) {
   const isLive = model.availability === "live";
@@ -52,7 +52,7 @@ export function OverviewMetrics({ model }: OverviewMetricsProps) {
             ? "Registered in Station Service"
             : "Authoritative snapshot unavailable"
         }
-        href={hasStations ? "/#stations" : undefined}
+        href={hasStations ? "/stations" : undefined}
         linkLabel="Browse stations"
       />
       <MetricCard
@@ -66,7 +66,7 @@ export function OverviewMetrics({ model }: OverviewMetricsProps) {
         }
         href={
           isLive && (model.onlineStations ?? 0) > 0
-            ? "/?status=ONLINE#stations"
+            ? "/stations?status=ONLINE"
             : undefined
         }
         linkLabel="View online stations"
@@ -82,7 +82,7 @@ export function OverviewMetrics({ model }: OverviewMetricsProps) {
         }
         href={
           isLive && (model.offlineStations ?? 0) > 0
-            ? "/?status=OFFLINE#stations"
+            ? "/stations?status=OFFLINE"
             : undefined
         }
         linkLabel="Inspect offline stations"

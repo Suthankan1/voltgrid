@@ -49,7 +49,7 @@ function loadModule(relPath) {
   return mod.exports;
 }
 
-const { buildOverviewModel, normalizeOverviewFilters } = loadModule("lib/overview-model.ts");
+const { buildOverviewModel } = loadModule("lib/overview-model.ts");
 const { OverviewHeader } = loadModule("components/overview/overview-header.tsx");
 const { OverviewMetrics } = loadModule("components/overview/overview-metrics.tsx");
 const { OverviewSummaries } = loadModule("components/overview/overview-summaries.tsx");
@@ -74,70 +74,65 @@ test("OverviewHeader shows Add station when enabled and read-only notice when di
   assert.match(disabledHtml, /Station registration is disabled outside local demo mode\./);
 });
 
-test("OverviewMetrics renders live counts with safe filter links and unknown when unavailable", () => {
-  const mixedModel = buildOverviewModel(
-    {
-      state: "live",
-      stations: [
-        { id: "CP-1", name: "Colombo Central", status: "ONLINE" },
-        { id: "CP-2", name: "Kandy Depot", status: "OFFLINE" },
-      ],
-    },
-    normalizeOverviewFilters({}),
-  );
+test("OverviewMetrics links directly to stations directory filters and shows unknown when unavailable", () => {
+  const mixedModel = buildOverviewModel({
+    state: "live",
+    stations: [
+      { id: "CP-1", name: "Colombo Central", status: "ONLINE" },
+      { id: "CP-2", name: "Kandy Depot", status: "OFFLINE" },
+    ],
+  });
   const liveHtml = renderToStaticMarkup(React.createElement(OverviewMetrics, { model: mixedModel }));
   assert.match(liveHtml, />Total stations<\/p>/);
   assert.match(liveHtml, />2<\/p>/);
   assert.match(liveHtml, />1<\/p>/);
-  assert.match(liveHtml, /href="\/#stations"/);
-  assert.match(liveHtml, /href="\/\?status=ONLINE#stations"/);
-  assert.match(liveHtml, /href="\/\?status=OFFLINE#stations"/);
-  assert.doesNotMatch(liveHtml, /href="\/stations"/);
+  assert.match(liveHtml, /href="\/stations"/);
+  assert.match(liveHtml, /href="\/stations\?status=ONLINE"/);
+  assert.match(liveHtml, /href="\/stations\?status=OFFLINE"/);
 
-  const unavailableModel = buildOverviewModel(
-    { state: "unavailable", stations: [], message: "Station API could not be reached." },
-    normalizeOverviewFilters({}),
-  );
+  const unavailableModel = buildOverviewModel({
+    state: "unavailable",
+    stations: [],
+    message: "Station API could not be reached.",
+  });
   const unavailableHtml = renderToStaticMarkup(React.createElement(OverviewMetrics, { model: unavailableModel }));
   assert.equal((unavailableHtml.match(/>Unknown<\/p>/g) ?? []).length, 3);
   assert.doesNotMatch(unavailableHtml, />0<\/p>/);
 });
 
-test("OverviewSummaries renders connectivity bar, N/A on zero, Unknown on unavailable, and non-fault offline note", () => {
-  const mixedModel = buildOverviewModel(
-    {
-      state: "live",
-      stations: [
-        { id: "CP-1", name: "Colombo Central", status: "ONLINE" },
-        { id: "CP-2", name: "Kandy Depot", status: "OFFLINE" },
-      ],
-    },
-    normalizeOverviewFilters({}),
-  );
+test("OverviewSummaries renders connectivity bar, N/A on zero, Unknown on unavailable, and /stations?status=OFFLINE link", () => {
+  const mixedModel = buildOverviewModel({
+    state: "live",
+    stations: [
+      { id: "CP-1", name: "Colombo Central", status: "ONLINE" },
+      { id: "CP-2", name: "Kandy Depot", status: "OFFLINE" },
+    ],
+  });
   const mixedHtml = renderToStaticMarkup(React.createElement(OverviewSummaries, { model: mixedModel }));
   assert.match(mixedHtml, />50%</);
   assert.match(mixedHtml, /1 of 2 registered stations are currently reported online\./);
   assert.match(mixedHtml, /not historical uptime/);
   assert.match(mixedHtml, /1 offline/);
   assert.match(mixedHtml, /Disconnection does not establish a physical equipment fault/);
-  assert.match(mixedHtml, /href="\/\?status=OFFLINE#stations"/);
+  assert.match(mixedHtml, /href="\/stations\?status=OFFLINE"/);
 
-  const emptyModel = buildOverviewModel({ state: "live", stations: [] }, normalizeOverviewFilters({}));
+  const emptyModel = buildOverviewModel({ state: "live", stations: [] });
   const emptyHtml = renderToStaticMarkup(React.createElement(OverviewSummaries, { model: emptyModel }));
   assert.match(emptyHtml, />N\/A</);
   assert.doesNotMatch(emptyHtml, />0%</);
 
-  const unavailableModel = buildOverviewModel(
-    { state: "unavailable", stations: [], message: "Station API unavailable." },
-    normalizeOverviewFilters({}),
-  );
+  const unavailableModel = buildOverviewModel({
+    state: "unavailable",
+    stations: [],
+    message: "Station API unavailable.",
+  });
   const unavailableHtml = renderToStaticMarkup(React.createElement(OverviewSummaries, { model: unavailableModel }));
   assert.match(unavailableHtml, />Unknown</);
   assert.match(unavailableHtml, />Status unknown</);
   assert.doesNotMatch(unavailableHtml, />0%</);
 });
 
-test("OverviewStationPreview renders encoded station links, scope, expansion link, and empty states", () => {
+test("OverviewStationPreview renders bounded station preview, encoded links, View all stations link, and empty state", () => {
   const manyStations = [
     { id: "CP%1", name: "Colombo Central", status: "ONLINE" },
     { id: "CP-2", name: "Kandy Depot", status: "OFFLINE" },
@@ -147,10 +142,7 @@ test("OverviewStationPreview renders encoded station links, scope, expansion lin
     { id: "CP-6", name: "Matara South", status: "ONLINE" },
     { id: "CP-7", name: "Kurunegala Plaza", status: "ONLINE" },
   ];
-  const previewModel = buildOverviewModel(
-    { state: "live", stations: manyStations },
-    normalizeOverviewFilters({}),
-  );
+  const previewModel = buildOverviewModel({ state: "live", stations: manyStations });
   const previewHtml = renderToStaticMarkup(
     React.createElement(OverviewStationPreview, {
       model: previewModel,
@@ -159,23 +151,12 @@ test("OverviewStationPreview renders encoded station links, scope, expansion lin
   );
   assert.match(previewHtml, /Showing 6 of 7 stations/);
   assert.match(previewHtml, /href="\/stations\/CP%251"/);
-  assert.match(previewHtml, /Show all 7 stations/);
-  assert.match(previewHtml, /href="\/\?all=1#stations"/);
+  assert.match(previewHtml, /View all stations/);
+  assert.match(previewHtml, /href="\/stations"/);
+  assert.doesNotMatch(previewHtml, /<form /);
+  assert.doesNotMatch(previewHtml, /Show all 7 stations/);
 
-  const noMatchModel = buildOverviewModel(
-    { state: "live", stations: manyStations },
-    normalizeOverviewFilters({ q: "missing" }),
-  );
-  const noMatchHtml = renderToStaticMarkup(
-    React.createElement(OverviewStationPreview, {
-      model: noMatchModel,
-      registrationEnabled: false,
-    }),
-  );
-  assert.match(noMatchHtml, /No stations match the selected filters\./);
-  assert.match(noMatchHtml, /href="\/#stations"/);
-
-  const emptyModel = buildOverviewModel({ state: "live", stations: [] }, normalizeOverviewFilters({}));
+  const emptyModel = buildOverviewModel({ state: "live", stations: [] });
   const emptyReadOnlyHtml = renderToStaticMarkup(
     React.createElement(OverviewStationPreview, {
       model: emptyModel,
