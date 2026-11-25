@@ -30,7 +30,9 @@ function loadTsx(relPath, pathname = "/") {
   cache.set(key, mod.exports);
   const localRequire = id => {
     if (id.startsWith("./")) {
-      return loadTsx(path.relative(srcDir, path.resolve(path.dirname(absPath), `${id}.tsx`)), pathname);
+      const target = path.resolve(path.dirname(absPath), id);
+      const file = statSync(`${target}.tsx`, { throwIfNoEntry: false }) ? `${target}.tsx` : `${target}.ts`;
+      return loadTsx(path.relative(srcDir, file), pathname);
     }
     if (id.startsWith("@/")) {
       const target = path.resolve(srcDir, id.slice(2));
@@ -51,11 +53,11 @@ function loadTsx(relPath, pathname = "/") {
   return mod.exports;
 }
 
-const { AppShell } = loadTsx("components/shell/app-shell.tsx", "/");
 const { MainContent } = loadTsx("components/shell/main-content.tsx");
 const { PageHeader } = loadTsx("components/shell/page-header.tsx");
 
 test("AppShell renders skip link, sidebar, top bar, and single main landmark", () => {
+  const { AppShell } = loadTsx("components/shell/app-shell.tsx", "/");
   const html = renderToStaticMarkup(
     React.createElement(AppShell, null, React.createElement("h1", null, "Overview")),
   );
@@ -65,6 +67,38 @@ test("AppShell renders skip link, sidebar, top bar, and single main landmark", (
   assert.match(html, /<aside aria-label="Workspace sidebar"/);
   assert.match(html, /<header /);
   assert.match(html, />Overview<\/h1>/);
+});
+
+test("Sidebar renders approved Workspace and Support groups and avoids broken links for deferred routes", () => {
+  const { Sidebar } = loadTsx("components/shell/sidebar.tsx", "/");
+  const html = renderToStaticMarkup(React.createElement(Sidebar));
+
+  assert.match(html, /aria-label="VoltGrid overview"/);
+  assert.match(html, />voltgrid\.</);
+  assert.match(html, />Workspace<\/p>/);
+  assert.match(html, />Support<\/p>/);
+  assert.match(html, /aria-current="page"[^>]*href="\/"/);
+  assert.match(html, /href="\/transactions"[^>]*>.*Charging sessions/);
+  assert.match(html, /href="\/operations"[^>]*>.*Diagnostics/);
+
+  assert.doesNotMatch(html, /href="\/stations"/);
+  assert.doesNotMatch(html, /href="\/attention"/);
+  assert.doesNotMatch(html, /href="\/help"/);
+  assert.match(html, /aria-disabled="true"[^>]*>.*Charging stations/);
+  assert.match(html, /aria-disabled="true"[^>]*>.*Needs attention/);
+  assert.match(html, /aria-disabled="true"[^>]*>.*Help/);
+});
+
+test("Sidebar highlights Charging sessions on nested session routes and context on station routes", () => {
+  const { Sidebar: SessionSidebar } = loadTsx("components/shell/sidebar.tsx", "/stations/CP-1/transactions/TX-1");
+  const sessionHtml = renderToStaticMarkup(React.createElement(SessionSidebar));
+  assert.match(sessionHtml, /aria-current="page"[^>]*href="\/transactions"/);
+  assert.doesNotMatch(sessionHtml, /aria-current="page"[^>]*href="\/"/);
+
+  const { Sidebar: StationSidebar } = loadTsx("components/shell/sidebar.tsx", "/stations/CP-1");
+  const stationHtml = renderToStaticMarkup(React.createElement(StationSidebar));
+  assert.match(stationHtml, /data-context-active="true"[^>]*>.*Charging stations/);
+  assert.doesNotMatch(stationHtml, /aria-current="page"/);
 });
 
 test("MainContent and PageHeader render semantic heading and porcelain tokens", () => {

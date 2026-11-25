@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { MainContent } from "./main-content";
-import { ShellSidebar, ShellTopBar } from "./shell-navigation";
+import { Sidebar } from "./sidebar";
+import { ShellTopBar } from "./shell-navigation";
 
 export interface AppShellProps {
   children: ReactNode;
@@ -16,7 +17,7 @@ export function AppShell({ children }: AppShellProps) {
       <a className="skip-link" href="#main-content">
         Skip to main content
       </a>
-      <ShellSidebar />
+      <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <ShellTopBar />
         <MainContent>{children}</MainContent>
