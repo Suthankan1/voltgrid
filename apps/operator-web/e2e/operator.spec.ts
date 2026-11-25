@@ -105,11 +105,14 @@ test('fleet search combines name and connectivity in the stations directory whil
  await expect(page.getByRole('link',{name:'Kandy Depot',exact:true})).toBeVisible();
  await expect(page.getByRole('link',{name:'Colombo Central',exact:true})).toHaveCount(0);
 });
-test('local registration redirects to the new offline station and reports duplicates', async ({page}) => {
+test('local registration confirms new offline station with connection guidance and reports duplicates', async ({page}) => {
  await page.goto('/stations/new');
  await page.getByLabel('Station identifier',{exact:true}).fill('NEW-CP-1');
  await page.getByLabel('Station name',{exact:true}).fill('New local station');
  await page.getByRole('button',{name:'Register station',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Station registered'})).toBeVisible();
+ await expect(page.getByText('/ocpp/NEW-CP-1')).toBeVisible();
+ await page.getByRole('link',{name:'Inspect station details'}).click();
  await expect(page).toHaveURL(/stations\/NEW-CP-1/);
  await expect(page.getByRole('heading',{name:'New local station'})).toBeVisible();
  await page.goto('/stations/new');

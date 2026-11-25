@@ -14,6 +14,9 @@ test('real OCPP, authorization, Kafka projection and operator transaction journe
  await page.getByLabel('Station identifier',{exact:true}).fill(stationId);
  await page.getByLabel('Station name',{exact:true}).fill('Operator E2E Station');
  await page.getByRole('button',{name:'Register station',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Station registered'})).toBeVisible();
+ await expect(page.getByText(`/ocpp/${stationId}`)).toBeVisible();
+ await page.getByRole('link',{name:'Inspect station details'}).click();
  await expect(page).toHaveURL(new RegExp(`/stations/${stationId}$`));
  const socket = new WebSocket(`ws://127.0.0.1:18080/ocpp/${stationId}`, 'ocpp2.0.1');
  try {

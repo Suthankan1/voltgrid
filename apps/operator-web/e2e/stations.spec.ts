@@ -73,7 +73,7 @@ test("stations directory adapts across viewports, 200% text scaling, reduced mot
   // Static /stations/new precedence and genuine 404 preservation on unknown station
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto("/stations/new");
-  await expect(page.getByRole("heading", { name: "Register a charging station" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Add charging station" })).toBeVisible();
   expect((await page.goto("/stations/does-not-exist-station"))?.status()).toBe(404);
 
   // Keyboard navigation across filter controls and Enter submit on /stations

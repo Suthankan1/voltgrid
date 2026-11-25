@@ -1,6 +1,8 @@
-import type { InputHTMLAttributes } from "react";
+import type { InputHTMLAttributes, Ref } from "react";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+  /** Forwarded ref to the underlying native `<input>` element. */
+  ref?: Ref<HTMLInputElement>;
   /** Marks the input as failing validation (`aria-invalid` and danger border). */
   invalid?: boolean;
   /** Uses monospace typography for technical identifiers such as station or session IDs. */

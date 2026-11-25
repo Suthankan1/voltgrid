@@ -56,20 +56,16 @@ export function FormField({
 
   return (
     <div className={containerClasses}>
-      <label
-        htmlFor={fieldId}
-        className="font-sans text-[0.875rem] font-semibold leading-[1.25rem] text-[color:var(--vg-text-primary)]"
-      >
-        <span>{label}</span>
+      <div className="flex items-center gap-1 font-sans text-[0.875rem] font-semibold leading-[1.25rem] text-[color:var(--vg-text-primary)]">
+        <label htmlFor={fieldId}>
+          <span>{label}</span>
+        </label>
         {required ? (
-          <span
-            aria-hidden="true"
-            className="ml-1 text-[color:var(--vg-danger)]"
-          >
+          <span aria-hidden="true" className="text-[color:var(--vg-danger)]">
             *
           </span>
         ) : null}
-      </label>
+      </div>
 
       {typeof children === "function" ? children(controlProps) : children}
 

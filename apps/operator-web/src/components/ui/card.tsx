@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, Ref } from "react";
 
 export type CardVariant = "default" | "subtle";
 export type CardPadding = "none" | "sm" | "md" | "lg";
@@ -75,6 +75,8 @@ export function CardHeader({ className, children, ...props }: CardHeaderProps) {
 }
 
 export interface CardTitleProps extends HTMLAttributes<HTMLHeadingElement> {
+  /** Forwarded ref to the underlying heading element. */
+  ref?: Ref<HTMLHeadingElement>;
   /** Heading level matching the page's document outline. */
   as?: "h2" | "h3" | "h4";
 }

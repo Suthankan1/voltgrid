@@ -7,6 +7,7 @@ import { StationsDirectoryView } from "@/components/stations/stations-directory-
 import { getStationSnapshot } from "@/lib/station-api";
 import { localRegistrationEnabled } from "@/lib/station-registration";
 import {
+  buildStationsDirectoryHref,
   buildStationsDirectoryModel,
   formatUtcRetrievalTime,
   normalizeStationDirectoryFilters,
@@ -33,7 +34,10 @@ async function StationsDirectoryContent({
 
   return (
     <div className="space-y-6">
-      <StationsDirectoryHeader registrationEnabled={registrationEnabled} />
+      <StationsDirectoryHeader
+        registrationEnabled={registrationEnabled}
+        returnPath={buildStationsDirectoryHref(filters)}
+      />
       <StationsDirectorySummary model={model} />
       <StationsDirectoryView
         model={model}

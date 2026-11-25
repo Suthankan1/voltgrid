@@ -111,6 +111,17 @@ export function buildStationHref(stationId: string): string {
   return `/stations/${encodeURIComponent(stationId)}`;
 }
 
+export function buildStationRegistrationHref(
+  returnPath?: string | null,
+): string {
+  const safeReturn = sanitizeStationsReturnPath(returnPath);
+  if (!safeReturn || safeReturn === "/stations") {
+    return "/stations/new";
+  }
+  const params = new URLSearchParams({ returnTo: safeReturn });
+  return `/stations/new?${params.toString()}`;
+}
+
 export function buildSessionHref(stationId: string, sessionId: string): string {
   return `/stations/${encodeURIComponent(stationId)}/transactions/${encodeURIComponent(sessionId)}`;
 }
