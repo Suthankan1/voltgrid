@@ -25,10 +25,10 @@ export function StationRecordsList({
           <caption className="sr-only">{caption}</caption>
           <thead>
             <tr className="border-b border-[color:var(--vg-border)] bg-[color:var(--vg-surface-subtle)] font-sans text-[0.75rem] font-semibold uppercase tracking-[0.04em] text-[color:var(--vg-text-secondary)]">
-              <th scope="col" className="px-6 py-3">Station</th>
-              <th scope="col" className="px-6 py-3">Identifier</th>
-              <th scope="col" className="px-6 py-3">Connectivity</th>
-              <th scope="col" className="px-6 py-3 text-right">Details</th>
+              <th scope="col" className="px-4 py-3 sm:px-5">Station</th>
+              <th scope="col" className="px-4 py-3 sm:px-5">Identifier</th>
+              <th scope="col" className="px-4 py-3 sm:px-5">Connectivity</th>
+              <th scope="col" className="px-4 py-3 text-right sm:px-5">Details</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[color:var(--vg-border)]">
@@ -40,7 +40,7 @@ export function StationRecordsList({
                   key={station.id}
                   className="transition-colors duration-[var(--vg-transition-fast)] hover:bg-[color:var(--vg-surface-subtle)]/60"
                 >
-                  <td className="max-w-[20rem] px-6 py-4 align-middle">
+                  <td className="max-w-[20rem] px-4 py-4 align-middle sm:px-5">
                     <Link
                       href={href}
                       className="inline-flex min-h-11 items-center break-words rounded-[var(--vg-radius-sm)] font-sans text-[0.875rem] font-semibold leading-[1.375rem] text-[color:var(--vg-text-primary)] hover:text-[color:var(--vg-brand)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
@@ -48,13 +48,13 @@ export function StationRecordsList({
                       {station.name}
                     </Link>
                   </td>
-                  <td className="max-w-[16rem] px-6 py-4 align-middle font-mono text-[0.8125rem] leading-[1.25rem] break-all text-[color:var(--vg-text-secondary)]">
+                  <td className="max-w-[16rem] px-4 py-4 align-middle font-mono text-[0.8125rem] leading-[1.25rem] break-all text-[color:var(--vg-text-secondary)] sm:px-5">
                     {station.id}
                   </td>
-                  <td className="px-6 py-4 align-middle">
+                  <td className="px-4 py-4 align-middle sm:px-5">
                     <StationStatusIndicator status={station.status} size="sm" />
                   </td>
-                  <td className="px-6 py-4 text-right align-middle">
+                  <td className="px-4 py-4 text-right align-middle sm:px-5">
                     <Link
                       href={href}
                       aria-label={
