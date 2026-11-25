@@ -53,6 +53,7 @@ const { buildOverviewModel, normalizeOverviewFilters } = loadModule("lib/overvie
 const { OverviewHeader } = loadModule("components/overview/overview-header.tsx");
 const { OverviewMetrics } = loadModule("components/overview/overview-metrics.tsx");
 const { OverviewSummaries } = loadModule("components/overview/overview-summaries.tsx");
+const { OverviewStationPreview } = loadModule("components/overview/overview-station-preview.tsx");
 
 test("OverviewHeader shows Add station when enabled and read-only notice when disabled", () => {
   const enabledHtml = renderToStaticMarkup(
@@ -132,4 +133,54 @@ test("OverviewSummaries renders connectivity bar, N/A on zero, Unknown on unavai
   assert.match(unavailableHtml, />Unknown</);
   assert.match(unavailableHtml, />Status unknown</);
   assert.doesNotMatch(unavailableHtml, />0%</);
+});
+
+test("OverviewStationPreview renders encoded station links, scope, expansion link, and empty states", () => {
+  const manyStations = [
+    { id: "CP%1", name: "Colombo Central", status: "ONLINE" },
+    { id: "CP-2", name: "Kandy Depot", status: "OFFLINE" },
+    { id: "CP-3", name: "Galle Harbor", status: "ONLINE" },
+    { id: "CP-4", name: "Negombo Hub", status: "ONLINE" },
+    { id: "CP-5", name: "Jaffna North", status: "ONLINE" },
+    { id: "CP-6", name: "Matara South", status: "ONLINE" },
+    { id: "CP-7", name: "Kurunegala Plaza", status: "ONLINE" },
+  ];
+  const previewModel = buildOverviewModel(
+    { state: "live", stations: manyStations },
+    normalizeOverviewFilters({}),
+  );
+  const previewHtml = renderToStaticMarkup(
+    React.createElement(OverviewStationPreview, {
+      model: previewModel,
+      registrationEnabled: true,
+    }),
+  );
+  assert.match(previewHtml, /Showing 6 of 7 stations/);
+  assert.match(previewHtml, /href="\/stations\/CP%251"/);
+  assert.match(previewHtml, /Show all 7 stations/);
+  assert.match(previewHtml, /href="\/\?all=1#stations"/);
+
+  const noMatchModel = buildOverviewModel(
+    { state: "live", stations: manyStations },
+    normalizeOverviewFilters({ q: "missing" }),
+  );
+  const noMatchHtml = renderToStaticMarkup(
+    React.createElement(OverviewStationPreview, {
+      model: noMatchModel,
+      registrationEnabled: false,
+    }),
+  );
+  assert.match(noMatchHtml, /No stations match the selected filters\./);
+  assert.match(noMatchHtml, /href="\/#stations"/);
+
+  const emptyModel = buildOverviewModel({ state: "live", stations: [] }, normalizeOverviewFilters({}));
+  const emptyReadOnlyHtml = renderToStaticMarkup(
+    React.createElement(OverviewStationPreview, {
+      model: emptyModel,
+      registrationEnabled: false,
+    }),
+  );
+  assert.match(emptyReadOnlyHtml, /No charging stations registered/);
+  assert.match(emptyReadOnlyHtml, /read-only mode/);
+  assert.doesNotMatch(emptyReadOnlyHtml, /href="\/stations\/new"/);
 });

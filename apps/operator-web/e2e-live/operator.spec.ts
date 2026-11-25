@@ -46,7 +46,7 @@ test('real OCPP, authorization, Kafka projection and operator transaction journe
   await call('TransactionEvent',{eventType:'Started',timestamp:new Date().toISOString(),triggerReason:'CablePluggedIn',seqNo:0,transactionInfo:{transactionId,chargingState:'EVConnected'},evse:{id:1,connectorId:1}});
   await call('TransactionEvent',{eventType:'Ended',timestamp:new Date().toISOString(),triggerReason:'StopAuthorized',seqNo:1,transactionInfo:{transactionId}});
   await page.goto('/');
-  await page.getByRole('link',{name:'Operator E2E Station →',exact:true}).and(page.locator(`a[href="/stations/${stationId}"]`)).click();
+  await page.getByRole('link',{name:'Operator E2E Station',exact:true}).and(page.locator(`a[href="/stations/${stationId}"]`)).click();
   await expect(page.getByRole('heading',{name:'Operator E2E Station'})).toBeVisible();
   await page.goto(`/stations/${stationId}/transactions/${transactionId}`);
   await expect(page.getByRole('heading',{name:transactionId,exact:true})).toBeVisible();

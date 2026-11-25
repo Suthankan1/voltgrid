@@ -17,7 +17,7 @@ test('transaction ledger renders and active filter excludes ended sessions', asy
 });
 test('Operations navigation, cursor pagination and failure state', async ({ page }) => {
  await page.goto('/');
- await page.getByRole('link',{name:'View Operations status →'}).click();
+ await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'Diagnostics', exact: true }).click();
  await expect(page.getByRole('heading',{name:'Operations status'})).toBeVisible();
  await expect(page.getByRole('cell',{name:'ONLINE',exact:true})).toBeVisible();
  await page.getByRole('link',{name:'Next page →'}).click();
@@ -84,7 +84,7 @@ test('operator views fit mobile and retain navigation', async ({page}, testInfo)
 
 test('dark action links retain readable white text', async ({page}) => {
  await page.goto('/');
- const action=page.getByRole('link',{name:'Open transactions →'});
+ const action=page.getByRole('link',{name:'Add station'});
  expect(await action.evaluate(element=>getComputedStyle(element).color)).toBe('rgb(255, 255, 255)');
 });
 
@@ -99,8 +99,8 @@ test('fleet search combines name and connectivity while retaining network totals
  await expect(page.getByLabel('Connectivity',{exact:true})).toHaveValue('');
  await page.getByLabel('Connectivity',{exact:true}).selectOption('OFFLINE');
  await page.getByRole('button',{name:'Search fleet'}).click();
- await expect(page.getByRole('link',{name:'Kandy Depot →',exact:true})).toBeVisible();
- await expect(page.getByRole('link',{name:'Colombo Central →',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('link',{name:'Kandy Depot',exact:true})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Colombo Central',exact:true})).toHaveCount(0);
 });
 test('local registration redirects to the new offline station and reports duplicates', async ({page}) => {
  await page.goto('/stations/new');
