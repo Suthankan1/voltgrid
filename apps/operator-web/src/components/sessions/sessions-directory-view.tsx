@@ -77,7 +77,7 @@ export function SessionsDirectoryView({
           </CardHeader>
 
           {isLive && model.rows.length > 0 ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--vg-radius-md)] border border-[color:var(--vg-border)] bg-[color:var(--vg-surface-subtle)] p-3">
+            <div className="flex flex-col gap-3 rounded-[var(--vg-radius-md)] border border-[color:var(--vg-border)] bg-[color:var(--vg-surface-subtle)] p-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0 flex-1">
                 <p className="font-sans text-[0.75rem] font-semibold uppercase tracking-[0.04em] text-[color:var(--vg-text-primary)]">
                   Current page only

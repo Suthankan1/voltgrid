@@ -72,7 +72,7 @@ export function SessionsDirectoryFiltersToolbar({
         key={formKey}
         action="/sessions"
         method="get"
-        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(130px,0.6fr)_auto]"
+        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,1.1fr)_minmax(150px,0.7fr)_auto]"
       >
         <FormField
           label="Station identifier"
@@ -147,7 +147,7 @@ export function SessionsDirectoryFiltersToolbar({
           )}
         </FormField>
 
-        <div className="flex flex-wrap items-end gap-2 sm:col-span-2 lg:col-span-1 lg:pt-6">
+        <div className="flex flex-wrap items-end gap-2 sm:col-span-2 xl:col-span-1 xl:pt-6">
           <Button type="submit" variant="primary" size="md">
             Apply filters
           </Button>
