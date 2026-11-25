@@ -46,6 +46,7 @@ test('real OCPP, authorization, Kafka projection and operator transaction journe
    return (await response.json()).data?.stationStatus?.currentStatus;
   },{timeout:30000}).toBe('ONLINE');
   await call('StatusNotification',{timestamp:new Date().toISOString(),connectorStatus:'Available',evseId:1,connectorId:1});
+  await call('StatusNotification',{timestamp:new Date().toISOString(),connectorStatus:'Faulted',evseId:1,connectorId:2});
   const startedAt = new Date().toISOString();
   const sampleOneAt = new Date(Date.now() + 1000).toISOString();
   const sampleTwoAt = new Date(Date.now() + 2000).toISOString();
@@ -83,6 +84,11 @@ test('real OCPP, authorization, Kafka projection and operator transaction journe
   await page.goto('/');
   await page.getByRole('link',{name:'Operator E2E Station',exact:true}).and(page.locator(`a[href="/stations/${stationId}"]`)).click();
   await expect(page.getByRole('heading',{name:'Operator E2E Station'})).toBeVisible();
+  await page.getByRole('navigation',{name:'Station sections'}).getByRole('link',{name:/Connectors/}).click();
+  await expect(page).toHaveURL(new RegExp(`/stations/${stationId}\\?section=connectors$`));
+  await expect(page.getByText('EVSE 1 · Connector 1')).toBeVisible();
+  await expect(page.getByText('EVSE 1 · Connector 2')).toBeVisible();
+  await expect(page.getByText('Faulted',{exact:true}).first()).toBeVisible();
   await page.goto(`/stations/${stationId}/transactions/${transactionId}`);
   await expect(page).toHaveURL(new RegExp(`/stations/${stationId}/sessions/${transactionId}$`));
   await expect(page.getByRole('heading',{name:`Session ${transactionId}`,exact:true})).toBeVisible();
@@ -90,6 +96,14 @@ test('real OCPP, authorization, Kafka projection and operator transaction journe
   await page.getByRole('navigation',{name:'Session sections'}).getByRole('link',{name:/Measurements/}).click();
   await expect(page).toHaveURL(new RegExp(`/stations/${stationId}/sessions/${transactionId}\\?section=measurements$`));
   await expect(page.getByRole('img',{name:/Time-series measurement chart/i})).toBeVisible();
+  const streamSelect = page.getByLabel('Compatible measurement stream');
+  await expect(streamSelect).toBeVisible();
+  await streamSelect.selectOption({ index: 0 });
+  const energyOptionValue = await streamSelect.locator('option', { hasText: 'Energy.Active.Import.Register' }).getAttribute('value');
+  if (energyOptionValue) {
+    await streamSelect.selectOption(energyOptionValue);
+    await expect(page.getByText('Cumulative meter register stream')).toBeVisible();
+  }
   const rawTable = page.getByRole('table');
   await expect(rawTable.getByText('7.4 kW').first()).toBeVisible();
   await expect(rawTable.getByText('8.2 kW').first()).toBeVisible();
@@ -129,5 +143,22 @@ test('real OCPP, authorization, Kafka projection and operator transaction journe
   for (const label of ['Overview','Charging stations','Charging sessions','Needs attention','Diagnostics','Help']) {
    await expect(nav.getByRole('link',{name:label,exact:true})).toBeVisible();
   }
+
+  // Exercise WebSocket disconnect -> authoritative offline + async Operations projection + Needs attention
+  socket.close();
+  await expect.poll(async()=>{
+   const response=await request.post('http://127.0.0.1:18080/graphql',{data:{query:'query Station($id: ID!) { station(id:$id) { status } }',variables:{id:stationId}}});
+   return (await response.json()).data?.station?.status;
+  },{timeout:30000}).toBe('OFFLINE');
+  await expect.poll(async()=>{
+   const response=await request.post('http://127.0.0.1:18081/graphql',{data:{query:'query Status($id: ID!) { stationStatus(stationId:$id) { currentStatus } }',variables:{id:stationId}}});
+   return (await response.json()).data?.stationStatus?.currentStatus;
+  },{timeout:30000}).toBe('OFFLINE');
+  await page.goto(`/stations/${stationId}`);
+  await expect(page.getByText('Station is currently reported offline').first()).toBeVisible();
+  await page.goto('/attention');
+  await expect(page.getByRole('link',{name:`Inspect offline station Operator E2E Station`}).first()).toBeVisible();
+  await page.goto(`/diagnostics?stationId=${stationId}`);
+  await expect(page.getByRole('row').filter({hasText:stationId})).toContainText('Offline');
  } finally { socket.close(); }
 });
