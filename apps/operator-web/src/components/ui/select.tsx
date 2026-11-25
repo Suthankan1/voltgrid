@@ -27,7 +27,7 @@ export function Select({
   const isInvalid = Boolean(invalid || (ariaInvalid !== undefined && ariaInvalid !== false && ariaInvalid !== "false"));
 
   const classes = [
-    "w-full min-h-11 appearance-none rounded-[var(--vg-radius-md)] border py-2.5 pl-3.5 pr-10 font-sans text-[0.875rem] leading-[1.375rem] transition-colors duration-[var(--vg-transition-fast)]",
+    "w-full min-w-0 max-w-full min-h-11 appearance-none truncate rounded-[var(--vg-radius-md)] border py-2.5 pl-3.5 pr-10 font-sans text-[0.875rem] leading-[1.375rem] transition-colors duration-[var(--vg-transition-fast)]",
     "bg-[color:var(--vg-surface)] text-[color:var(--vg-text-primary)]",
     isInvalid
       ? "border-[color:var(--vg-danger)]"
@@ -40,7 +40,7 @@ export function Select({
     .join(" ");
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full min-w-0 max-w-full">
       <select
         aria-invalid={isInvalid ? true : ariaInvalid}
         className={classes}

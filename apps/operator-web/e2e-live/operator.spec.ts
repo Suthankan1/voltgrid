@@ -84,9 +84,10 @@ test('real OCPP, authorization, Kafka projection and operator transaction journe
   await page.getByRole('navigation',{name:'Session sections'}).getByRole('link',{name:/Measurements/}).click();
   await expect(page).toHaveURL(new RegExp(`/stations/${stationId}/sessions/${transactionId}\\?section=measurements$`));
   await expect(page.getByRole('img',{name:/Time-series measurement chart/i})).toBeVisible();
-  await expect(page.getByText('7.4 kW').first()).toBeVisible();
-  await expect(page.getByText('8.2 kW').first()).toBeVisible();
-  await expect(page.getByText('12.5 kWh').first()).toBeVisible();
+  const rawTable = page.getByRole('table');
+  await expect(rawTable.getByText('7.4 kW').first()).toBeVisible();
+  await expect(rawTable.getByText('8.2 kW').first()).toBeVisible();
+  await expect(rawTable.getByText('12.5 kWh').first()).toBeVisible();
   await page.getByRole('navigation',{name:'Session sections'}).getByRole('link',{name:/Technical details/}).click();
   await expect(page).toHaveURL(new RegExp(`/stations/${stationId}/sessions/${transactionId}\\?section=technical$`));
   await expect(page.getByRole('heading',{name:'OCPP sequence completeness audit'})).toBeVisible();

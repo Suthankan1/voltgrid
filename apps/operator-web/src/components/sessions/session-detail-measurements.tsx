@@ -23,40 +23,40 @@ export interface SessionDetailMeasurementsProps {
 
 function StreamDetailsMetadata({ stream }: { stream: SessionMeasurementStream }) {
   return (
-    <dl className="grid gap-3 rounded-[var(--vg-radius-md)] border border-[color:var(--vg-border)] bg-[color:var(--vg-surface-subtle)] p-4 sm:grid-cols-2 lg:grid-cols-4">
-      <div>
+    <dl className="grid min-w-0 gap-3 rounded-[var(--vg-radius-md)] border border-[color:var(--vg-border)] bg-[color:var(--vg-surface-subtle)] p-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="min-w-0">
         <dt className="font-sans text-[0.75rem] font-semibold uppercase tracking-[0.04em] text-[color:var(--vg-text-secondary)]">
           Measurand &amp; unit
         </dt>
-        <dd className="mt-1 break-words font-mono text-[0.8125rem] text-[color:var(--vg-text-primary)]">
+        <dd className="mt-1 break-all font-mono text-[0.8125rem] text-[color:var(--vg-text-primary)]">
           {stream.measurandLabel}
           {stream.unit ? ` (${stream.displayUnit ?? stream.unit})` : " (no unit)"}
         </dd>
       </div>
 
-      <div>
+      <div className="min-w-0">
         <dt className="font-sans text-[0.75rem] font-semibold uppercase tracking-[0.04em] text-[color:var(--vg-text-secondary)]">
           Phase &amp; location
         </dt>
-        <dd className="mt-1 font-sans text-[0.875rem] text-[color:var(--vg-text-primary)]">
+        <dd className="mt-1 break-words font-sans text-[0.875rem] text-[color:var(--vg-text-primary)]">
           {[stream.phaseLabel ?? "All/unspecified phase", stream.locationLabel ?? "Unspecified location"].join(" · ")}
         </dd>
       </div>
 
-      <div>
+      <div className="min-w-0">
         <dt className="font-sans text-[0.75rem] font-semibold uppercase tracking-[0.04em] text-[color:var(--vg-text-secondary)]">
           Sampling context
         </dt>
-        <dd className="mt-1 font-mono text-[0.8125rem] text-[color:var(--vg-text-primary)]">
+        <dd className="mt-1 break-all font-mono text-[0.8125rem] text-[color:var(--vg-text-primary)]">
           {stream.contextLabel ?? "Unspecified"}
         </dd>
       </div>
 
-      <div>
+      <div className="min-w-0">
         <dt className="font-sans text-[0.75rem] font-semibold uppercase tracking-[0.04em] text-[color:var(--vg-text-secondary)]">
           Latest normalized reading
         </dt>
-        <dd className="mt-1 font-mono text-[0.875rem] font-semibold tabular-nums text-[color:var(--vg-text-primary)]">
+        <dd className="mt-1 break-words font-mono text-[0.875rem] font-semibold tabular-nums text-[color:var(--vg-text-primary)]">
           {stream.latestSample?.normalizedReadingLabel ?? "Unavailable"}
         </dd>
       </div>
@@ -398,7 +398,7 @@ export function SessionDetailMeasurements({
           </CardHeader>
 
           {model.streams.length > 1 ? (
-            <div className="max-w-xl">
+            <div className="min-w-0 max-w-xl">
               <FormField
                 label="Compatible measurement stream"
                 htmlFor="session-measurement-stream-select"
@@ -511,7 +511,7 @@ export function SessionDetailMeasurements({
               <p className="break-all font-mono text-[0.75rem] text-[color:var(--vg-text-secondary)]">
                 Raw: {sample.rawReadingLabel}
               </p>
-              <p className="break-words font-sans text-[0.75rem] text-[color:var(--vg-text-secondary)]">
+              <p className="break-all font-sans text-[0.75rem] text-[color:var(--vg-text-secondary)]">
                 {sample.measurand ?? "Unspecified measurand"} ·{" "}
                 {[
                   sample.phase ?? "All phase",
