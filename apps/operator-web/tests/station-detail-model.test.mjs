@@ -125,7 +125,7 @@ test("station detail model computes exact connector counts, composite identity, 
   // EVSE 2 / Connector 1 has composite ACTIVE session TX-1
   const evse2Conn1 = model.allConnectors.find(c => c.compositeKey === "2:1");
   assert.equal(evse2Conn1?.activeSession?.transactionId, "TX-1");
-  assert.equal(evse2Conn1?.activeSession?.href, "/stations/CP-1/transactions/TX-1");
+  assert.equal(evse2Conn1?.activeSession?.href, "/stations/CP-1/sessions/TX-1");
 
   assert.equal(model.activeSessionCount, 1);
   assert.equal(model.attention.kind, "equipment-issues");

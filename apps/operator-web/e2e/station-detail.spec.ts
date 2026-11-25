@@ -279,7 +279,7 @@ test("station detail covers all 5 statuses, repeated connector IDs, offline mode
     await expect(page.getByText("Duration 1h 15m").first()).toBeVisible();
     await expect(page.getByRole("link", { name: "TX%ACTIVE-1" }).first()).toHaveAttribute(
       "href",
-      "/stations/LONG%25ID-1/transactions/TX%25ACTIVE-1",
+      "/stations/LONG%25ID-1/sessions/TX%25ACTIVE-1",
     );
     await page.getByRole("button", { name: "Refresh data" }).click();
     await expect(page).toHaveURL(`${origin}/stations/LONG%25ID-1?section=sessions&returnTo=%2Fstations%3Fstatus%3DOFFLINE`);

@@ -1,4 +1,4 @@
-import { buildStationHref } from "./routes";
+import { buildCanonicalSessionHref, buildStationHref } from "./routes";
 import type {
   ChargingTransaction,
   NetworkTransaction,
@@ -260,7 +260,7 @@ export function sanitizeSessionsDirectoryReturnPath(
 }
 
 /**
- * Builds the composite `(stationId, transactionId)` session detail route preserved during UI-107,
+ * Builds the canonical composite `(stationId, sessionId)` session detail route,
  * forwarding an optional validated `/sessions` directory context return path.
  */
 export function buildSessionsDirectoryDetailHref(
@@ -268,7 +268,7 @@ export function buildSessionsDirectoryDetailHref(
   transactionId: string,
   returnPath?: string | null,
 ): string {
-  const baseHref = `/stations/${encodeURIComponent(stationId)}/transactions/${encodeURIComponent(transactionId)}`;
+  const baseHref = buildCanonicalSessionHref(stationId, transactionId);
   const safeReturn = sanitizeSessionsDirectoryReturnPath(returnPath);
   if (!safeReturn || safeReturn === "/sessions") {
     return baseHref;

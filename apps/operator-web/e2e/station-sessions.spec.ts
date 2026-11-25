@@ -478,11 +478,11 @@ test("sessions directory covers pagination, exact filters, composite IDs, legacy
     ).toBeVisible();
     // Composite identity: identical TX-SHARED rendered cleanly for BOTH CP-1 and CP-UNLISTED
     await expect(
-      page.locator('a[href^="/stations/CP-1/transactions/TX-SHARED"]').first(),
+      page.locator('a[href^="/stations/CP-1/sessions/TX-SHARED"]').first(),
     ).toBeVisible();
     await expect(
       page
-        .locator('a[href^="/stations/CP-UNLISTED/transactions/TX-SHARED"]')
+        .locator('a[href^="/stations/CP-UNLISTED/sessions/TX-SHARED"]')
         .first(),
     ).toBeVisible();
 
@@ -495,9 +495,9 @@ test("sessions directory covers pagination, exact filters, composite IDs, legacy
       .getByRole("link", { name: "Inspect session TX-SHARED at CP-1" })
       .click();
     await expect(page).toHaveURL(
-      `${origin}/stations/CP-1/transactions/TX-SHARED?returnTo=%2Fsessions%3Fpage%3D1%26size%3D2`,
+      `${origin}/stations/CP-1/sessions/TX-SHARED?returnTo=%2Fsessions%3Fpage%3D1%26size%3D2`,
     );
-    await page.getByRole("link", { name: "← Charging sessions" }).first().click();
+    await page.getByRole("link", { name: "← Back to Charging sessions" }).first().click();
     await expect(page).toHaveURL(`${origin}/sessions?page=1&size=2`);
 
     // Final page disables Next link
@@ -559,9 +559,13 @@ test("sessions directory covers pagination, exact filters, composite IDs, legacy
     await page.goto(
       `${origin}/stations/CP-1/transactions/TX-SHARED?returnTo=https://evil.example`,
     );
+    await expect(page).toHaveURL(
+      `${origin}/stations/CP-1/sessions/TX-SHARED`,
+    );
+    await expect(page.locator('a[href*="evil.example"]')).toHaveCount(0);
     await expect(
-      page.getByRole("link", { name: "← Charging sessions" }).first(),
-    ).toHaveAttribute("href", "/sessions");
+      page.getByRole("link", { name: "← Back to CP-1" }).first(),
+    ).toHaveAttribute("href", "/stations/CP-1");
 
     // 9. No-matches filtered state vs Empty history vs Partial summary failure vs Unavailable retry
     await page.goto(`${origin}/sessions?stationId=DOES-NOT-EXIST`);

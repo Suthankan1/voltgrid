@@ -121,7 +121,7 @@ export function buildStationRegistrationHref(
 }
 
 export function buildSessionHref(stationId: string, sessionId: string): string {
-  return `/stations/${encodeURIComponent(stationId)}/transactions/${encodeURIComponent(sessionId)}`;
+  return buildCanonicalSessionHref(stationId, sessionId);
 }
 
 export function buildCanonicalSessionHref(stationId: string, sessionId: string): string {
@@ -180,7 +180,7 @@ export const ROUTE_COMPATIBILITY_PLAN: readonly RouteMigrationEntry[] = [
     canonical: "/stations/[stationId]/sessions/[sessionId]",
     legacy: "/stations/[stationId]/transactions/[transactionId]",
     activeDuringUi102: "/stations/[stationId]/transactions/[transactionId]",
-    redirectActive: false,
+    redirectActive: true,
     targetMilestone: "UI-108",
   },
   {

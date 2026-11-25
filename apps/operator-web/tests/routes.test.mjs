@@ -57,7 +57,7 @@ test("decodePathIdentifier decodes once and rejects malformed percent sequences"
 
 test("route builders encode special and literal-percent identifiers safely", () => {
   assert.equal(buildStationHref("CP%1"), "/stations/CP%251");
-  assert.equal(buildSessionHref("CP%1", "TX%1"), "/stations/CP%251/transactions/TX%251");
+  assert.equal(buildSessionHref("CP%1", "TX%1"), "/stations/CP%251/sessions/TX%251");
   assert.equal(buildCanonicalSessionHref("CP%1", "TX/1"), "/stations/CP%251/sessions/TX%2F1");
 });
 
@@ -104,9 +104,13 @@ test("sanitizeInternalReturnPath prevents open redirects and preserves safe quer
   assert.equal(sanitizeStationsReturnPath("https://evil.example/stations"), null);
 });
 
-test("route compatibility plan activates /stations and /sessions and keeps unimplemented routes inactive", () => {
+test("route compatibility plan activates /stations, /sessions, and canonical session detail and keeps unimplemented routes inactive", () => {
   for (const entry of ROUTE_COMPATIBILITY_PLAN) {
-    if (entry.canonical === "/stations" || entry.canonical === "/sessions") {
+    if (
+      entry.canonical === "/stations" ||
+      entry.canonical === "/sessions" ||
+      entry.canonical === "/stations/[stationId]/sessions/[sessionId]"
+    ) {
       assert.equal(entry.redirectActive, true);
     } else {
       assert.equal(entry.redirectActive, false, `unexpected premature redirect on ${entry.canonical}`);

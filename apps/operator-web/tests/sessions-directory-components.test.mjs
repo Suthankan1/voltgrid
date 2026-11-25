@@ -246,8 +246,8 @@ test("SessionsDirectoryView renders desktop table, mobile cards, composite IDs, 
   assert.match(html, /Server totals and page counts do not change/);
 
   // Composite links (both CP-1 & CP-UNKNOWN with identical TX-SHARED)
-  assert.match(html, /href="\/stations\/CP-1\/transactions\/TX-SHARED\?returnTo=/);
-  assert.match(html, /href="\/stations\/CP-UNKNOWN\/transactions\/TX-SHARED\?returnTo=/);
+  assert.match(html, /href="\/stations\/CP-1\/sessions\/TX-SHARED\?returnTo=/);
+  assert.match(html, /href="\/stations\/CP-UNKNOWN\/sessions\/TX-SHARED\?returnTo=/);
   assert.match(html, /Colombo Central/);
   assert.match(html, /Missing #3, #4/);
   assert.match(html, /Duration 1h 30m/);

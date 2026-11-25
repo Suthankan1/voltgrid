@@ -37,7 +37,11 @@ test("desktop sidebar displays approved hierarchy, active states, and collapse t
   await page.goto("/stations/CP-1");
   await expect(nav.getByRole("link", { name: "Charging stations", exact: true })).toHaveAttribute("data-context-active", "true");
 
+  await page.goto("/stations/CP-1/sessions/TX-1");
+  await expect(nav.getByRole("link", { name: "Charging sessions", exact: true })).toHaveAttribute("aria-current", "page");
+
   await page.goto("/stations/CP-1/transactions/TX-1");
+  await expect(page).toHaveURL(/\/stations\/CP-1\/sessions\/TX-1$/);
   await expect(nav.getByRole("link", { name: "Charging sessions", exact: true })).toHaveAttribute("aria-current", "page");
 
   await page.goto("/operations");
@@ -116,7 +120,7 @@ test("contextual top bar displays accurate breadcrumbs and refresh preserves URL
   await expect(breadcrumb.getByRole("link", { name: "Stations", exact: true })).toHaveAttribute("href", "/stations");
   await expect(breadcrumb.getByText("CP%1", { exact: true })).toHaveAttribute("aria-current", "page");
 
-  await page.goto("/stations/CP%251/transactions/TX%251");
+  await page.goto("/stations/CP%251/sessions/TX%251");
   await expect(breadcrumb.getByRole("link", { name: "Charging sessions" })).toHaveAttribute("href", "/sessions");
   await expect(breadcrumb.getByRole("link", { name: "CP%1" })).toHaveAttribute("href", "/stations/CP%251");
   await expect(breadcrumb.getByText("TX%1", { exact: true })).toHaveAttribute("aria-current", "page");
@@ -145,6 +149,7 @@ test("route compatibility preserves static /stations/new, malformed ID 404s, bac
   await expect(breadcrumb.getByText("Add station", { exact: true })).toHaveAttribute("aria-current", "page");
 
   expect((await page.goto("/stations/%25ZZ"))?.status()).toBe(404);
+  expect((await page.goto("/stations/CP-1/sessions/%25ZZ"))?.status()).toBe(404);
   expect((await page.goto("/stations/CP-1/transactions/%25ZZ"))?.status()).toBe(404);
 
   await page.goto("/");

@@ -94,10 +94,14 @@ test("Sidebar highlights Charging stations on /stations and preserves context on
   assert.match(directoryHtml, /aria-current="page"[^>]*>.*Charging stations/);
   assert.doesNotMatch(directoryHtml, /aria-current="page"[^>]*href="\/"/);
 
-  const { Sidebar: SessionSidebar } = loadTsx("components/shell/sidebar.tsx", "/stations/CP-1/transactions/TX-1");
+  const { Sidebar: SessionSidebar } = loadTsx("components/shell/sidebar.tsx", "/stations/CP-1/sessions/TX-1");
   const sessionHtml = renderToStaticMarkup(React.createElement(SessionSidebar));
   assert.match(sessionHtml, /aria-current="page"[^>]*href="\/sessions"/);
   assert.doesNotMatch(sessionHtml, /aria-current="page"[^>]*href="\/"/);
+
+  const { Sidebar: LegacySessionSidebar } = loadTsx("components/shell/sidebar.tsx", "/stations/CP-1/transactions/TX-1");
+  const legacySessionHtml = renderToStaticMarkup(React.createElement(LegacySessionSidebar));
+  assert.match(legacySessionHtml, /aria-current="page"[^>]*href="\/sessions"/);
 
   const { Sidebar: StationSidebar } = loadTsx("components/shell/sidebar.tsx", "/stations/CP-1");
   const stationHtml = renderToStaticMarkup(React.createElement(StationSidebar));
@@ -120,7 +124,7 @@ test("TopBar renders contextual breadcrumbs with single-decoded identifiers and 
   assert.doesNotMatch(stationHtml, /Colombo Central/);
   assert.match(stationHtml, />Refresh data<\/span>/);
 
-  const { TopBar: SessionTopBar } = loadTsx("components/shell/top-bar.tsx", "/stations/CP%251/transactions/TX%251");
+  const { TopBar: SessionTopBar } = loadTsx("components/shell/top-bar.tsx", "/stations/CP%251/sessions/TX%251");
   const sessionHtml = renderToStaticMarkup(React.createElement(SessionTopBar));
   assert.match(sessionHtml, /href="\/sessions">Charging sessions<\/a>/);
   assert.match(sessionHtml, /href="\/stations\/CP%251">CP%1<\/a>/);

@@ -138,11 +138,11 @@ test("legacy redirect builder, href builder, and return-path validator prevent o
   assert.equal(buildSessionsDirectoryHref({ page: 0, size: 20 }), "/sessions");
   assert.equal(
     buildSessionsDirectoryDetailHref("CP%1", "TX%1", "/sessions?integrityStatus=INCOMPLETE&page=1"),
-    "/stations/CP%251/transactions/TX%251?returnTo=%2Fsessions%3FintegrityStatus%3DINCOMPLETE%26page%3D1",
+    "/stations/CP%251/sessions/TX%251?returnTo=%2Fsessions%3FintegrityStatus%3DINCOMPLETE%26page%3D1",
   );
   assert.equal(
     buildSessionsDirectoryDetailHref("CP-1", "TX-1", "/sessions"),
-    "/stations/CP-1/transactions/TX-1",
+    "/stations/CP-1/sessions/TX-1",
   );
 
   assert.equal(
@@ -230,7 +230,7 @@ test("buildSessionsDirectoryModel formats server pagination ranges, preserves or
   assert.equal(model.rows[0].stationName, "Colombo Central");
   assert.equal(model.rows[0].durationLabel, null);
   assert.equal(model.rows[0].completeness.detailLabel, "Receiving events");
-  assert.match(model.rows[0].sessionHref, /^\/stations\/CP-1\/transactions\/TX-SHARED\?returnTo=/);
+  assert.match(model.rows[0].sessionHref, /^\/stations\/CP-1\/sessions\/TX-SHARED\?returnTo=/);
 
   assert.equal(model.rows[1].compositeKey, "CP-2:TX-SHARED");
   assert.equal(model.rows[1].stationName, null); // Blank station name omitted cleanly

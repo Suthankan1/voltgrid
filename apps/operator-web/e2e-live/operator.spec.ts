@@ -46,14 +46,50 @@ test('real OCPP, authorization, Kafka projection and operator transaction journe
    return (await response.json()).data?.stationStatus?.currentStatus;
   },{timeout:30000}).toBe('ONLINE');
   await call('StatusNotification',{timestamp:new Date().toISOString(),connectorStatus:'Available',evseId:1,connectorId:1});
-  await call('TransactionEvent',{eventType:'Started',timestamp:new Date().toISOString(),triggerReason:'CablePluggedIn',seqNo:0,transactionInfo:{transactionId,chargingState:'EVConnected'},evse:{id:1,connectorId:1}});
-  await call('TransactionEvent',{eventType:'Ended',timestamp:new Date().toISOString(),triggerReason:'StopAuthorized',seqNo:1,transactionInfo:{transactionId}});
+  const startedAt = new Date().toISOString();
+  const sampleOneAt = new Date(Date.now() + 1000).toISOString();
+  const sampleTwoAt = new Date(Date.now() + 2000).toISOString();
+  const endedAt = new Date(Date.now() + 3000).toISOString();
+  await call('TransactionEvent',{eventType:'Started',timestamp:startedAt,triggerReason:'CablePluggedIn',seqNo:0,transactionInfo:{transactionId,chargingState:'EVConnected'},evse:{id:1,connectorId:1}});
+  await call('TransactionEvent',{
+   eventType:'Updated',
+   timestamp:sampleOneAt,
+   triggerReason:'MeterValuePeriodic',
+   seqNo:1,
+   transactionInfo:{transactionId,chargingState:'Charging'},
+   meterValue:[
+    {
+     timestamp:sampleOneAt,
+     sampledValue:[
+      {value:7.4,measurand:'Power.Active.Import',context:'Sample.Periodic',location:'Outlet',unitOfMeasure:{unit:'W',multiplier:3}},
+      {value:12.5,measurand:'Energy.Active.Import.Register',context:'Sample.Periodic',location:'Outlet',unitOfMeasure:{unit:'Wh',multiplier:3}},
+     ],
+    },
+    {
+     timestamp:sampleTwoAt,
+     sampledValue:[
+      {value:8.2,measurand:'Power.Active.Import',context:'Sample.Periodic',location:'Outlet',unitOfMeasure:{unit:'W',multiplier:3}},
+     ],
+    },
+   ],
+  });
+  await call('TransactionEvent',{eventType:'Ended',timestamp:endedAt,triggerReason:'StopAuthorized',seqNo:2,transactionInfo:{transactionId}});
   await page.goto('/');
   await page.getByRole('link',{name:'Operator E2E Station',exact:true}).and(page.locator(`a[href="/stations/${stationId}"]`)).click();
   await expect(page.getByRole('heading',{name:'Operator E2E Station'})).toBeVisible();
   await page.goto(`/stations/${stationId}/transactions/${transactionId}`);
-  await expect(page.getByRole('heading',{name:transactionId,exact:true})).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/stations/${stationId}/sessions/${transactionId}$`));
+  await expect(page.getByRole('heading',{name:`Session ${transactionId}`,exact:true})).toBeVisible();
   await expect(page.getByText('Complete',{exact:true}).first()).toBeVisible();
+  await page.getByRole('navigation',{name:'Session sections'}).getByRole('link',{name:/Measurements/}).click();
+  await expect(page).toHaveURL(new RegExp(`/stations/${stationId}/sessions/${transactionId}\\?section=measurements$`));
+  await expect(page.getByRole('img',{name:/Time-series measurement chart/i})).toBeVisible();
+  await expect(page.getByText('7.4 kW').first()).toBeVisible();
+  await expect(page.getByText('8.2 kW').first()).toBeVisible();
+  await expect(page.getByText('12.5 kWh').first()).toBeVisible();
+  await page.getByRole('navigation',{name:'Session sections'}).getByRole('link',{name:/Technical details/}).click();
+  await expect(page).toHaveURL(new RegExp(`/stations/${stationId}/sessions/${transactionId}\\?section=technical$`));
+  await expect(page.getByRole('heading',{name:'OCPP sequence completeness audit'})).toBeVisible();
   await page.goto('/sessions');
   await expect(page.getByRole('heading',{name:'Charging sessions',exact:true})).toBeVisible();
   await expect(page.getByText(transactionId,{exact:true}).first()).toBeVisible();
@@ -61,7 +97,8 @@ test('real OCPP, authorization, Kafka projection and operator transaction journe
   await expect(page).toHaveURL(new RegExp(`/sessions\\?stationId=${stationId}$`));
   await expect(page.getByText(transactionId,{exact:true}).first()).toBeVisible();
   await page.getByRole('link',{name:`Inspect session ${transactionId} at ${stationId}`}).click();
-  await expect(page.getByRole('heading',{name:transactionId,exact:true})).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/stations/${stationId}/sessions/${transactionId}\\?returnTo=`));
+  await expect(page.getByRole('heading',{name:`Session ${transactionId}`,exact:true})).toBeVisible();
   await page.goto('/operations');
   const row=page.getByRole('row').filter({hasText:stationId});
   await expect(row).toContainText('ONLINE');

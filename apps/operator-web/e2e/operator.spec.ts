@@ -5,8 +5,9 @@ test('dashboard to station details and transaction inspector', async ({ page }) 
  await expect(page.getByRole('heading',{name:'Colombo Central'})).toBeVisible();
  await expect(page.getByText('Available',{exact:true}).first()).toBeVisible();
  await page.goto('/stations/CP-1/transactions/TX-1');
- await expect(page.getByRole('heading',{name:'TX-1',exact:true})).toBeVisible();
- await expect(page.getByText('Integrity assessment',{exact:true})).toBeVisible();
+ await expect(page).toHaveURL(/\/stations\/CP-1\/sessions\/TX-1$/);
+ await expect(page.getByRole('heading',{name:'Session TX-1',exact:true})).toBeVisible();
+ await expect(page.getByText('Sequence completeness',{exact:true})).toBeVisible();
 });
 test('charging sessions directory renders and current-page active filter excludes ended sessions', async ({ page }) => {
  await page.goto('/sessions');
@@ -28,6 +29,7 @@ test('Operations navigation, cursor pagination and failure state', async ({ page
 });
 test('unknown station and transaction return 404', async ({ page }) => {
  expect((await page.goto('/stations/missing'))?.status()).toBe(404);
+ expect((await page.goto('/stations/CP-1/sessions/missing'))?.status()).toBe(404);
  expect((await page.goto('/stations/CP-1/transactions/missing'))?.status()).toBe(404);
 });
 
@@ -48,8 +50,11 @@ test('Operations filter resets the cursor and persists on next page', async ({pa
 test('literal percent identifiers are decoded once', async ({page}) => {
  expect((await page.goto('/stations/CP%251'))?.status()).toBe(200);
  await expect(page.getByRole('heading',{name:'Colombo Central'})).toBeVisible();
- expect((await page.goto('/stations/CP%251/transactions/TX%251'))?.status()).toBe(200);
- await expect(page.getByRole('heading',{name:'TX%1',exact:true})).toBeVisible();
+ expect((await page.goto('/stations/CP%251/sessions/TX%251'))?.status()).toBe(200);
+ await expect(page.getByRole('heading',{name:'Session TX%1',exact:true})).toBeVisible();
+ await page.goto('/stations/CP%251/transactions/TX%251');
+ await expect(page).toHaveURL(/\/stations\/CP%251\/sessions\/TX%251$/);
+ await expect(page.getByRole('heading',{name:'Session TX%1',exact:true})).toBeVisible();
 });
 
 test('shared navigation, keyboard skip link and refresh work on every view', async ({page}) => {
@@ -72,7 +77,7 @@ test('shared navigation, keyboard skip link and refresh work on every view', asy
 
 test('operator views fit mobile and retain navigation', async ({page}, testInfo) => {
  await page.setViewportSize({width:390,height:844});
- for (const [name,route] of [['network','/'],['sessions','/sessions'],['operations','/operations'],['station','/stations/CP-1'],['inspector','/stations/CP-1/transactions/TX-1']]) {
+ for (const [name,route] of [['network','/'],['sessions','/sessions'],['operations','/operations'],['station','/stations/CP-1'],['inspector','/stations/CP-1/sessions/TX-1']]) {
   await page.goto(route);
   await expect(page.getByRole('button',{name:/Menu/i})).toBeVisible();
   await expect(page.locator('main h1')).toBeVisible();

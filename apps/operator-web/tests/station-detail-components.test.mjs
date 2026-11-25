@@ -165,7 +165,7 @@ test("StationSessionsSection and StationConnectionSection enforce encoded links,
   const sessionsHtml = renderToStaticMarkup(
     React.createElement(StationSessionsSection, { model: fullModel }),
   );
-  assert.match(sessionsHtml, /href="\/stations\/CP%251\/transactions\/TX%251"/);
+  assert.match(sessionsHtml, /href="\/stations\/CP%251\/sessions\/TX%251"/);
   assert.match(sessionsHtml, /EVSE 2 · Connector 1/);
   assert.match(sessionsHtml, /Duration 1h 30m/);
   assert.doesNotMatch(sessionsHtml, /Complete/);
