@@ -96,7 +96,7 @@ test("StationConnectorsSection renders composite EVSE cards, offline last-report
   );
   assert.match(connectorsHtml, /EVSE 1 · Connector 1/);
   assert.match(connectorsHtml, /EVSE 2 · Connector 1/);
-  assert.match(connectorsHtml, /Last reported before station went offline/);
+  assert.match(connectorsHtml, /Last reported status — station currently offline/);
   assert.match(connectorsHtml, /generic visual representations/);
 
   const unavailableModel = buildStationDetailModel({

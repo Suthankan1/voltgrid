@@ -373,7 +373,7 @@ export function buildStationDetailModel(
       detail:
         connectorCounts && connectorCounts.attention > 0
           ? `${connectorCounts.attention} ${connectorCounts.attention === 1 ? "connector also last reported a fault or unavailability" : "connectors also last reported faults or unavailability"}. Because the station is disconnected, stored connector states reflect last reported observations rather than verified real-time availability.`
-          : "Stored connector states reflect the last reported observation before disconnection and do not confirm current usability or physical fault.",
+          : "Stored connector states reflect the last reported observation while the station is currently offline and do not confirm current usability or physical fault.",
     };
   } else if (connectors.state === "unavailable") {
     attention = {

@@ -301,7 +301,7 @@ test("station detail covers all 5 statuses, repeated connector IDs, offline mode
     scenario = "offline-station";
     await page.goto(`${origin}/stations/LONG%25ID-1`);
     await expect(page.getByText("Station is currently reported offline").first()).toBeVisible();
-    await expect(page.getByText("Last reported before station went offline").first()).toBeVisible();
+    await expect(page.getByText("Last reported status — station currently offline").first()).toBeVisible();
 
     // 4. Empty connectors & empty sessions
     scenario = "empty-sections";

@@ -49,7 +49,7 @@ export function ConnectorCard({ item, stationOffline }: ConnectorCardProps) {
             <ConnectorStatusIndicator status={connector.status} size="sm" />
             {stationOffline ? (
               <p className="font-sans text-[0.75rem] leading-[1.125rem] text-[color:var(--vg-warning)]">
-                Last reported before station went offline
+                Last reported status — station currently offline
               </p>
             ) : null}
           </div>

@@ -68,7 +68,7 @@ export function StationOverviewSection({ model }: StationOverviewSectionProps) {
             counts === null
               ? "Connector data unavailable"
               : model.isOffline
-                ? "Last reported before offline"
+                ? "Last reported — station offline"
                 : "Reported ready"
           }
         />
