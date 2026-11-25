@@ -121,3 +121,39 @@ test("contextual top bar displays accurate breadcrumbs and refresh preserves URL
   await expect(page).toHaveURL(/\/operations\?status=OFFLINE/);
   await expect(page.getByRole("cell", { name: "OFFLINE", exact: true })).toBeVisible();
 });
+
+test("route compatibility preserves static /stations/new, malformed ID 404s, back/forward, and clean network/console", async ({ page }) => {
+  const consoleErrors: string[] = [];
+  const externalRequests: string[] = [];
+  page.on("console", msg => {
+    if (msg.type() === "error") consoleErrors.push(msg.text());
+  });
+  page.on("request", req => {
+    if (!req.url().startsWith("http://127.0.0.1:4310")) externalRequests.push(req.url());
+  });
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+
+  await page.goto("/stations/new");
+  const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb" });
+  await expect(breadcrumb.getByText("Add station", { exact: true })).toHaveAttribute("aria-current", "page");
+
+  expect((await page.goto("/stations/%25ZZ"))?.status()).toBe(404);
+  expect((await page.goto("/stations/CP-1/transactions/%25ZZ"))?.status()).toBe(404);
+
+  await page.goto("/");
+  await page.getByRole("link", { name: "Charging sessions", exact: true }).click();
+  await expect(page).toHaveURL(/\/transactions/);
+  await page.getByRole("link", { name: "Diagnostics", exact: true }).click();
+  await expect(page).toHaveURL(/\/operations/);
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/transactions/);
+  await page.goForward();
+  await expect(page).toHaveURL(/\/operations/);
+
+  expect(externalRequests).toEqual([]);
+  // Ignore expected 404 browser console resource logs from explicit 404 checks
+  const non404ConsoleErrors = consoleErrors.filter(err => !err.includes("404"));
+  expect(non404ConsoleErrors).toEqual([]);
+});

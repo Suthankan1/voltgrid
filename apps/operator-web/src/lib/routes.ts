@@ -117,6 +117,122 @@ export function buildSessionHref(stationId: string, sessionId: string): string {
   return `/stations/${encodeURIComponent(stationId)}/transactions/${encodeURIComponent(sessionId)}`;
 }
 
+export function buildCanonicalSessionHref(stationId: string, sessionId: string): string {
+  return `/stations/${encodeURIComponent(stationId)}/sessions/${encodeURIComponent(sessionId)}`;
+}
+
+export interface RouteMigrationEntry {
+  canonical: string;
+  legacy: string | null;
+  activeDuringUi102: string | null;
+  redirectActive: boolean;
+  targetMilestone: string;
+}
+
+/**
+ * Documents canonical-to-legacy route compatibility during the incremental redesign.
+ * Redirects to unimplemented canonical destinations remain inactive until their target slice ships.
+ */
+export const ROUTE_COMPATIBILITY_PLAN: readonly RouteMigrationEntry[] = [
+  {
+    canonical: "/",
+    legacy: null,
+    activeDuringUi102: "/",
+    redirectActive: false,
+    targetMilestone: "UI-103",
+  },
+  {
+    canonical: "/stations",
+    legacy: null,
+    activeDuringUi102: null,
+    redirectActive: false,
+    targetMilestone: "UI-104",
+  },
+  {
+    canonical: "/stations/new",
+    legacy: null,
+    activeDuringUi102: "/stations/new",
+    redirectActive: false,
+    targetMilestone: "UI-106",
+  },
+  {
+    canonical: "/stations/[stationId]",
+    legacy: null,
+    activeDuringUi102: "/stations/[stationId]",
+    redirectActive: false,
+    targetMilestone: "UI-105",
+  },
+  {
+    canonical: "/sessions",
+    legacy: "/transactions",
+    activeDuringUi102: "/transactions",
+    redirectActive: false,
+    targetMilestone: "UI-107",
+  },
+  {
+    canonical: "/stations/[stationId]/sessions/[sessionId]",
+    legacy: "/stations/[stationId]/transactions/[transactionId]",
+    activeDuringUi102: "/stations/[stationId]/transactions/[transactionId]",
+    redirectActive: false,
+    targetMilestone: "UI-108",
+  },
+  {
+    canonical: "/attention",
+    legacy: null,
+    activeDuringUi102: null,
+    redirectActive: false,
+    targetMilestone: "UI-109",
+  },
+  {
+    canonical: "/diagnostics",
+    legacy: "/operations",
+    activeDuringUi102: "/operations",
+    redirectActive: false,
+    targetMilestone: "UI-109",
+  },
+  {
+    canonical: "/help",
+    legacy: null,
+    activeDuringUi102: null,
+    redirectActive: false,
+    targetMilestone: "UI-109",
+  },
+] as const;
+
+/**
+ * Validates an internal navigation return path, rejecting open redirects,
+ * protocol-relative paths, backslashes, and control characters without double-decoding.
+ */
+export function sanitizeInternalReturnPath(
+  candidate: string | null | undefined,
+  fallback = "/",
+): string {
+  if (typeof candidate !== "string") {
+    return fallback;
+  }
+
+  const trimmed = candidate.trim();
+  if (
+    !trimmed.startsWith("/") ||
+    trimmed.startsWith("//") ||
+    trimmed.startsWith("/\\") ||
+    trimmed.includes("\\") ||
+    /[\u0000-\u001F\u007F]/.test(trimmed)
+  ) {
+    return fallback;
+  }
+
+  try {
+    const parsed = new URL(trimmed, "http://localhost");
+    if (parsed.origin !== "http://localhost") {
+      return fallback;
+    }
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return fallback;
+  }
+}
+
 export function isNavItemActive(
   item: NavItem,
   routeMeta: RouteMeta,
