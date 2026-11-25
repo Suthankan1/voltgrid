@@ -224,3 +224,22 @@ test('getSessionPageData preserves not-found vs error distinction and partial op
  assert.equal(malformedSample.completeness.state, 'live');
  assert.equal(malformedSample.meterSamples.state, 'unavailable');
 });
+
+test('getStationPageData fails closed for sections when GraphQL returns an unpathed error alongside empty arrays', async () => {
+ process.env.STATION_GRAPHQL_URL = 'http://localhost:8080/graphql';
+ globalThis.fetch = async () => Response.json({
+  data: {
+   station: { id: 'CP-1', name: 'Colombo Central', status: 'ONLINE' },
+   stationConnectors: [],
+   stationTransactions: [],
+  },
+  errors: [{ message: 'internal resolver aborted' }],
+ });
+
+ const result = await getStationPageData('CP-1');
+ assert.equal(result.state, 'live');
+ assert.equal(result.connectors.state, 'unavailable');
+ assert.equal(result.transactions.state, 'unavailable');
+ assert.doesNotMatch(result.connectors.message, /aborted/);
+ assert.doesNotMatch(result.transactions.message, /aborted/);
+});

@@ -396,3 +396,81 @@ test("bounds sequence rail for huge ranges and surfaces null or inconsistent bou
   assert.equal(inconsistent.hasRangeInconsistency, true);
   assert.ok(inconsistent.inconsistencyReasons.length >= 2);
 });
+
+test("sanitizeSessionDetailReturnPath rejects cross-origin, backslash, control char, and wrong-station paths", () => {
+  assert.equal(sanitizeSessionDetailReturnPath("https://evil.example/stations/CP%251", "CP%1"), null);
+  assert.equal(sanitizeSessionDetailReturnPath("//evil.example/sessions", "CP%1"), null);
+  assert.equal(sanitizeSessionDetailReturnPath("/\\evil.example", "CP%1"), null);
+  assert.equal(sanitizeSessionDetailReturnPath("/stations/CP-OTHER", "CP%1"), null);
+  assert.equal(sanitizeSessionDetailReturnPath("/operations?status=OFFLINE", "CP%1"), null);
+  assert.equal(sanitizeSessionDetailReturnPath("/stations/CP%251?section=sessions", "CP%1"), "/stations/CP%251?section=sessions");
+  assert.equal(sanitizeSessionDetailReturnPath("/attention", "CP%1"), "/attention");
+});
+
+test("rejects extreme unitMultiplier overflows, handles all-zero series, and preserves raw strings", () => {
+  const model = buildSessionDetailModel({
+    state: "live",
+    transaction: { ...baseTransaction, lastSequenceNumber: 2 },
+    completeness: {
+      state: "live",
+      completeness: {
+        status: "COMPLETE",
+        firstSequenceNumber: 0,
+        lastSequenceNumber: 2,
+        missingSequenceNumbers: [],
+      },
+    },
+    meterSamples: {
+      state: "live",
+      samples: [
+        {
+          sequenceNumber: 1,
+          sampledAt: "2026-10-08T08:05:00Z",
+          value: "42.5",
+          measurand: "Power.Active.Import",
+          context: "Sample.Periodic",
+          phase: null,
+          location: "Outlet",
+          unit: "W",
+          unitMultiplier: 20,
+        },
+        {
+          sequenceNumber: 2,
+          sampledAt: "2026-10-08T08:06:00Z",
+          value: "1e308",
+          measurand: "Power.Active.Import",
+          context: "Sample.Periodic",
+          phase: null,
+          location: "Outlet",
+          unit: "W",
+          unitMultiplier: 3,
+        },
+        {
+          sequenceNumber: 2,
+          sampledAt: "2026-10-08T08:06:00Z",
+          value: "0",
+          measurand: "Current.Import",
+          context: "Sample.Periodic",
+          phase: null,
+          location: "Outlet",
+          unit: "A",
+          unitMultiplier: 0,
+        },
+      ],
+    },
+  });
+
+  const powerStream = model.streams.find(s => s.measurandLabel === "Power.Active.Import");
+  assert.ok(powerStream);
+  assert.equal(powerStream.plottableSamples, 0);
+  assert.equal(powerStream.unplottableSamples, 2);
+  assert.equal(powerStream.plotSegments.length, 0);
+  assert.equal(powerStream.samples[0].invalidReason, "overflow");
+  assert.equal(powerStream.samples[0].rawReadingLabel, "42.5 × 10^20 W");
+  assert.equal(powerStream.samples[1].invalidReason, "overflow");
+
+  const currentStream = model.streams.find(s => s.measurandLabel === "Current.Import");
+  assert.ok(currentStream);
+  assert.equal(currentStream.isConstantSeries, true);
+  assert.ok(currentStream.zeroLineY !== null);
+});

@@ -63,7 +63,7 @@ export function sanitizeSessionDetailReturnPath(
   }
 
   const candidate = Array.isArray(raw) ? raw[0] : raw;
-  const safeInternal = sanitizeInternalReturnPath(candidate);
+  const safeInternal = sanitizeInternalReturnPath(candidate, "");
   if (!safeInternal) {
     return null;
   }

@@ -350,10 +350,10 @@ export async function getStationPageData(
     }
 
     const connectorsValid =
+      !hasUnpathedError &&
       !errorFields.has("stationConnectors") &&
       Array.isArray(data.stationConnectors) &&
-      data.stationConnectors.every(validConnector) &&
-      !(hasUnpathedError && errorFields.size === 0 && !data.stationConnectors);
+      data.stationConnectors.every(validConnector);
 
     const connectors: StationDetailSectionResult<StationConnector> =
       connectorsValid && Array.isArray(data.stationConnectors)
@@ -365,6 +365,7 @@ export async function getStationPageData(
           };
 
     const transactionsValid =
+      !hasUnpathedError &&
       !errorFields.has("stationTransactions") &&
       Array.isArray(data.stationTransactions) &&
       data.stationTransactions.every(validTransaction);
