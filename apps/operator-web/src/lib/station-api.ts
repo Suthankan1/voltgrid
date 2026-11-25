@@ -123,14 +123,41 @@ export type ChargingTransaction = {
 
 type StationDetailQueryResponse = {
   data?: {
-    station: Station | null;
-    stationConnectors: StationConnector[];
-    stationTransactions: ChargingTransaction[];
+    station?: Station | null;
+    stationConnectors?: StationConnector[] | null;
+    stationTransactions?: ChargingTransaction[] | null;
   };
   errors?: Array<{
     message: string;
+    path?: Array<string | number>;
   }>;
 };
+
+export type StationDetailSectionResult<T> =
+  | {
+      state: "live";
+      items: T[];
+    }
+  | {
+      state: "unavailable";
+      items: [];
+      message: string;
+    };
+
+export type StationPageDataSnapshot =
+  | {
+      state: "not-found";
+    }
+  | {
+      state: "unavailable";
+      message: string;
+    }
+  | {
+      state: "live";
+      station: Station;
+      connectors: StationDetailSectionResult<StationConnector>;
+      transactions: StationDetailSectionResult<ChargingTransaction>;
+    };
 
 export type StationDetailSnapshot =
   | {
@@ -243,6 +270,133 @@ export async function getStationDetail(
       station: null,
       connectors: [],
       transactions: [],
+      message: "Station API could not be reached.",
+    };
+  }
+}
+
+/**
+ * Fetches station identity, connectors, and sessions in a single GraphQL request while
+ * preserving independent partial-failure semantics for connectors and sessions.
+ */
+export async function getStationPageData(
+  stationId: string,
+): Promise<StationPageDataSnapshot> {
+  const endpoint = process.env.STATION_GRAPHQL_URL;
+
+  if (!endpoint) {
+    return {
+      state: "unavailable",
+      message: "Station API is not configured.",
+    };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query: STATION_DETAIL_QUERY,
+        variables: {
+          id: stationId,
+        },
+      }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!response.ok) {
+      return {
+        state: "unavailable",
+        message: `Station API returned HTTP ${response.status}.`,
+      };
+    }
+
+    const payload =
+      (await response.json()) as StationDetailQueryResponse;
+
+    const errors = Array.isArray(payload.errors) ? payload.errors : [];
+    const errorFields = new Set<string>();
+    let hasUnpathedError = false;
+
+    for (const err of errors) {
+      const rootField = Array.isArray(err?.path) ? err.path[0] : undefined;
+      if (typeof rootField === "string" && rootField.length > 0) {
+        errorFields.add(rootField);
+      } else {
+        hasUnpathedError = true;
+      }
+    }
+
+    const data = payload.data;
+    if (!data || !("station" in data)) {
+      return {
+        state: "unavailable",
+        message: "Station data could not be loaded. Try again shortly.",
+      };
+    }
+
+    if (
+      errorFields.has("station") ||
+      (errors.length > 0 && data.station === null)
+    ) {
+      return {
+        state: "unavailable",
+        message: "Station data could not be loaded. Try again shortly.",
+      };
+    }
+
+    if (data.station === null) {
+      return { state: "not-found" };
+    }
+
+    if (!data.station || !validStation(data.station)) {
+      return {
+        state: "unavailable",
+        message: "Station data could not be loaded. Try again shortly.",
+      };
+    }
+
+    const connectorsValid =
+      !errorFields.has("stationConnectors") &&
+      Array.isArray(data.stationConnectors) &&
+      data.stationConnectors.every(validConnector) &&
+      !(hasUnpathedError && errorFields.size === 0 && !data.stationConnectors);
+
+    const connectors: StationDetailSectionResult<StationConnector> =
+      connectorsValid && Array.isArray(data.stationConnectors)
+        ? { state: "live", items: data.stationConnectors }
+        : {
+            state: "unavailable",
+            items: [],
+            message: "Charging equipment data could not be loaded.",
+          };
+
+    const transactionsValid =
+      !errorFields.has("stationTransactions") &&
+      Array.isArray(data.stationTransactions) &&
+      data.stationTransactions.every(validTransaction);
+
+    const transactions: StationDetailSectionResult<ChargingTransaction> =
+      transactionsValid && Array.isArray(data.stationTransactions)
+        ? { state: "live", items: data.stationTransactions }
+        : {
+            state: "unavailable",
+            items: [],
+            message: "Charging session history could not be loaded.",
+          };
+
+    return {
+      state: "live",
+      station: data.station,
+      connectors,
+      transactions,
+    };
+  } catch {
+    return {
+      state: "unavailable",
       message: "Station API could not be reached.",
     };
   }

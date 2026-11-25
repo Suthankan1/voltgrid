@@ -1,6 +1,6 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { getStationSnapshot, getStationDetail, getNetworkTransactions, getNetworkTransactionPage, getTransactionInspector } from '../src/lib/station-api.ts';
+import { getStationSnapshot, getStationDetail, getStationPageData, getNetworkTransactions, getNetworkTransactionPage, getTransactionInspector } from '../src/lib/station-api.ts';
 const originalFetch = globalThis.fetch;
 const originalEndpoint = process.env.STATION_GRAPHQL_URL;
 afterEach(() => {globalThis.fetch=originalFetch;if(originalEndpoint===undefined) delete process.env.STATION_GRAPHQL_URL;else process.env.STATION_GRAPHQL_URL=originalEndpoint;});
@@ -47,3 +47,54 @@ for (const [name,read,data] of [
   assert.equal((await read()).state,'unavailable');
  });
 }
+
+test('getStationPageData distinguishes explicit null not-found from error and supports independent partial failures', async () => {
+ process.env.STATION_GRAPHQL_URL = 'http://localhost:8080/graphql';
+
+ globalThis.fetch = async () => Response.json({ data: { station: null, stationConnectors: [], stationTransactions: [] } });
+ assert.deepEqual(await getStationPageData('missing'), { state: 'not-found' });
+
+ globalThis.fetch = async () => Response.json({
+  data: { station: null, stationConnectors: [], stationTransactions: [] },
+  errors: [{ message: 'secret lookup error' }],
+ });
+ assert.equal((await getStationPageData('CP-1')).state, 'unavailable');
+
+ globalThis.fetch = async () => Response.json({
+  data: {
+   station: { id: 'CP-1', name: 'Colombo Central', status: 'ONLINE' },
+   stationConnectors: null,
+   stationTransactions: [{
+    stationId: 'CP-1',
+    transactionId: 'TX-1',
+    evseId: 1,
+    connectorId: 1,
+    status: 'ACTIVE',
+    startedAt: '2026-10-08T08:00:00Z',
+    endedAt: null,
+    lastSequenceNumber: 2,
+   }],
+  },
+  errors: [{ message: 'connector failure', path: ['stationConnectors'] }],
+ });
+ const partialConnectorFail = await getStationPageData('CP-1');
+ assert.equal(partialConnectorFail.state, 'live');
+ assert.equal(partialConnectorFail.station.name, 'Colombo Central');
+ assert.equal(partialConnectorFail.connectors.state, 'unavailable');
+ assert.equal(partialConnectorFail.transactions.state, 'live');
+ assert.equal(partialConnectorFail.transactions.items.length, 1);
+
+ globalThis.fetch = async () => Response.json({
+  data: {
+   station: { id: 'CP-1', name: 'Colombo Central', status: 'ONLINE' },
+   stationConnectors: [{ evseId: 1, connectorId: 1, status: 'AVAILABLE', statusUpdatedAt: '2026-10-08T09:00:00Z' }],
+   stationTransactions: null,
+  },
+  errors: [{ message: 'session failure', path: ['stationTransactions'] }],
+ });
+ const partialTxFail = await getStationPageData('CP-1');
+ assert.equal(partialTxFail.state, 'live');
+ assert.equal(partialTxFail.connectors.state, 'live');
+ assert.equal(partialTxFail.connectors.items.length, 1);
+ assert.equal(partialTxFail.transactions.state, 'unavailable');
+});
