@@ -32,12 +32,12 @@ export function StationSessionsRecords({
           <caption className="sr-only">{caption}</caption>
           <thead>
             <tr className="border-b border-[color:var(--vg-border)] bg-[color:var(--vg-surface-subtle)] font-sans text-[0.75rem] font-semibold uppercase tracking-[0.04em] text-[color:var(--vg-text-secondary)]">
-              <th scope="col" className="px-4 py-3 sm:px-5">Session</th>
-              <th scope="col" className="px-4 py-3 sm:px-5">Lifecycle</th>
-              <th scope="col" className="px-4 py-3 sm:px-5">Equipment</th>
-              <th scope="col" className="px-4 py-3 sm:px-5">Start time</th>
-              <th scope="col" className="px-4 py-3 sm:px-5">Timing</th>
-              <th scope="col" className="px-4 py-3 text-right sm:px-5">Details</th>
+              <th scope="col" className="px-3 py-3 lg:px-4">Session</th>
+              <th scope="col" className="px-3 py-3 lg:px-4">Lifecycle</th>
+              <th scope="col" className="px-3 py-3 lg:px-4">Equipment</th>
+              <th scope="col" className="px-3 py-3 lg:px-4">Start time</th>
+              <th scope="col" className="px-3 py-3 lg:px-4">Timing</th>
+              <th scope="col" className="px-3 py-3 text-right lg:px-4">Details</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[color:var(--vg-border)]">
@@ -55,7 +55,7 @@ export function StationSessionsRecords({
                   key={transaction.transactionId}
                   className="transition-colors duration-[var(--vg-transition-fast)] hover:bg-[color:var(--vg-surface-subtle)]/60"
                 >
-                  <td className="max-w-[14rem] px-4 py-4 align-middle sm:px-5">
+                  <td className="max-w-[13rem] px-3 py-3.5 align-middle lg:px-4">
                     <Link
                       href={item.href}
                       className="inline-flex min-h-11 items-center break-all rounded-[var(--vg-radius-sm)] font-mono text-[0.8125rem] font-semibold text-[color:var(--vg-text-primary)] hover:text-[color:var(--vg-brand)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
@@ -63,23 +63,23 @@ export function StationSessionsRecords({
                       {transaction.transactionId}
                     </Link>
                   </td>
-                  <td className="px-4 py-4 align-middle sm:px-5">
+                  <td className="px-3 py-3.5 align-middle lg:px-4">
                     <SessionLifecycleIndicator status={transaction.status} size="sm" />
                   </td>
-                  <td className="px-4 py-4 align-middle font-mono text-[0.8125rem] text-[color:var(--vg-text-secondary)] sm:px-5">
+                  <td className="px-3 py-3.5 align-middle font-mono text-[0.8125rem] text-[color:var(--vg-text-secondary)] lg:px-4">
                     {item.compositeEndpoint}
                   </td>
-                  <td className="px-4 py-4 align-middle font-mono text-[0.75rem] text-[color:var(--vg-text-secondary)] sm:px-5">
+                  <td className="px-3 py-3.5 align-middle font-mono text-[0.75rem] text-[color:var(--vg-text-secondary)] lg:px-4">
                     {item.startedAtUtc ?? transaction.startedAt}
                   </td>
-                  <td className="px-4 py-4 align-middle font-sans text-[0.8125rem] text-[color:var(--vg-text-secondary)] sm:px-5">
+                  <td className="px-3 py-3.5 align-middle font-sans text-[0.8125rem] text-[color:var(--vg-text-secondary)] lg:px-4">
                     {timingLabel}
                   </td>
-                  <td className="px-4 py-4 text-right align-middle sm:px-5">
+                  <td className="px-3 py-3.5 text-right align-middle lg:px-4">
                     <Link
                       href={item.href}
                       aria-label={`Inspect session ${transaction.transactionId}`}
-                      className="inline-flex min-h-11 items-center gap-1 rounded-[var(--vg-radius-md)] px-3 py-2 font-sans text-[0.875rem] font-semibold text-[color:var(--vg-brand)] hover:bg-[color:var(--vg-brand-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
+                      className="inline-flex min-h-11 items-center gap-1 whitespace-nowrap rounded-[var(--vg-radius-md)] px-2.5 py-2 font-sans text-[0.875rem] font-semibold text-[color:var(--vg-brand)] hover:bg-[color:var(--vg-brand-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
                     >
                       <span>Open</span>
                       <span aria-hidden="true">→</span>

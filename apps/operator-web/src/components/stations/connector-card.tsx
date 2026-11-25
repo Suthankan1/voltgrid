@@ -30,12 +30,12 @@ export function ConnectorCard({ item, stationOffline }: ConnectorCardProps) {
           : undefined
       }
     >
-      <div className="flex items-start gap-4">
+      <div className="flex flex-wrap items-start gap-4">
         <div className="flex shrink-0 items-center justify-center rounded-[var(--vg-radius-md)] border border-[color:var(--vg-border)] bg-[color:var(--vg-canvas)] p-2">
           <ChargerIllustration status={connector.status} size="md" />
         </div>
 
-        <div className="min-w-0 flex-1 space-y-2.5">
+        <div className="min-w-[9.5rem] flex-1 space-y-2.5">
           <div>
             <h3 className="font-sans text-[1rem] font-semibold leading-[1.5rem] text-[color:var(--vg-text-primary)]">
               Connector {connector.connectorId}
