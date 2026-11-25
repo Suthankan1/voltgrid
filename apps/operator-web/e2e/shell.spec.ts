@@ -100,3 +100,24 @@ test("mobile navigation drawer opens, traps focus, locks scroll, closes on Escap
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   }
 });
+
+test("contextual top bar displays accurate breadcrumbs and refresh preserves URL filters", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+
+  await page.goto("/stations/CP%251");
+  const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb" });
+  await expect(breadcrumb.getByRole("link", { name: "Overview" })).toHaveAttribute("href", "/");
+  await expect(breadcrumb.getByText("Stations", { exact: true })).toBeVisible();
+  await expect(breadcrumb.getByText("CP%1", { exact: true })).toHaveAttribute("aria-current", "page");
+
+  await page.goto("/stations/CP%251/transactions/TX%251");
+  await expect(breadcrumb.getByRole("link", { name: "Charging sessions" })).toHaveAttribute("href", "/transactions");
+  await expect(breadcrumb.getByRole("link", { name: "CP%1" })).toHaveAttribute("href", "/stations/CP%251");
+  await expect(breadcrumb.getByText("TX%1", { exact: true })).toHaveAttribute("aria-current", "page");
+
+  await page.goto("/operations?status=OFFLINE");
+  await expect(breadcrumb.getByText("Diagnostics", { exact: true })).toHaveAttribute("aria-current", "page");
+  await page.getByRole("button", { name: "Refresh data" }).click();
+  await expect(page).toHaveURL(/\/operations\?status=OFFLINE/);
+  await expect(page.getByRole("cell", { name: "OFFLINE", exact: true })).toBeVisible();
+});

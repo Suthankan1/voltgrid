@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { MainContent } from "./main-content";
 import { Sidebar } from "./sidebar";
-import { ShellTopBar } from "./shell-navigation";
+import { TopBar } from "./top-bar";
 
 export interface AppShellProps {
   children: ReactNode;
@@ -9,7 +9,7 @@ export interface AppShellProps {
 
 /**
  * Shared VoltGrid application shell providing skip link, persistent sidebar,
- * top bar, and porcelain workspace `<main>` landmark.
+ * contextual top bar, and porcelain workspace `<main>` landmark.
  */
 export function AppShell({ children }: AppShellProps) {
   return (
@@ -19,7 +19,7 @@ export function AppShell({ children }: AppShellProps) {
       </a>
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
-        <ShellTopBar />
+        <TopBar />
         <MainContent>{children}</MainContent>
       </div>
     </div>

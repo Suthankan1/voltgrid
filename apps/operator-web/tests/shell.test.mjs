@@ -101,6 +101,23 @@ test("Sidebar highlights Charging sessions on nested session routes and context 
   assert.doesNotMatch(stationHtml, /aria-current="page"/);
 });
 
+test("TopBar renders contextual breadcrumbs with single-decoded identifiers and refresh control", () => {
+  const { TopBar: StationTopBar } = loadTsx("components/shell/top-bar.tsx", "/stations/CP%251");
+  const stationHtml = renderToStaticMarkup(React.createElement(StationTopBar));
+  assert.match(stationHtml, /<nav aria-label="Breadcrumb"/);
+  assert.match(stationHtml, /href="\/">Overview<\/a>/);
+  assert.match(stationHtml, />Stations<\/span>/);
+  assert.match(stationHtml, /aria-current="page"[^>]*>CP%1<\/span>/);
+  assert.doesNotMatch(stationHtml, /Colombo Central/);
+  assert.match(stationHtml, />Refresh data<\/span>/);
+
+  const { TopBar: SessionTopBar } = loadTsx("components/shell/top-bar.tsx", "/stations/CP%251/transactions/TX%251");
+  const sessionHtml = renderToStaticMarkup(React.createElement(SessionTopBar));
+  assert.match(sessionHtml, /href="\/transactions">Charging sessions<\/a>/);
+  assert.match(sessionHtml, /href="\/stations\/CP%251">CP%1<\/a>/);
+  assert.match(sessionHtml, /aria-current="page"[^>]*>TX%1<\/span>/);
+});
+
 test("MobileNav renders menu trigger and hides dialog until opened", () => {
   const { MobileNav } = loadTsx("components/shell/mobile-nav.tsx", "/");
   const closedHtml = renderToStaticMarkup(React.createElement(MobileNav));
