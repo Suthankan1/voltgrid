@@ -3,7 +3,7 @@ test('dashboard to station details and transaction inspector', async ({ page }) 
  await page.goto('/');
  await page.getByRole('link',{name:'Colombo Central'}).click();
  await expect(page.getByRole('heading',{name:'Colombo Central'})).toBeVisible();
- await expect(page.getByText('AVAILABLE',{exact:true}).first()).toBeVisible();
+ await expect(page.getByText('Available',{exact:true}).first()).toBeVisible();
  await page.goto('/stations/CP-1/transactions/TX-1');
  await expect(page.getByRole('heading',{name:'TX-1',exact:true})).toBeVisible();
  await expect(page.getByText('Integrity assessment',{exact:true})).toBeVisible();

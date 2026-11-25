@@ -224,13 +224,14 @@ test("stations directory covers search, filtering, context return, overview link
     await expect(page).toHaveURL(`${origin}/stations?status=OFFLINE`);
     await page.getByRole("link", { name: /Anuradhapura Regional Transit/ }).click();
     await expect(page).toHaveURL(/\/stations\/LONG%25ID-1\?returnTo=%2Fstations%3Fstatus%3DOFFLINE/);
-    await expect(page.getByRole("link", { name: "← Back to filtered stations" })).toBeVisible();
-    await page.getByRole("link", { name: "← Back to filtered stations" }).click();
+    const backLink = page.getByRole("link", { name: "← Back to charging stations" });
+    await expect(backLink).toHaveAttribute("href", "/stations?status=OFFLINE");
+    await backLink.click();
     await expect(page).toHaveURL(`${origin}/stations?status=OFFLINE`);
 
     // Untrusted external returnTo is ignored cleanly
     await page.goto(`${origin}/stations/LONG%25ID-1?returnTo=//evil.example/phish`);
-    await expect(page.getByRole("link", { name: /Back to filtered stations/ })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "← Back to charging stations" })).toHaveAttribute("href", "/stations");
 
     // 3. Search by identifier case-insensitively while full totals remain invariant
     await page.goto(`${origin}/stations`);
