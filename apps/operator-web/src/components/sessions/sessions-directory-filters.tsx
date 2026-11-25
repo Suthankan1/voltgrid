@@ -72,82 +72,84 @@ export function SessionsDirectoryFiltersToolbar({
         key={formKey}
         action="/sessions"
         method="get"
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,1.1fr)_minmax(150px,0.7fr)_auto]"
+        className="space-y-4"
       >
-        <FormField
-          label="Station identifier"
-          htmlFor="sessions-filter-station"
-          description="Exact case-sensitive identifier."
-        >
-          {fieldProps => (
-            <Input
-              {...fieldProps}
-              name="stationId"
-              type="search"
-              mono
-              placeholder="CP-001"
-              autoComplete="off"
-              autoCapitalize="none"
-              spellCheck={false}
-              defaultValue={filters.stationId ?? ""}
-            />
-          )}
-        </FormField>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <FormField
+            label="Station identifier"
+            htmlFor="sessions-filter-station"
+            description="Exact case-sensitive identifier."
+          >
+            {fieldProps => (
+              <Input
+                {...fieldProps}
+                name="stationId"
+                type="search"
+                mono
+                placeholder="CP-001"
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                defaultValue={filters.stationId ?? ""}
+              />
+            )}
+          </FormField>
 
-        <FormField
-          label="Session identifier"
-          htmlFor="sessions-filter-transaction"
-          description="Case-preserved identifier filter."
-        >
-          {fieldProps => (
-            <Input
-              {...fieldProps}
-              name="transactionId"
-              type="search"
-              mono
-              placeholder="TX-001"
-              autoComplete="off"
-              autoCapitalize="none"
-              spellCheck={false}
-              defaultValue={filters.transactionId ?? ""}
-            />
-          )}
-        </FormField>
+          <FormField
+            label="Session identifier"
+            htmlFor="sessions-filter-transaction"
+            description="Case-preserved identifier filter."
+          >
+            {fieldProps => (
+              <Input
+                {...fieldProps}
+                name="transactionId"
+                type="search"
+                mono
+                placeholder="TX-001"
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                defaultValue={filters.transactionId ?? ""}
+              />
+            )}
+          </FormField>
 
-        <FormField
-          label="Data completeness"
-          htmlFor="sessions-filter-completeness"
-          description="Receipt integrity domain."
-        >
-          {fieldProps => (
-            <Select
-              {...fieldProps}
-              name="integrityStatus"
-              defaultValue={filters.integrityStatus ?? ""}
-              options={COMPLETENESS_OPTIONS}
-            />
-          )}
-        </FormField>
+          <FormField
+            label="Data completeness"
+            htmlFor="sessions-filter-completeness"
+            description="Receipt integrity domain."
+          >
+            {fieldProps => (
+              <Select
+                {...fieldProps}
+                name="integrityStatus"
+                defaultValue={filters.integrityStatus ?? ""}
+                options={COMPLETENESS_OPTIONS}
+              />
+            )}
+          </FormField>
 
-        <FormField
-          label="Per page"
-          htmlFor="sessions-filter-size"
-          description="Server page size."
-        >
-          {fieldProps => (
-            <Select
-              {...fieldProps}
-              name="size"
-              defaultValue={String(filters.size)}
-              options={sizeOptions.map(count => ({
-                value: String(count),
-                label: `${count} rows`,
-              }))}
-            />
-          )}
-        </FormField>
+          <FormField
+            label="Per page"
+            htmlFor="sessions-filter-size"
+            description="Server page size."
+          >
+            {fieldProps => (
+              <Select
+                {...fieldProps}
+                name="size"
+                defaultValue={String(filters.size)}
+                options={sizeOptions.map(count => ({
+                  value: String(count),
+                  label: `${count} rows`,
+                }))}
+              />
+            )}
+          </FormField>
+        </div>
 
-        <div className="flex flex-wrap items-end gap-2 sm:col-span-2 xl:col-span-1 xl:pt-6">
+        <div className="flex flex-wrap items-center gap-2">
           <Button type="submit" variant="primary" size="md">
             Apply filters
           </Button>
