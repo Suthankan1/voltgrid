@@ -435,7 +435,7 @@ test("Needs attention, Diagnostics, Help, and all six navigation destinations sa
     // Round-trip from Needs attention to Session Technical details & back preserving safe returnTo=/attention
     await page
       .getByRole("link", {
-        name: "Inspect technical sequence details for session TX%GAP-1 at CP%2",
+        name: "Sequence details for session TX%GAP-1 at CP%2",
       })
       .click();
     await expect(page).toHaveURL(
@@ -488,7 +488,7 @@ test("Needs attention, Diagnostics, Help, and all six navigation destinations sa
     await page.getByText("Technical event details").first().click();
     await expect(page.getByText("evt-online-101").first()).toBeVisible();
     await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
-    await page.getByRole("button", { name: "Copy station identifier CP-1" }).click();
+    await page.getByRole("button", { name: "Copy station ID CP-1" }).click();
     await expect(page.getByText("Copied").first()).toBeVisible();
     await capture("06-diagnostics-populated-1440.png");
 

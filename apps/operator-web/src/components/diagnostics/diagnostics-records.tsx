@@ -33,7 +33,7 @@ function TechnicalDisclosure({ record }: { record: DiagnosticsRecordRow }) {
               <CopyValueButton
                 value={record.lastEventId}
                 label="Copy event ID"
-                ariaLabel={`Copy last event identifier for ${record.stationId}`}
+                ariaLabel={`Copy event ID for ${record.stationId}`}
               />
             </div>
           ) : null}
@@ -106,7 +106,7 @@ export function DiagnosticsRecords({ model }: DiagnosticsRecordsProps) {
                       <CopyValueButton
                         value={record.stationId}
                         label="Copy station ID"
-                        ariaLabel={`Copy station identifier ${record.stationId}`}
+                        ariaLabel={`Copy station ID ${record.stationId}`}
                       />
                     </div>
                   </div>
@@ -172,8 +172,9 @@ export function DiagnosticsRecords({ model }: DiagnosticsRecordsProps) {
             <div className="flex flex-wrap items-center gap-3">
               <CopyValueButton
                 value={record.stationId}
+                size="md"
                 label="Copy station ID"
-                ariaLabel={`Copy station identifier ${record.stationId}`}
+                ariaLabel={`Copy station ID ${record.stationId}`}
               />
             </div>
 

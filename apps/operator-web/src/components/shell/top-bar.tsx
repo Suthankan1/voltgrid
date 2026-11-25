@@ -73,7 +73,7 @@ export function TopBar() {
                   {crumb.href && !crumb.current ? (
                     <Link
                       href={crumb.href}
-                      className={`inline-flex min-h-9 max-w-[12rem] items-center truncate rounded-[var(--vg-radius-sm)] px-1 text-[color:var(--vg-text-secondary)] transition-colors duration-[var(--vg-transition-fast)] hover:text-[color:var(--vg-brand)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)] sm:max-w-[18rem] ${textStyle}`}
+                      className={`inline-flex min-h-11 max-w-[12rem] items-center truncate rounded-[var(--vg-radius-sm)] px-1 text-[color:var(--vg-text-secondary)] transition-colors duration-[var(--vg-transition-fast)] hover:text-[color:var(--vg-brand)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)] sm:max-w-[18rem] ${textStyle}`}
                     >
                       {crumb.label}
                     </Link>

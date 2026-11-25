@@ -134,7 +134,7 @@ export function SessionsDirectoryRecords({
                   <td className="px-3 py-3.5 text-right align-middle lg:px-4">
                     <Link
                       href={row.sessionHref}
-                      aria-label={`Inspect session ${transaction.transactionId} at ${transaction.stationId}`}
+                      aria-label={`Open session ${transaction.transactionId} at ${transaction.stationId}`}
                       className="inline-flex min-h-11 items-center gap-1 whitespace-nowrap rounded-[var(--vg-radius-md)] px-2.5 py-2 font-sans text-[0.875rem] font-semibold text-[color:var(--vg-brand)] hover:bg-[color:var(--vg-brand-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
                     >
                       <span>Open</span>
@@ -214,7 +214,7 @@ export function SessionsDirectoryRecords({
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 <Link
                   href={row.sessionHref}
-                  aria-label={`Inspect session ${transaction.transactionId} at ${transaction.stationId}`}
+                  aria-label={`Open session ${transaction.transactionId} at ${transaction.stationId}`}
                   className="inline-flex min-h-11 items-center gap-1 rounded-[var(--vg-radius-md)] border border-[color:var(--vg-border-control)] bg-[color:var(--vg-surface)] px-3.5 py-2 font-sans text-[0.875rem] font-semibold text-[color:var(--vg-text-primary)] hover:bg-[color:var(--vg-surface-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
                 >
                   <span>Open session</span>
@@ -224,7 +224,7 @@ export function SessionsDirectoryRecords({
                   value={transaction.transactionId}
                   label="Copy ID"
                   size="md"
-                  ariaLabel={`Copy session identifier ${transaction.transactionId}`}
+                  ariaLabel={`Copy ID for session ${transaction.transactionId}`}
                 />
               </div>
             </li>

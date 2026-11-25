@@ -47,6 +47,7 @@ export function SessionDetailTechnical({ model }: SessionDetailTechnicalProps) {
               </p>
               <CopyValueButton
                 value={transaction.transactionId}
+                size="md"
                 label="Copy session ID"
               />
             </dd>
@@ -67,6 +68,7 @@ export function SessionDetailTechnical({ model }: SessionDetailTechnicalProps) {
               </p>
               <CopyValueButton
                 value={transaction.stationId}
+                size="md"
                 label="Copy station ID"
               />
             </dd>

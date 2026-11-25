@@ -27,47 +27,47 @@ export function StationConnectionGuidance({
   return (
     <>
       <dl className="divide-y divide-[color:var(--vg-border)] border-y border-[color:var(--vg-border)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 py-4">
-          <div className="min-w-0 flex-1">
-            <dt className="font-sans text-[0.75rem] font-semibold uppercase tracking-[0.04em] text-[color:var(--vg-text-secondary)]">
-              Registered station identifier
-            </dt>
-            <dd className="mt-1 break-all font-mono text-[0.875rem] text-[color:var(--vg-text-primary)]">
+        <div className="py-4">
+          <dt className="font-sans text-[0.75rem] font-semibold uppercase tracking-[0.04em] text-[color:var(--vg-text-secondary)]">
+            Registered station identifier
+          </dt>
+          <dd className="mt-1 flex flex-wrap items-center justify-between gap-3">
+            <span className="min-w-0 flex-1 break-all font-mono text-[0.875rem] text-[color:var(--vg-text-primary)]">
               {stationId}
-            </dd>
-          </div>
-          <CopyValueButton
-            value={stationId}
-            label="Copy station ID"
-            ariaLabel={`Copy station identifier ${stationId}`}
-          />
+            </span>
+            <CopyValueButton
+              value={stationId}
+              size="md"
+              label="Copy station ID"
+              ariaLabel={`Copy station ID ${stationId}`}
+            />
+          </dd>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 py-4">
-          <div className="min-w-0 flex-1">
-            <dt className="font-sans text-[0.75rem] font-semibold uppercase tracking-[0.04em] text-[color:var(--vg-text-secondary)]">
-              Supported protocol
-            </dt>
-            <dd className="mt-1 font-mono text-[0.875rem] text-[color:var(--vg-text-primary)]">
-              {protocolLabel} (WebSocket subprotocol <code>ocpp2.0.1</code>)
-            </dd>
-          </div>
+        <div className="py-4">
+          <dt className="font-sans text-[0.75rem] font-semibold uppercase tracking-[0.04em] text-[color:var(--vg-text-secondary)]">
+            Supported protocol
+          </dt>
+          <dd className="mt-1 font-mono text-[0.875rem] text-[color:var(--vg-text-primary)]">
+            {protocolLabel} (WebSocket subprotocol <code>ocpp2.0.1</code>)
+          </dd>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 py-4">
-          <div className="min-w-0 flex-1">
-            <dt className="font-sans text-[0.75rem] font-semibold uppercase tracking-[0.04em] text-[color:var(--vg-text-secondary)]">
-              OCPP WebSocket path
-            </dt>
-            <dd className="mt-1 break-all font-mono text-[0.875rem] text-[color:var(--vg-text-primary)]">
+        <div className="py-4">
+          <dt className="font-sans text-[0.75rem] font-semibold uppercase tracking-[0.04em] text-[color:var(--vg-text-secondary)]">
+            OCPP WebSocket path
+          </dt>
+          <dd className="mt-1 flex flex-wrap items-center justify-between gap-3">
+            <span className="min-w-0 flex-1 break-all font-mono text-[0.875rem] text-[color:var(--vg-text-primary)]">
               {ocppPath}
-            </dd>
-          </div>
-          <CopyValueButton
-            value={ocppPath}
-            label="Copy OCPP path"
-            ariaLabel={`Copy OCPP path ${ocppPath}`}
-          />
+            </span>
+            <CopyValueButton
+              value={ocppPath}
+              size="md"
+              label="Copy OCPP path"
+              ariaLabel={`Copy OCPP path ${ocppPath}`}
+            />
+          </dd>
         </div>
       </dl>
 

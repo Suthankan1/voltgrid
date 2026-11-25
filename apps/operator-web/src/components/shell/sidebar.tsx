@@ -205,7 +205,9 @@ export function Sidebar() {
           }`}
         >
           <CollapseIcon collapsed={isCompact} />
-          <span className={labelVisibilityClass}>Collapse sidebar</span>
+          <span className={labelVisibilityClass}>
+            {isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+          </span>
         </button>
       </div>
     </aside>

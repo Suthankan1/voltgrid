@@ -456,7 +456,7 @@ test("integrated UI-110 journeys, legacy routes, failure recovery, and mandatory
     await expect(page).toHaveURL(/\/stations\/CP-OFFLINE\?returnTo=%2Fattention$/);
     await page.getByRole("link", { name: "← Back to Needs attention" }).click();
     await expect(page).toHaveURL(/\/attention$/);
-    await page.getByRole("link", { name: "Inspect technical sequence details for session TX-GAP-1 at CP-OFFLINE" }).click();
+    await page.getByRole("link", { name: "Sequence details for session TX-GAP-1 at CP-OFFLINE" }).click();
     await expect(page).toHaveURL(/\/stations\/CP-OFFLINE\/sessions\/TX-GAP-1\?section=technical&returnTo=%2Fattention$/);
     await expect(page.getByText("Missing sequence numbers reported")).toBeVisible();
 

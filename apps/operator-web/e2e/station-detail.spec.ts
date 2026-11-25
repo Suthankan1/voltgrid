@@ -288,7 +288,7 @@ test("station detail covers all 5 statuses, repeated connector IDs, offline mode
     await page.getByRole("navigation", { name: "Station sections" }).getByRole("link", { name: "Connection details" }).click();
     await expect(page.getByText("/ocpp/LONG%ID-1", { exact: true })).toBeVisible();
     await expect(page.getByText("graphql", { exact: false })).toHaveCount(0);
-    await page.getByRole("button", { name: "Copy station identifier LONG%ID-1" }).click();
+    await page.getByRole("button", { name: "Copy station ID LONG%ID-1" }).click();
     await expect(page.getByText("Copied")).toBeVisible();
 
     // Return context preserves directory filter

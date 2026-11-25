@@ -103,7 +103,7 @@ test('real OCPP, authorization, Kafka projection and operator transaction journe
   await page.goto(`/transactions?station=${stationId}`);
   await expect(page).toHaveURL(new RegExp(`/sessions\\?stationId=${stationId}$`));
   await expect(page.getByText(transactionId,{exact:true}).first()).toBeVisible();
-  await page.getByRole('link',{name:`Inspect session ${transactionId} at ${stationId}`}).click();
+  await page.getByRole('link',{name:`Open session ${transactionId} at ${stationId}`}).click();
   await expect(page).toHaveURL(new RegExp(`/stations/${stationId}/sessions/${transactionId}\\?returnTo=`));
   await expect(page.getByRole('heading',{name:`Session ${transactionId}`,exact:true})).toBeVisible();
   await page.goto('/operations');
@@ -119,7 +119,7 @@ test('real OCPP, authorization, Kafka projection and operator transaction journe
   await page.goto('/attention');
   await expect(page.getByRole('heading',{name:'Needs attention',exact:true})).toBeVisible();
   await expect(page.getByText(incompleteTxId,{exact:true}).first()).toBeVisible();
-  await page.getByRole('link',{name:`Inspect technical sequence details for session ${incompleteTxId} at ${stationId}`}).click();
+  await page.getByRole('link',{name:`Sequence details for session ${incompleteTxId} at ${stationId}`}).click();
   await expect(page).toHaveURL(new RegExp(`/stations/${stationId}/sessions/${incompleteTxId}\\?section=technical&returnTo=%2Fattention$`));
   await expect(page.getByRole('heading',{name:'OCPP sequence completeness audit'})).toBeVisible();
 

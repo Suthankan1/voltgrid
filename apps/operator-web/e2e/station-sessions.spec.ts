@@ -492,7 +492,7 @@ test("sessions directory covers pagination, exact filters, composite IDs, legacy
 
     // Open session detail from Page 2 & return via preserved returnTo
     await page
-      .getByRole("link", { name: "Inspect session TX-SHARED at CP-1" })
+      .getByRole("link", { name: "Open session TX-SHARED at CP-1" })
       .click();
     await expect(page).toHaveURL(
       `${origin}/stations/CP-1/sessions/TX-SHARED?returnTo=%2Fsessions%3Fpage%3D1%26size%3D2`,

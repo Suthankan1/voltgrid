@@ -177,8 +177,8 @@ export function SessionsDirectoryFiltersToolbar({
                 stationId: null,
                 page: 0,
               })}
-              aria-label={`Remove station filter ${filters.stationId}`}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-[color:var(--vg-border-control)] bg-[color:var(--vg-surface-subtle)] px-3 py-1 font-mono text-[0.75rem] text-[color:var(--vg-text-primary)] hover:bg-[color:var(--vg-brand-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
+              aria-label={`Station: ${filters.stationId}, remove filter`}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-[color:var(--vg-border-control)] bg-[color:var(--vg-surface-subtle)] px-3.5 py-2 font-mono text-[0.75rem] text-[color:var(--vg-text-primary)] hover:bg-[color:var(--vg-brand-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
             >
               <span>Station: {filters.stationId}</span>
               <span aria-hidden="true">×</span>
@@ -192,8 +192,8 @@ export function SessionsDirectoryFiltersToolbar({
                 transactionId: null,
                 page: 0,
               })}
-              aria-label={`Remove session filter ${filters.transactionId}`}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-[color:var(--vg-border-control)] bg-[color:var(--vg-surface-subtle)] px-3 py-1 font-mono text-[0.75rem] text-[color:var(--vg-text-primary)] hover:bg-[color:var(--vg-brand-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
+              aria-label={`Session: ${filters.transactionId}, remove filter`}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-[color:var(--vg-border-control)] bg-[color:var(--vg-surface-subtle)] px-3.5 py-2 font-mono text-[0.75rem] text-[color:var(--vg-text-primary)] hover:bg-[color:var(--vg-brand-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
             >
               <span>Session: {filters.transactionId}</span>
               <span aria-hidden="true">×</span>
@@ -207,8 +207,8 @@ export function SessionsDirectoryFiltersToolbar({
                 integrityStatus: null,
                 page: 0,
               })}
-              aria-label={`Remove completeness filter ${getSessionCompletenessDisplay(filters.integrityStatus).label}`}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-[color:var(--vg-border-control)] bg-[color:var(--vg-surface-subtle)] px-3 py-1 font-sans text-[0.75rem] font-medium text-[color:var(--vg-text-primary)] hover:bg-[color:var(--vg-brand-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
+              aria-label={`Completeness: ${getSessionCompletenessDisplay(filters.integrityStatus).label}, remove filter`}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-[color:var(--vg-border-control)] bg-[color:var(--vg-surface-subtle)] px-3.5 py-2 font-sans text-[0.75rem] font-medium text-[color:var(--vg-text-primary)] hover:bg-[color:var(--vg-brand-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
             >
               <span>
                 Completeness: {getSessionCompletenessDisplay(filters.integrityStatus).label}
