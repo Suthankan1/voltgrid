@@ -1,29 +1,22 @@
+import { Suspense } from "react";
+import { OverviewErrorState } from "@/components/overview/overview-error-state";
 import { OverviewHeader } from "@/components/overview/overview-header";
+import { OverviewLoading } from "@/components/overview/overview-loading";
 import { OverviewMetrics } from "@/components/overview/overview-metrics";
 import { OverviewStationPreview } from "@/components/overview/overview-station-preview";
 import { OverviewSummaries } from "@/components/overview/overview-summaries";
-import { ErrorState } from "@/components/ui/error-state";
 import {
   buildOverviewModel,
   formatUtcRetrievalTime,
   normalizeOverviewFilters,
+  type OverviewFilters,
 } from "@/lib/overview-model";
 import { getStationSnapshot } from "@/lib/station-api";
 import { localRegistrationEnabled } from "@/lib/station-registration";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: Promise<{
-    q?: string | string[];
-    status?: string | string[];
-    all?: string | string[];
-  }>;
-}) {
-  const params = await searchParams;
-  const filters = normalizeOverviewFilters(params);
+async function OverviewContent({ filters }: { filters: OverviewFilters }) {
   const snapshot = await getStationSnapshot();
   const registrationEnabled = localRegistrationEnabled();
   const retrievedAtIso =
@@ -43,12 +36,7 @@ export default async function Home({
         registrationEnabled={registrationEnabled}
         errorFallback={
           model.errorMessage ? (
-            <ErrorState
-              headingAs="h3"
-              title="Unable to load network overview"
-              message={model.errorMessage}
-              guidance="Check that Station Service is running, then use Refresh data in the top bar."
-            />
+            <OverviewErrorState message={model.errorMessage} />
           ) : null
         }
       />
@@ -62,5 +50,24 @@ export default async function Home({
         <span>Authoritative source: Station Service</span>
       </footer>
     </div>
+  );
+}
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    q?: string | string[];
+    status?: string | string[];
+    all?: string | string[];
+  }>;
+}) {
+  const params = await searchParams;
+  const filters = normalizeOverviewFilters(params);
+
+  return (
+    <Suspense fallback={<OverviewLoading />}>
+      <OverviewContent filters={filters} />
+    </Suspense>
   );
 }

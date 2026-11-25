@@ -54,6 +54,8 @@ const { OverviewHeader } = loadModule("components/overview/overview-header.tsx")
 const { OverviewMetrics } = loadModule("components/overview/overview-metrics.tsx");
 const { OverviewSummaries } = loadModule("components/overview/overview-summaries.tsx");
 const { OverviewStationPreview } = loadModule("components/overview/overview-station-preview.tsx");
+const { OverviewErrorState } = loadModule("components/overview/overview-error-state.tsx");
+const { OverviewLoading } = loadModule("components/overview/overview-loading.tsx");
 
 test("OverviewHeader shows Add station when enabled and read-only notice when disabled", () => {
   const enabledHtml = renderToStaticMarkup(
@@ -183,4 +185,21 @@ test("OverviewStationPreview renders encoded station links, scope, expansion lin
   assert.match(emptyReadOnlyHtml, /No charging stations registered/);
   assert.match(emptyReadOnlyHtml, /read-only mode/);
   assert.doesNotMatch(emptyReadOnlyHtml, /href="\/stations\/new"/);
+});
+
+test("OverviewLoading and OverviewErrorState expose accessible loading and retry recovery states", () => {
+  const loadingHtml = renderToStaticMarkup(React.createElement(OverviewLoading));
+  assert.match(loadingHtml, /role="status"/);
+  assert.match(loadingHtml, /aria-busy="true"/);
+  assert.match(loadingHtml, /aria-label="Loading network overview"/);
+  assert.match(loadingHtml, /motion-reduce:animate-none/);
+  assert.match(loadingHtml, /aria-hidden="true"/);
+
+  const errorHtml = renderToStaticMarkup(
+    React.createElement(OverviewErrorState, { message: "Station API could not be reached." }),
+  );
+  assert.match(errorHtml, /role="alert"/);
+  assert.match(errorHtml, /Unable to load network overview/);
+  assert.match(errorHtml, /Station API could not be reached\./);
+  assert.match(errorHtml, />Try again<\/span>/);
 });
