@@ -23,7 +23,7 @@ export function Input({
   const isInvalid = Boolean(invalid || (ariaInvalid !== undefined && ariaInvalid !== false && ariaInvalid !== "false"));
 
   const classes = [
-    "w-full min-h-11 rounded-[var(--vg-radius-md)] border px-3.5 py-2.5 text-[0.875rem] leading-[1.375rem] transition-colors duration-[var(--vg-transition-fast)]",
+    "w-full min-w-0 min-h-11 rounded-[var(--vg-radius-md)] border px-3.5 py-2.5 text-[0.875rem] leading-[1.375rem] transition-colors duration-[var(--vg-transition-fast)]",
     mono ? "font-mono" : "font-sans",
     "bg-[color:var(--vg-surface)] text-[color:var(--vg-text-primary)] placeholder:text-[color:var(--vg-text-secondary)]",
     isInvalid

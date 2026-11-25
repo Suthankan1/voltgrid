@@ -263,7 +263,7 @@ export function StationRegistrationWorkspace({
           padding="lg"
         >
           <CardHeader>
-            <div className="space-y-2.5">
+            <div className="min-w-0 flex-1 space-y-2.5">
               <div className="flex flex-wrap items-center gap-2">
                 <StatusIndicator tone="success" label="Registered" size="sm" />
                 <StationStatusIndicator
@@ -336,7 +336,7 @@ export function StationRegistrationWorkspace({
           padding="md"
         >
           <CardHeader>
-            <div>
+            <div className="min-w-0 flex-1">
               <CardTitle id="registered-connection-setup-title">
                 Connection setup
               </CardTitle>
@@ -365,7 +365,7 @@ export function StationRegistrationWorkspace({
         padding="lg"
       >
         <CardHeader>
-          <div>
+          <div className="min-w-0 flex-1">
             <CardTitle id="station-registration-form-title">
               Station details
             </CardTitle>
@@ -515,7 +515,7 @@ export function StationRegistrationWorkspace({
           padding="md"
         >
           <CardHeader>
-            <div>
+            <div className="min-w-0 flex-1">
               <CardTitle id="uncertain-lookup-title">
                 Verify before trying again
               </CardTitle>

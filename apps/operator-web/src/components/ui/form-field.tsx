@@ -50,7 +50,10 @@ export function FormField({
     ...(required ? { required: true } : {}),
   };
 
-  const containerClasses = ["grid w-full content-start gap-1.5", className]
+  const containerClasses = [
+    "grid w-full min-w-0 content-start gap-1.5",
+    className,
+  ]
     .filter(Boolean)
     .join(" ");
 

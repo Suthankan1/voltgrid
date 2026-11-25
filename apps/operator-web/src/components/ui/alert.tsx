@@ -116,7 +116,7 @@ export function Alert({
       <span className={`mt-0.5 shrink-0 ${styles.icon}`}>
         <AlertIcon variant={variant} />
       </span>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 break-words">
         {title ? (
           <p className={`font-semibold leading-[1.375rem] ${styles.title}`}>
             {title}
