@@ -39,7 +39,7 @@ export function OverviewSummaries({ model }: OverviewSummariesProps) {
     <div className="grid gap-4 lg:grid-cols-2">
       <Card as="section" aria-labelledby="connectivity-summary-title">
         <CardHeader>
-          <div>
+          <div className="min-w-0 flex-1">
             <CardTitle id="connectivity-summary-title">
               Network connectivity
             </CardTitle>
@@ -84,7 +84,7 @@ export function OverviewSummaries({ model }: OverviewSummariesProps) {
 
       <Card as="section" aria-labelledby="attention-summary-title">
         <CardHeader>
-          <div>
+          <div className="min-w-0 flex-1">
             <CardTitle id="attention-summary-title">
               Needs attention
             </CardTitle>

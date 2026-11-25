@@ -64,8 +64,8 @@ function TechnicalDisclosure({ record }: { record: DiagnosticsRecordRow }) {
 export function DiagnosticsRecords({ model }: DiagnosticsRecordsProps) {
   return (
     <div className="space-y-4">
-      <div className="hidden md:block">
-        <table className="w-full table-fixed border-collapse text-left">
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full min-w-[44rem] table-fixed border-collapse text-left">
           <caption className="sr-only">
             Projected charging station statuses recorded by Operations Service
           </caption>

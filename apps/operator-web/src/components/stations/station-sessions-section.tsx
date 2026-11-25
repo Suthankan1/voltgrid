@@ -170,7 +170,7 @@ export function StationSessionsSection({ model }: StationSessionsSectionProps) {
     >
       <div className="border-b border-[color:var(--vg-border)] p-5 sm:p-6">
         <CardHeader>
-          <div>
+          <div className="min-w-0 flex-1">
             <CardTitle id="station-sessions-title">
               Charging sessions
             </CardTitle>

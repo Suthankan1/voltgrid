@@ -137,7 +137,7 @@ function SessionMeasurementChart({ stream }: { stream: SessionMeasurementStream 
                 textAnchor="end"
                 fill="var(--vg-text-secondary)"
                 fontSize="11"
-                fontFamily="var(--font-mono), monospace"
+                fontFamily="var(--vg-font-mono)"
               >
                 {tick.label}
               </text>
@@ -163,7 +163,7 @@ function SessionMeasurementChart({ stream }: { stream: SessionMeasurementStream 
             y1={padTop}
             x2={padLeft}
             y2={plotBottom}
-            stroke="var(--vg-border-strong)"
+            stroke="var(--vg-border-control)"
             strokeWidth="1"
           />
           <line
@@ -171,7 +171,7 @@ function SessionMeasurementChart({ stream }: { stream: SessionMeasurementStream 
             y1={plotBottom}
             x2={plotRight}
             y2={plotBottom}
-            stroke="var(--vg-border-strong)"
+            stroke="var(--vg-border-control)"
             strokeWidth="1"
           />
 
@@ -183,7 +183,7 @@ function SessionMeasurementChart({ stream }: { stream: SessionMeasurementStream 
               textAnchor="start"
               fill="var(--vg-text-secondary)"
               fontSize="11"
-              fontFamily="var(--font-mono), monospace"
+              fontFamily="var(--vg-font-mono)"
             >
               {stream.displayUnit}
             </text>
@@ -206,7 +206,7 @@ function SessionMeasurementChart({ stream }: { stream: SessionMeasurementStream 
               }
               fill="var(--vg-text-secondary)"
               fontSize="11"
-              fontFamily="var(--font-mono), monospace"
+              fontFamily="var(--vg-font-mono)"
             >
               {tick.label}
             </text>
@@ -263,7 +263,7 @@ function SessionMeasurementChart({ stream }: { stream: SessionMeasurementStream 
 
         {activePoint ? (
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--vg-border)] pt-3 font-sans text-[0.8125rem] text-[color:var(--vg-text-secondary)]">
-            <div className="min-w-0 space-y-0.5">
+            <div aria-live="polite" className="min-w-0 space-y-0.5">
               <p>
                 Selected reading:{" "}
                 <strong className="font-mono font-semibold text-[color:var(--vg-text-primary)]">
@@ -447,8 +447,8 @@ export function SessionDetailMeasurements({
           </CardHeader>
         </div>
 
-        <div className="hidden md:block">
-          <table className="w-full table-fixed border-collapse text-left">
+        <div className="hidden overflow-x-auto md:block">
+          <table className="w-full min-w-[44rem] table-fixed border-collapse text-left">
             <caption className="sr-only">
               Chronological raw OCPP MeterValues recorded for this session
             </caption>

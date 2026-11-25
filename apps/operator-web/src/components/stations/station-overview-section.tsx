@@ -100,7 +100,7 @@ export function StationOverviewSection({ model }: StationOverviewSectionProps) {
 
       <Card as="section" aria-labelledby="station-attention-title" padding="md">
         <CardHeader>
-          <div>
+          <div className="min-w-0 flex-1">
             <CardTitle id="station-attention-title">
               Station status summary
             </CardTitle>
@@ -122,7 +122,7 @@ export function StationOverviewSection({ model }: StationOverviewSectionProps) {
       <section aria-labelledby="overview-connectors-title" className="space-y-4">
         <Card padding="md">
           <CardHeader>
-            <div>
+            <div className="min-w-0 flex-1">
               <CardTitle id="overview-connectors-title">
                 Charging equipment
               </CardTitle>
@@ -180,7 +180,7 @@ export function StationOverviewSection({ model }: StationOverviewSectionProps) {
       >
         <div className="border-b border-[color:var(--vg-border)] p-5 sm:p-6">
           <CardHeader>
-            <div>
+            <div className="min-w-0 flex-1">
               <CardTitle id="overview-sessions-title">
                 Recent charging sessions
               </CardTitle>
