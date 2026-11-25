@@ -28,7 +28,7 @@ export default async function StationPage({
 
   if (snapshot.state === "unavailable") {
     return (
-      <main id="main-content" tabIndex={-1} className="min-h-screen bg-[#f2f0ea] px-6 py-10 text-[#17191c]">
+      <div className="py-4 text-[#17191c]">
         <div className="mx-auto max-w-[1500px]">
           <Link
             href="/"
@@ -51,7 +51,7 @@ export default async function StationPage({
             </p>
           </div>
         </div>
-      </main>
+      </div>
     );
   }
 
@@ -103,9 +103,8 @@ export default async function StationPage({
   );
 
   return (
-    <div className="min-h-screen bg-[#f2f0ea] text-[#17191c]">
-
-      <main id="main-content" tabIndex={-1} className="mx-auto max-w-[1600px] px-5 py-8 sm:px-7 lg:px-10">
+    <div className="text-[#17191c]">
+      <div>
         <section className="grid border-y border-[#17191c]/20 lg:grid-cols-[1.35fr_0.65fr]">
           <div className="py-9 lg:border-r lg:border-[#17191c]/20 lg:pr-12">
             <div className="flex items-center gap-3">
@@ -447,7 +446,7 @@ export default async function StationPage({
             </div>
           )}
         </section>
-      </main>
+      </div>
     </div>
   );
 }

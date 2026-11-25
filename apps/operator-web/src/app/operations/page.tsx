@@ -12,7 +12,7 @@ export default async function Operations({ searchParams }: {
   const status = ["ONLINE", "OFFLINE", "UNAVAILABLE"].includes(requestedStatus ?? "")
     ? requestedStatus as OperationalStatus : undefined;
   const snapshot = await getOperationsSnapshot(after, status);
-  return <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-6 py-12">
+  return <div className="mx-auto max-w-6xl py-4">
     <h1 className="text-3xl font-semibold">Operations status</h1>
     <p className="my-4">Event-driven station projection. Updates may arrive after Station Service changes.</p>
     <form key={status ?? ""} action="/operations" className="my-6 flex flex-wrap items-end gap-4">
@@ -42,5 +42,5 @@ export default async function Operations({ searchParams }: {
       {snapshot.hasNextPage && <Link className="mt-6 inline-block underline"
         href={`/operations?${new URLSearchParams({ after: snapshot.endCursor!, ...(status ? { status } : {}) })}`}>Next page →</Link>}
     </>}
-  </main>;
+  </div>;
 }

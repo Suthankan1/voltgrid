@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { OperatorNavigation } from "@/components/operator-navigation";
+import { AppShell } from "@/components/shell/app-shell";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +15,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body><OperatorNavigation />{children}</body>
+      <body>
+        <AppShell>{children}</AppShell>
+      </body>
     </html>
   );
 }

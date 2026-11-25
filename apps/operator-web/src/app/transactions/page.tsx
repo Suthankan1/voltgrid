@@ -151,9 +151,8 @@ export default async function TransactionsPage({
               };
 
   return (
-    <div className="min-h-screen bg-[#f2f0ea] text-[#17191c]">
-
-      <main id="main-content" tabIndex={-1} className="mx-auto max-w-[1600px] px-5 py-8 sm:px-7 lg:px-10">
+    <div className="text-[#17191c]">
+      <div>
         <section className="border-y border-[#17191c]/20">
           <div className="grid gap-8 py-8 lg:grid-cols-[1fr_auto] lg:items-end">
             <div>
@@ -271,7 +270,7 @@ export default async function TransactionsPage({
               : undefined
           }
         />
-      </main>
+      </div>
     </div>
   );
 }
