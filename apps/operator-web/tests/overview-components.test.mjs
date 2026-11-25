@@ -115,6 +115,7 @@ test("OverviewSummaries renders connectivity bar, N/A on zero, Unknown on unavai
   assert.match(mixedHtml, /1 offline/);
   assert.match(mixedHtml, /Disconnection does not establish a physical equipment fault/);
   assert.match(mixedHtml, /href="\/stations\?status=OFFLINE"/);
+  assert.match(mixedHtml, /href="\/attention"/);
 
   const emptyModel = buildOverviewModel({ state: "live", stations: [] });
   const emptyHtml = renderToStaticMarkup(React.createElement(OverviewSummaries, { model: emptyModel }));

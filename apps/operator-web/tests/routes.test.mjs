@@ -100,22 +100,38 @@ test("sanitizeInternalReturnPath prevents open redirects and preserves safe quer
 
   assert.equal(sanitizeStationsReturnPath("/stations?status=OFFLINE"), "/stations?status=OFFLINE");
   assert.equal(sanitizeStationsReturnPath("/stations"), "/stations");
+  assert.equal(sanitizeStationsReturnPath("/attention"), "/attention");
   assert.equal(sanitizeStationsReturnPath("/operations?status=OFFLINE"), null);
   assert.equal(sanitizeStationsReturnPath("https://evil.example/stations"), null);
+
+  const attentionMeta = resolveRouteMeta("/attention");
+  assert.equal(attentionMeta.activeNav, "attention");
+  assert.equal(attentionMeta.breadcrumbs[1]?.label, "Needs attention");
+
+  const diagMeta = resolveRouteMeta("/diagnostics");
+  assert.equal(diagMeta.activeNav, "diagnostics");
+  assert.equal(diagMeta.breadcrumbs[1]?.label, "Diagnostics");
+
+  const helpMeta = resolveRouteMeta("/help");
+  assert.equal(helpMeta.activeNav, "help");
+  assert.equal(helpMeta.breadcrumbs[1]?.label, "Help");
 });
 
-test("route compatibility plan activates /stations, /sessions, and canonical session detail and keeps unimplemented routes inactive", () => {
+test("route compatibility plan activates all six operator destinations cleanly", () => {
   for (const entry of ROUTE_COMPATIBILITY_PLAN) {
     if (
       entry.canonical === "/stations" ||
       entry.canonical === "/sessions" ||
-      entry.canonical === "/stations/[stationId]/sessions/[sessionId]"
+      entry.canonical === "/stations/[stationId]/sessions/[sessionId]" ||
+      entry.canonical === "/attention" ||
+      entry.canonical === "/diagnostics" ||
+      entry.canonical === "/help"
     ) {
       assert.equal(entry.redirectActive, true);
     } else {
-      assert.equal(entry.redirectActive, false, `unexpected premature redirect on ${entry.canonical}`);
+      assert.equal(entry.redirectActive, false, `unexpected redirect on ${entry.canonical}`);
     }
   }
   const activeNavTargets = NAV_ITEMS.filter(item => item.href !== null).map(item => item.href);
-  assert.deepEqual(activeNavTargets, ["/", "/stations", "/sessions", "/operations"]);
+  assert.deepEqual(activeNavTargets, ["/", "/stations", "/sessions", "/attention", "/diagnostics", "/help"]);
 });

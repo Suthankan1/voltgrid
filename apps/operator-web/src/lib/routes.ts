@@ -51,27 +51,21 @@ export const NAV_ITEMS: readonly NavItem[] = [
     group: "workspace",
     label: "Needs attention",
     canonicalHref: "/attention",
-    href: null,
-    deferredTo: "UI-109",
-    statusNote: "Attention workspace deferred to UI-109.",
+    href: "/attention",
   },
   {
     id: "diagnostics",
     group: "support",
     label: "Diagnostics",
     canonicalHref: "/diagnostics",
-    href: "/operations",
-    deferredTo: "UI-109",
-    statusNote: "Routes to existing /operations projection view until /diagnostics is implemented in UI-109.",
+    href: "/diagnostics",
   },
   {
     id: "help",
     group: "support",
     label: "Help",
     canonicalHref: "/help",
-    href: null,
-    deferredTo: "UI-109",
-    statusNote: "Static operator guidance deferred to UI-109.",
+    href: "/help",
   },
 ] as const;
 
@@ -187,21 +181,21 @@ export const ROUTE_COMPATIBILITY_PLAN: readonly RouteMigrationEntry[] = [
     canonical: "/attention",
     legacy: null,
     activeDuringUi102: null,
-    redirectActive: false,
+    redirectActive: true,
     targetMilestone: "UI-109",
   },
   {
     canonical: "/diagnostics",
     legacy: "/operations",
     activeDuringUi102: "/operations",
-    redirectActive: false,
+    redirectActive: true,
     targetMilestone: "UI-109",
   },
   {
     canonical: "/help",
     legacy: null,
     activeDuringUi102: null,
-    redirectActive: false,
+    redirectActive: true,
     targetMilestone: "UI-109",
   },
 ] as const;
@@ -298,6 +292,17 @@ export function resolveRouteMeta(pathname: string): RouteMeta {
     };
   }
 
+  if (cleanPath === "/attention") {
+    return {
+      activeNav: "attention",
+      contextNav: null,
+      breadcrumbs: [
+        { label: "Overview", href: "/" },
+        { label: "Needs attention", current: true },
+      ],
+    };
+  }
+
   if (cleanPath === "/operations" || cleanPath === "/diagnostics") {
     return {
       activeNav: "diagnostics",
@@ -305,6 +310,17 @@ export function resolveRouteMeta(pathname: string): RouteMeta {
       breadcrumbs: [
         { label: "Overview", href: "/" },
         { label: "Diagnostics", current: true },
+      ],
+    };
+  }
+
+  if (cleanPath === "/help") {
+    return {
+      activeNav: "help",
+      contextNav: null,
+      breadcrumbs: [
+        { label: "Overview", href: "/" },
+        { label: "Help", current: true },
       ],
     };
   }

@@ -69,7 +69,7 @@ test("AppShell renders skip link, sidebar, top bar, and single main landmark", (
   assert.match(html, />Overview<\/h1>/);
 });
 
-test("Sidebar renders approved Workspace and Support groups and avoids broken links for deferred routes", () => {
+test("Sidebar renders all six approved Workspace and Support destinations without disabled Soon placeholders", () => {
   const { Sidebar } = loadTsx("components/shell/sidebar.tsx", "/");
   const html = renderToStaticMarkup(React.createElement(Sidebar));
 
@@ -80,12 +80,11 @@ test("Sidebar renders approved Workspace and Support groups and avoids broken li
   assert.match(html, /aria-current="page"[^>]*href="\/"/);
   assert.match(html, /href="\/stations"[^>]*>.*Charging stations/);
   assert.match(html, /href="\/sessions"[^>]*>.*Charging sessions/);
-  assert.match(html, /href="\/operations"[^>]*>.*Diagnostics/);
-
-  assert.doesNotMatch(html, /href="\/attention"/);
-  assert.doesNotMatch(html, /href="\/help"/);
-  assert.match(html, /aria-disabled="true"[^>]*>.*Needs attention/);
-  assert.match(html, /aria-disabled="true"[^>]*>.*Help/);
+  assert.match(html, /href="\/attention"[^>]*>.*Needs attention/);
+  assert.match(html, /href="\/diagnostics"[^>]*>.*Diagnostics/);
+  assert.match(html, /href="\/help"[^>]*>.*Help/);
+  assert.doesNotMatch(html, />Soon<\/span>/);
+  assert.doesNotMatch(html, /aria-disabled="true"/);
 });
 
 test("Sidebar highlights Charging stations on /stations and preserves context on station detail routes", () => {

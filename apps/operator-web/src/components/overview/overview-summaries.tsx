@@ -113,13 +113,31 @@ export function OverviewSummaries({ model }: OverviewSummariesProps) {
 
         <CardContent>
           {model.conditionKind === "unavailable" ? (
-            <p className="font-sans text-[0.875rem] leading-[1.375rem] text-[color:var(--vg-text-secondary)]">
-              Station connectivity could not be verified while Station Service is unavailable.
-            </p>
+            <div className="space-y-3">
+              <p className="font-sans text-[0.875rem] leading-[1.375rem] text-[color:var(--vg-text-secondary)]">
+                Station connectivity could not be verified while Station Service is unavailable.
+              </p>
+              <Link
+                href="/attention"
+                className="inline-flex min-h-11 items-center gap-1 rounded-[var(--vg-radius-sm)] font-sans text-[0.875rem] font-semibold leading-[1.25rem] text-[color:var(--vg-brand)] underline-offset-4 hover:text-[color:var(--vg-brand-hover)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
+              >
+                <span>Open Needs attention</span>
+                <span aria-hidden="true">→</span>
+              </Link>
+            </div>
           ) : model.conditionKind === "empty" ? (
-            <p className="font-sans text-[0.875rem] leading-[1.375rem] text-[color:var(--vg-text-secondary)]">
-              No charging stations are registered yet.
-            </p>
+            <div className="space-y-3">
+              <p className="font-sans text-[0.875rem] leading-[1.375rem] text-[color:var(--vg-text-secondary)]">
+                No charging stations are registered yet.
+              </p>
+              <Link
+                href="/attention"
+                className="inline-flex min-h-11 items-center gap-1 rounded-[var(--vg-radius-sm)] font-sans text-[0.875rem] font-semibold leading-[1.25rem] text-[color:var(--vg-brand)] underline-offset-4 hover:text-[color:var(--vg-brand-hover)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
+              >
+                <span>Open Needs attention</span>
+                <span aria-hidden="true">→</span>
+              </Link>
+            </div>
           ) : model.conditionKind === "attention" ? (
             <div className="space-y-3">
               <p className="font-sans text-[0.875rem] leading-[1.375rem] text-[color:var(--vg-text-primary)]">
@@ -127,20 +145,38 @@ export function OverviewSummaries({ model }: OverviewSummariesProps) {
                   ? `${offline} ${offline === 1 ? "station is" : "stations are"} currently reported offline. Disconnection does not establish a physical equipment fault.`
                   : "One or more stations reported an unrecognized status."}
               </p>
-              {offline > 0 ? (
+              <div className="flex flex-wrap items-center gap-4">
+                {offline > 0 ? (
+                  <Link
+                    href="/stations?status=OFFLINE"
+                    className="inline-flex min-h-11 items-center gap-1 rounded-[var(--vg-radius-sm)] font-sans text-[0.875rem] font-semibold leading-[1.25rem] text-[color:var(--vg-brand)] underline-offset-4 hover:text-[color:var(--vg-brand-hover)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
+                  >
+                    <span>Inspect offline stations</span>
+                    <span aria-hidden="true">→</span>
+                  </Link>
+                ) : null}
                 <Link
-                  href="/stations?status=OFFLINE"
+                  href="/attention"
                   className="inline-flex min-h-11 items-center gap-1 rounded-[var(--vg-radius-sm)] font-sans text-[0.875rem] font-semibold leading-[1.25rem] text-[color:var(--vg-brand)] underline-offset-4 hover:text-[color:var(--vg-brand-hover)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
                 >
-                  <span>Inspect offline stations</span>
+                  <span>Open Needs attention</span>
                   <span aria-hidden="true">→</span>
                 </Link>
-              ) : null}
+              </div>
             </div>
           ) : (
-            <p className="font-sans text-[0.875rem] leading-[1.375rem] text-[color:var(--vg-text-secondary)]">
-              Every registered station is currently reported online. Open individual stations to inspect connector states or session activity.
-            </p>
+            <div className="space-y-3">
+              <p className="font-sans text-[0.875rem] leading-[1.375rem] text-[color:var(--vg-text-secondary)]">
+                Every registered station is currently reported online. Open Needs attention to check incomplete sessions, or open individual stations to inspect connector states.
+              </p>
+              <Link
+                href="/attention"
+                className="inline-flex min-h-11 items-center gap-1 rounded-[var(--vg-radius-sm)] font-sans text-[0.875rem] font-semibold leading-[1.25rem] text-[color:var(--vg-brand)] underline-offset-4 hover:text-[color:var(--vg-brand-hover)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
+              >
+                <span>Open Needs attention</span>
+                <span aria-hidden="true">→</span>
+              </Link>
+            </div>
           )}
         </CardContent>
       </Card>

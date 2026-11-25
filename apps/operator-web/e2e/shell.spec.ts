@@ -13,11 +13,10 @@ test("desktop sidebar displays approved hierarchy, active states, and collapse t
   const nav = sidebar.getByRole("navigation", { name: "Primary navigation" });
   await expect(nav.getByRole("link", { name: "Overview", exact: true })).toHaveAttribute("aria-current", "page");
   await expect(nav.getByRole("link", { name: "Charging stations", exact: true })).toHaveAttribute("href", "/stations");
-  await expect(nav.getByRole("link", { name: "Charging sessions", exact: true })).toBeVisible();
-  await expect(nav.getByRole("link", { name: "Diagnostics", exact: true })).toBeVisible();
-
-  await expect(nav.getByRole("link", { name: "Needs attention" })).toHaveCount(0);
-  await expect(nav.getByRole("link", { name: "Help" })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: "Charging sessions", exact: true })).toHaveAttribute("href", "/sessions");
+  await expect(nav.getByRole("link", { name: "Needs attention", exact: true })).toHaveAttribute("href", "/attention");
+  await expect(nav.getByRole("link", { name: "Diagnostics", exact: true })).toHaveAttribute("href", "/diagnostics");
+  await expect(nav.getByRole("link", { name: "Help", exact: true })).toHaveAttribute("href", "/help");
 
   const toggleBtn = sidebar.getByRole("button", { name: "Collapse sidebar" });
   await expect(toggleBtn).toHaveAttribute("aria-expanded", "true");
@@ -84,11 +83,11 @@ test("mobile navigation drawer opens, traps focus, locks scroll, closes on Escap
     await expect(dialog.getByRole("button", { name: "Close navigation menu" })).toBeFocused();
     expect(await page.evaluate(() => document.body.style.overflow)).toBe("hidden");
 
-    // Shift+Tab from close button moves to logo link (first focusable), then wraps to Diagnostics (last focusable)
+    // Shift+Tab from close button moves to logo link (first focusable), then wraps to Help (last focusable)
     await page.keyboard.press("Shift+Tab");
     await expect(dialog.getByRole("link", { name: "VoltGrid overview" })).toBeFocused();
     await page.keyboard.press("Shift+Tab");
-    await expect(dialog.getByRole("link", { name: "Diagnostics" })).toBeFocused();
+    await expect(dialog.getByRole("link", { name: "Help" })).toBeFocused();
 
     // Tab from last focusable link wraps back to first focusable control inside dialog
     await page.keyboard.press("Tab");
@@ -126,10 +125,11 @@ test("contextual top bar displays accurate breadcrumbs and refresh preserves URL
   await expect(breadcrumb.getByText("TX%1", { exact: true })).toHaveAttribute("aria-current", "page");
 
   await page.goto("/operations?status=OFFLINE");
+  await expect(page).toHaveURL(/\/diagnostics\?status=OFFLINE$/);
   await expect(breadcrumb.getByText("Diagnostics", { exact: true })).toHaveAttribute("aria-current", "page");
   await page.getByRole("button", { name: "Refresh data" }).click();
-  await expect(page).toHaveURL(/\/operations\?status=OFFLINE/);
-  await expect(page.getByRole("cell", { name: "OFFLINE", exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/diagnostics\?status=OFFLINE$/);
+  await expect(page.getByRole("table").getByText("Offline", { exact: true }).first()).toBeVisible();
 });
 
 test("route compatibility preserves static /stations/new, malformed ID 404s, back/forward, and clean network/console", async ({ page }) => {
@@ -156,12 +156,12 @@ test("route compatibility preserves static /stations/new, malformed ID 404s, bac
   await page.getByRole("link", { name: "Charging sessions", exact: true }).click();
   await expect(page).toHaveURL(/\/sessions$/);
   await page.getByRole("link", { name: "Diagnostics", exact: true }).click();
-  await expect(page).toHaveURL(/\/operations/);
+  await expect(page).toHaveURL(/\/diagnostics$/);
 
   await page.goBack();
   await expect(page).toHaveURL(/\/sessions$/);
   await page.goForward();
-  await expect(page).toHaveURL(/\/operations/);
+  await expect(page).toHaveURL(/\/diagnostics$/);
 
   expect(externalRequests).toEqual([]);
   // Ignore expected 404 browser console resource logs from explicit 404 checks

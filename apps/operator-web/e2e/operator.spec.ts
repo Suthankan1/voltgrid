@@ -19,13 +19,15 @@ test('charging sessions directory renders and current-page active filter exclude
 test('Operations navigation, cursor pagination and failure state', async ({ page }) => {
  await page.goto('/');
  await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'Diagnostics', exact: true }).click();
- await expect(page.getByRole('heading',{name:'Operations status'})).toBeVisible();
- await expect(page.getByRole('cell',{name:'ONLINE',exact:true})).toBeVisible();
- await page.getByRole('link',{name:'Next page →'}).click();
+ await expect(page).toHaveURL(/\/diagnostics$/);
+ await expect(page.getByRole('heading',{name:'Diagnostics',exact:true})).toBeVisible();
+ await expect(page.getByRole('table').getByText('Online',{exact:true}).first()).toBeVisible();
+ await page.getByRole('link',{name:'Next page'}).click();
  await expect(page).toHaveURL(/after=cursor-2/);
- await expect(page.getByText('No projected stations.',{exact:true})).toBeVisible();
+ await expect(page.getByText('No operational status records available',{exact:true})).toBeVisible();
  await page.goto('/operations?after=failure');
- await expect(page.getByRole('alert').filter({hasText:'Operations data'})).toContainText('could not be loaded');
+ await expect(page).toHaveURL(/\/diagnostics\?after=failure$/);
+ await expect(page.getByRole('alert').filter({hasText:'could not be loaded'})).toBeVisible();
 });
 test('unknown station and transaction return 404', async ({ page }) => {
  expect((await page.goto('/stations/missing'))?.status()).toBe(404);
@@ -35,17 +37,19 @@ test('unknown station and transaction return 404', async ({ page }) => {
 
 test('Operations filter resets the cursor and persists on next page', async ({page}) => {
  await page.goto('/operations?after=cursor-2');
- await page.getByLabel('Station status').selectOption('OFFLINE');
- await page.getByRole('button',{name:'Apply status filter'}).click();
+ await expect(page).toHaveURL(/\/diagnostics\?after=cursor-2$/);
+ await page.getByLabel('Projected status').selectOption('OFFLINE');
+ await page.getByRole('button',{name:'Apply filters'}).click();
  await expect(page).toHaveURL(/status=OFFLINE/);
  expect(new URL(page.url()).searchParams.has('after')).toBe(false);
- await expect(page.getByRole('cell',{name:'OFFLINE',exact:true})).toBeVisible();
- await page.getByRole('link',{name:'Next page →'}).click();
+ await expect(page.getByRole('table').getByText('Offline',{exact:true}).first()).toBeVisible();
+ await page.getByRole('link',{name:'Next page'}).click();
  await expect(page).toHaveURL(/status=OFFLINE/);
- await page.getByRole('link',{name:'Reset / first page'}).click();
- await expect(page.getByRole('combobox',{name:'Station status',exact:true})).toHaveValue('');
+ await page.getByRole('link',{name:'Reset filters'}).click();
+ await expect(page.getByRole('combobox',{name:'Projected status',exact:true})).toHaveValue('');
  await page.goto('/operations?status=ONLINE&status=OFFLINE');
- await expect(page.getByRole('cell',{name:'ONLINE',exact:true})).toBeVisible();
+ await expect(page).toHaveURL(/\/diagnostics\?status=ONLINE$/);
+ await expect(page.getByRole('table').getByText('Online',{exact:true}).first()).toBeVisible();
 });
 test('literal percent identifiers are decoded once', async ({page}) => {
  expect((await page.goto('/stations/CP%251'))?.status()).toBe(200);
