@@ -5,6 +5,8 @@ import com.voltgrid.station.domain.security.AuthenticatedUser;
 import com.voltgrid.station.domain.security.Permission;
 import com.voltgrid.station.infrastructure.persistence.jpa.OrganizationMembershipEntity;
 import com.voltgrid.station.infrastructure.persistence.jpa.OrganizationMembershipJpaRepository;
+import com.voltgrid.station.infrastructure.persistence.jpa.OrganizationEntity;
+import com.voltgrid.station.infrastructure.persistence.jpa.OrganizationJpaRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,11 +27,16 @@ class TenantAuthorizationServiceTests {
     @Mock
     private OrganizationMembershipJpaRepository membershipRepository;
 
+    @Mock
+    private OrganizationJpaRepository organizationRepository;
+
     private TenantAuthorizationService authService;
 
     @BeforeEach
     void setUp() {
-        authService = new TenantAuthorizationService(membershipRepository, true);
+        authService = new TenantAuthorizationService(membershipRepository, organizationRepository, true);
+        when(organizationRepository.findById(org.mockito.ArgumentMatchers.anyString()))
+                .thenAnswer(call -> Optional.of(new OrganizationEntity(call.getArgument(0), "Test organization", "ACTIVE")));
     }
 
     @AfterEach
@@ -91,7 +98,7 @@ class TenantAuthorizationServiceTests {
 
         assertThatThrownBy(() -> authService.assertAuthorized(orgB, Permission.STATION_READ))
                 .isInstanceOf(TenantAccessDeniedException.class)
-                .hasMessageContaining("not an active member of organization org-b");
+                .hasMessageContaining("Active organization membership required");
     }
 
     @Test
@@ -113,7 +120,7 @@ class TenantAuthorizationServiceTests {
 
         assertThatThrownBy(() -> authService.assertAuthorized(orgId, Permission.STATION_READ))
                 .isInstanceOf(TenantAccessDeniedException.class)
-                .hasMessageContaining("not an active member");
+                .hasMessageContaining("Active organization membership required");
     }
 
     @Test
@@ -136,6 +143,6 @@ class TenantAuthorizationServiceTests {
         // Operators cannot rotate credentials or manage org
         assertThatThrownBy(() -> authService.assertAuthorized(orgId, Permission.CREDENTIAL_ROTATE))
                 .isInstanceOf(TenantAccessDeniedException.class)
-                .hasMessageContaining("lacks required permission: credential:rotate");
+                .hasMessageContaining("Organization permission denied");
     }
 }

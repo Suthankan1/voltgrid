@@ -119,6 +119,6 @@ class StationCredentialServiceTests {
     void shouldRejectShortPassword() {
         assertThatThrownBy(() -> credentialService.provisionCredential("STA-1", "short", "admin", "org"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("at least 8 characters");
+                .hasMessageContaining("between 8 and 256 characters");
     }
 }

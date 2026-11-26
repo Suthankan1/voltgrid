@@ -9,8 +9,14 @@ public record StationStatusChangedEvent(
         String stationId,
         String previousStatus,
         String currentStatus,
-        Instant occurredAt
+        Instant occurredAt,
+        String organizationId
 ) {
+
+    public StationStatusChangedEvent(UUID eventId, String stationId, String previousStatus,
+                                     String currentStatus, Instant occurredAt) {
+        this(eventId, stationId, previousStatus, currentStatus, occurredAt, null);
+    }
 
     public StationStatusChangedEvent {
         Objects.requireNonNull(

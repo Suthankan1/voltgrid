@@ -52,7 +52,9 @@ public class StationLivenessService {
                             station.id(),
                             station.name(),
                             StationStatus.OFFLINE,
-                            station.lastSeenAt()
+                            station.lastSeenAt(),
+                            station.organizationId(),
+                            station.siteId()
                     )
             );
             outboxWriter.save(
@@ -61,7 +63,8 @@ public class StationLivenessService {
                             station.id(),
                             StationStatus.ONLINE.name(),
                             StationStatus.OFFLINE.name(),
-                            now
+                            now,
+                            station.organizationId()
                     ),
                     now
             );

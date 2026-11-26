@@ -1,46 +1,68 @@
 package com.voltgrid.station.api.security;
 
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.crypto.MACSigner;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Base64;
+import java.util.Date;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class JwtTokenValidatorTests {
 
+    private static final String TEST_SECRET = "secure_voltgrid_jwt_signing_secret_key_2026_32bytes!!";
+    private static final String ROGUE_SECRET = "wrong_secret_key_that_does_not_match_at_all_32bytes!!";
+    private static final String ISSUER = "https://auth.voltgrid.lk/realms/voltgrid";
+    private static final String AUDIENCE = "voltgrid-api";
+
     private JwtTokenValidator validator;
 
     @BeforeEach
     void setUp() {
-        validator = new JwtTokenValidator("https://auth.voltgrid.lk/realms/voltgrid", "voltgrid-api", true);
+        validator = new JwtTokenValidator(ISSUER, AUDIENCE,
+                org.springframework.security.oauth2.jwt.NimbusJwtDecoder.withSecretKey(
+                        new javax.crypto.spec.SecretKeySpec(TEST_SECRET.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                                "HmacSHA256")).build());
     }
 
-    private String createTestJwt(String sub, String email, String iss, String aud, long expSeconds) {
-        String header = Base64.getUrlEncoder().withoutPadding()
-                .encodeToString("{\"alg\":\"RS256\",\"typ\":\"JWT\"}".getBytes(StandardCharsets.UTF_8));
-        String payloadJson = String.format(
-                "{\"sub\":\"%s\",\"email\":\"%s\",\"iss\":\"%s\",\"aud\":\"%s\",\"exp\":%d,\"roles\":[\"OPERATOR\",\"ORG_ADMIN\"]}",
-                sub, email, iss, aud, expSeconds
-        );
-        String payload = Base64.getUrlEncoder().withoutPadding()
-                .encodeToString(payloadJson.getBytes(StandardCharsets.UTF_8));
-        String signature = Base64.getUrlEncoder().withoutPadding()
-                .encodeToString("mock-crypto-signature".getBytes(StandardCharsets.UTF_8));
-        return header + "." + payload + "." + signature;
+    private String createSignedJwt(String sub, String email, String iss, String aud, Instant exp, String secret, String orgId) throws Exception {
+        JWTClaimsSet.Builder builder = new JWTClaimsSet.Builder()
+                .subject(sub)
+                .claim("email", email)
+                .issuer(iss)
+                .audience(aud)
+                .claim("roles", List.of("OPERATOR", "ORG_ADMIN"))
+                .expirationTime(Date.from(exp))
+                .issueTime(new Date());
+
+        if (orgId != null) {
+            builder.claim("org_id", orgId);
+        }
+
+        JWTClaimsSet claimsSet = builder.build();
+        SignedJWT signedJWT = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claimsSet);
+        signedJWT.sign(new MACSigner(secret.getBytes(StandardCharsets.UTF_8)));
+        return signedJWT.serialize();
     }
 
     @Test
-    void shouldAcceptValidTokenWithMatchingIssuerAndAudience() {
-        long futureExp = Instant.now().getEpochSecond() + 3600;
-        String token = createTestJwt(
+    void shouldAcceptValidTokenWithMatchingIssuerAndAudience() throws Exception {
+        Instant futureExp = Instant.now().plusSeconds(3600);
+        String token = createSignedJwt(
                 "user-123",
                 "operator@voltgrid.lk",
-                "https://auth.voltgrid.lk/realms/voltgrid",
-                "voltgrid-api",
-                futureExp
+                ISSUER,
+                AUDIENCE,
+                futureExp,
+                TEST_SECRET,
+                "org-ceylon-01"
         );
 
         var result = validator.validateAndExtract(token, "org-ceylon-01");
@@ -54,14 +76,16 @@ class JwtTokenValidatorTests {
     }
 
     @Test
-    void shouldRejectExpiredToken() {
-        long pastExp = Instant.now().getEpochSecond() - 3600;
-        String token = createTestJwt(
+    void shouldRejectTokenSignedWithWrongKey() throws Exception {
+        Instant futureExp = Instant.now().plusSeconds(3600);
+        String token = createSignedJwt(
                 "user-123",
                 "operator@voltgrid.lk",
-                "https://auth.voltgrid.lk/realms/voltgrid",
-                "voltgrid-api",
-                pastExp
+                ISSUER,
+                AUDIENCE,
+                futureExp,
+                ROGUE_SECRET,
+                "org-ceylon-01"
         );
 
         var result = validator.validateAndExtract(token, "org-ceylon-01");
@@ -70,14 +94,34 @@ class JwtTokenValidatorTests {
     }
 
     @Test
-    void shouldRejectTokenWithWrongIssuer() {
-        long futureExp = Instant.now().getEpochSecond() + 3600;
-        String token = createTestJwt(
+    void shouldRejectExpiredToken() throws Exception {
+        Instant pastExp = Instant.now().minusSeconds(3600);
+        String token = createSignedJwt(
+                "user-123",
+                "operator@voltgrid.lk",
+                ISSUER,
+                AUDIENCE,
+                pastExp,
+                TEST_SECRET,
+                "org-ceylon-01"
+        );
+
+        var result = validator.validateAndExtract(token, "org-ceylon-01");
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void shouldRejectTokenWithWrongIssuer() throws Exception {
+        Instant futureExp = Instant.now().plusSeconds(3600);
+        String token = createSignedJwt(
                 "user-123",
                 "operator@voltgrid.lk",
                 "https://rogue-issuer.com",
-                "voltgrid-api",
-                futureExp
+                AUDIENCE,
+                futureExp,
+                TEST_SECRET,
+                "org-ceylon-01"
         );
 
         var result = validator.validateAndExtract(token, "org-ceylon-01");
@@ -86,14 +130,16 @@ class JwtTokenValidatorTests {
     }
 
     @Test
-    void shouldRejectTokenWithWrongAudience() {
-        long futureExp = Instant.now().getEpochSecond() + 3600;
-        String token = createTestJwt(
+    void shouldRejectTokenWithWrongAudience() throws Exception {
+        Instant futureExp = Instant.now().plusSeconds(3600);
+        String token = createSignedJwt(
                 "user-123",
                 "operator@voltgrid.lk",
-                "https://auth.voltgrid.lk/realms/voltgrid",
+                ISSUER,
                 "other-api",
-                futureExp
+                futureExp,
+                TEST_SECRET,
+                "org-ceylon-01"
         );
 
         var result = validator.validateAndExtract(token, "org-ceylon-01");
@@ -110,11 +156,9 @@ class JwtTokenValidatorTests {
     }
 
     @Test
-    void shouldAcceptLocalDevTestTokens() {
-        var devValidator = new JwtTokenValidator("", "voltgrid-api", false);
-        var devUser = devValidator.validateAndExtract("voltgrid-dev-token", "org-test");
-        assertThat(devUser).isPresent();
-        assertThat(devUser.get().userId()).isEqualTo("sub_admin_001");
-        assertThat(devUser.get().roles()).contains("ORG_OWNER", "PLATFORM_ADMIN");
+    void shouldRejectStaticDevBypassToken() {
+        // IAM-001 negative test: static bypass token must never be accepted
+        var result = validator.validateAndExtract("voltgrid-dev-token", "org-test");
+        assertThat(result).isEmpty();
     }
 }

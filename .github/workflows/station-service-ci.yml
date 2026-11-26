@@ -47,4 +47,8 @@ jobs:
           cache-dependency-path: services/station-service/pom.xml
 
       - name: Verify with Maven
+        env:
+          VOLTGRID_SECURITY_REQUIRE_AUTH: "false"
+          VOLTGRID_OCPP_AUTH_REQUIRED: "false"
+          AUTHORIZATION_GRPC_TLS_ENABLED: "false"
         run: ./mvnw --batch-mode --no-transfer-progress verify

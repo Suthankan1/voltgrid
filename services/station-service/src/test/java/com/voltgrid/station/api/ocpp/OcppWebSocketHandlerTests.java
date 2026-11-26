@@ -52,7 +52,6 @@ class OcppWebSocketHandlerTests {
         attributes.put(OcppHandshakeInterceptor.STATION_ID_ATTRIBUTE, "STATION-001");
 
         when(session1.getAttributes()).thenReturn(attributes);
-        when(session1.getId()).thenReturn("sess-1");
         when(shutdownState.isShuttingDown()).thenReturn(false);
 
         handler.afterConnectionEstablished(session1);
@@ -70,10 +69,8 @@ class OcppWebSocketHandlerTests {
         attributes2.put(OcppHandshakeInterceptor.STATION_ID_ATTRIBUTE, "STATION-001");
 
         when(session1.getAttributes()).thenReturn(attributes1);
-        when(session1.getId()).thenReturn("sess-1");
 
         when(session2.getAttributes()).thenReturn(attributes2);
-        when(session2.getId()).thenReturn("sess-2");
 
         when(shutdownState.isShuttingDown()).thenReturn(false);
 
@@ -104,13 +101,10 @@ class OcppWebSocketHandlerTests {
         attrs3.put(OcppHandshakeInterceptor.STATION_ID_ATTRIBUTE, "STATION-RECONNECT");
 
         when(session1.getAttributes()).thenReturn(attrs1);
-        when(session1.getId()).thenReturn("sess-A");
         when(session2.getAttributes()).thenReturn(attrs2);
-        when(session2.getId()).thenReturn("sess-B");
 
         var session3 = org.mockito.Mockito.mock(WebSocketSession.class);
         when(session3.getAttributes()).thenReturn(attrs3);
-        when(session3.getId()).thenReturn("sess-C");
 
         when(shutdownState.isShuttingDown()).thenReturn(false);
 

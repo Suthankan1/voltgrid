@@ -8,7 +8,11 @@ import com.voltgrid.contracts.authorization.v1.AuthorizationDecision;
 import com.voltgrid.contracts.authorization.v1.AuthorizationReason;
 import com.voltgrid.contracts.authorization.v1.AuthorizationServiceGrpc;
 import com.voltgrid.contracts.authorization.v1.AuthorizeRequest;
+import com.voltgrid.authorization.api.grpc.ServiceAuthenticationInterceptor;
 import io.grpc.ManagedChannel;
+import io.grpc.Metadata;
+import io.grpc.stub.MetadataUtils;
+import org.springframework.beans.factory.annotation.Value;
 import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.health.v1.HealthCheckRequest;
 import io.grpc.health.v1.HealthCheckResponse;
@@ -34,6 +38,9 @@ class AuthorizationGrpcIntegrationTests {
 
     @LocalGrpcServerPort
     private int port;
+
+    @Value("${voltgrid.service-auth.service-keys.station-service}")
+    private String stationServiceKey;
 
     @Autowired
     private AuthorizationTokenRepository repository;
@@ -91,8 +98,7 @@ class AuthorizationGrpcIntegrationTests {
 
         try {
             var client =
-                    AuthorizationServiceGrpc
-                            .newBlockingStub(channel);
+                    authenticatedClient(channel);
 
             var request =
                     AuthorizeRequest.newBuilder()
@@ -134,8 +140,7 @@ class AuthorizationGrpcIntegrationTests {
 
         try {
             var client =
-                    AuthorizationServiceGrpc
-                            .newBlockingStub(channel);
+                    authenticatedClient(channel);
 
             var request =
                     AuthorizeRequest.newBuilder()
@@ -183,8 +188,7 @@ class AuthorizationGrpcIntegrationTests {
 
         try {
             var client =
-                    AuthorizationServiceGrpc
-                            .newBlockingStub(channel);
+                    authenticatedClient(channel);
 
             var request =
                     AuthorizeRequest.newBuilder()
@@ -233,8 +237,7 @@ class AuthorizationGrpcIntegrationTests {
 
         try {
             var client =
-                    AuthorizationServiceGrpc
-                            .newBlockingStub(channel);
+                    authenticatedClient(channel);
 
             var request =
                     AuthorizeRequest.newBuilder()
@@ -276,8 +279,7 @@ class AuthorizationGrpcIntegrationTests {
 
         try {
             var client =
-                    AuthorizationServiceGrpc
-                            .newBlockingStub(channel);
+                    authenticatedClient(channel);
 
             var request =
                     AuthorizeRequest.newBuilder()
@@ -328,6 +330,14 @@ class AuthorizationGrpcIntegrationTests {
                         now
                 )
         );
+    }
+
+    private AuthorizationServiceGrpc.AuthorizationServiceBlockingStub authenticatedClient(ManagedChannel channel) {
+        var metadata = new Metadata();
+        metadata.put(ServiceAuthenticationInterceptor.SERVICE_ID_HEADER, "station-service");
+        metadata.put(ServiceAuthenticationInterceptor.SERVICE_KEY_HEADER, stationServiceKey);
+        return AuthorizationServiceGrpc.newBlockingStub(channel)
+                .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(metadata));
     }
 
     private ManagedChannel createChannel() {

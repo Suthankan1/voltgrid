@@ -118,6 +118,7 @@ class MultiTenantStationGraphQlTests {
         var input = new RegisterStationInput("STA-NEW-100", "New Fast Charger", orgId, siteId);
 
         when(tenantAuthorizationService.resolveAuthorizedOrganizationId(orgId)).thenReturn(orgId);
+        when(siteRepository.findById(siteId)).thenReturn(Optional.of(new SiteEntity(siteId, orgId, "Colombo", "ACTIVE")));
         var created = new ChargingStation("STA-NEW-100", "New Fast Charger", StationStatus.OFFLINE, null, orgId, siteId);
         when(stationRegistrationService.register("STA-NEW-100", "New Fast Charger", orgId, siteId)).thenReturn(created);
 

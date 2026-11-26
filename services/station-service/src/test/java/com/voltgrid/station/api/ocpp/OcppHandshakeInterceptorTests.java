@@ -212,6 +212,7 @@ class OcppHandshakeInterceptorTests {
                         shutdownState
                 );
 
+        websocketHandler.afterConnectionEstablished(session);
         websocketHandler.afterConnectionClosed(
                 session,
                 CloseStatus.NORMAL

@@ -20,6 +20,7 @@ import java.util.Map;
 public class OcppHandshakeInterceptor implements HandshakeInterceptor {
 
     public static final String STATION_ID_ATTRIBUTE = "stationId";
+    public static final String CREDENTIAL_ID_ATTRIBUTE = "stationCredentialId";
 
     private final StationReader stationReader;
     private final StationCredentialService credentialService;
@@ -29,7 +30,7 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
     public OcppHandshakeInterceptor(
             StationReader stationReader,
             StationCredentialService credentialService,
-            @Value("${voltgrid.ocpp.auth-required:false}") boolean authRequired
+            @Value("${voltgrid.ocpp.auth-required:true}") boolean authRequired
     ) {
         this.stationReader = stationReader;
         this.credentialService = credentialService;
@@ -45,7 +46,7 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
     }
 
     public OcppHandshakeInterceptor(StationReader stationReader, StationCredentialService credentialService) {
-        this(stationReader, credentialService, false);
+        this(stationReader, credentialService, true);
     }
 
     @Override
@@ -67,9 +68,11 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
             return false;
         }
 
-        if (!authenticateStation(request, stationId)) {
+        if (!authenticateStation(request, stationId, attributes)) {
             response.setStatusCode(HttpStatus.UNAUTHORIZED);
-            response.getHeaders().set("WWW-Authenticate", "Basic realm=\"VoltGrid CSMS\"");
+            if (response.getHeaders() != null) {
+                response.getHeaders().set("WWW-Authenticate", "Basic realm=\"VoltGrid CSMS\"");
+            }
             return false;
         }
 
@@ -86,7 +89,7 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
     ) {
     }
 
-    private boolean authenticateStation(ServerHttpRequest request, String stationId) {
+    private boolean authenticateStation(ServerHttpRequest request, String stationId, Map<String, Object> attributes) {
         var authHeaders = request.getHeaders().get("Authorization");
 
         if (authHeaders == null || authHeaders.isEmpty()) {
@@ -95,7 +98,7 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
 
         var authHeader = authHeaders.get(0).trim();
 
-        if (authHeader.startsWith("Basic ")) {
+        if (authHeaders.size() == 1 && authHeader.startsWith("Basic ") && authHeader.length() <= 4096) {
             try {
                 var base64Credentials = authHeader.substring(6).trim();
                 var credentials = new String(
@@ -113,25 +116,16 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
                     return false;
                 }
 
-                if (credentialService != null) {
-                    return credentialService.validateCredential(stationId, password);
-                }
-
-                return true;
+                if (credentialService == null) return false;
+                var credential = credentialService.authenticateCredential(stationId, password);
+                credential.ifPresent(id -> attributes.put(CREDENTIAL_ID_ATTRIBUTE, id));
+                return credential.isPresent();
             } catch (IllegalArgumentException e) {
                 return false;
             }
         }
 
-        if (authHeader.startsWith("Bearer ")) {
-            var token = authHeader.substring(7).trim();
-            if (credentialService != null) {
-                return !token.isBlank() && credentialService.validateCredential(stationId, token);
-            }
-            return !token.isBlank();
-        }
-
-        return !authRequired;
+        return false;
     }
 
     private boolean supportsOcpp201(ServerHttpRequest request) {

@@ -99,7 +99,7 @@ class TokenFingerprintMigrationTests {
                 null,
                 true
         )).isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Production profile requires a non-default");
+                .hasMessageContaining("A configured authorization token HMAC key is required");
     }
 
     @Test

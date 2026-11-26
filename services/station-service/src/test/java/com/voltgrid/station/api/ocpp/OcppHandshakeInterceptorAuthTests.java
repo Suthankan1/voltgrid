@@ -79,7 +79,7 @@ class OcppHandshakeInterceptorAuthTests {
 
         var accepted = authInterceptor.beforeHandshake(request, response, wsHandler, new HashMap<>());
 
-        assertThat(accepted).isTrue();
+        assertThat(accepted).isFalse();
     }
 
     @Test

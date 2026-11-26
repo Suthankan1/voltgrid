@@ -46,7 +46,9 @@ public class StationConnectivityService {
                         station.id(),
                         station.name(),
                         StationStatus.ONLINE,
-                        seenAt
+                        seenAt,
+                        station.organizationId(),
+                        station.siteId()
                 )
         );
 
@@ -83,7 +85,9 @@ public class StationConnectivityService {
                         station.id(),
                         station.name(),
                         currentStatus,
-                        seenAt
+                        seenAt,
+                        station.organizationId(),
+                        station.siteId()
                 )
         );
 
@@ -117,7 +121,9 @@ public class StationConnectivityService {
                         station.id(),
                         station.name(),
                         StationStatus.OFFLINE,
-                        station.lastSeenAt()
+                        station.lastSeenAt(),
+                        station.organizationId(),
+                        station.siteId()
                 )
         );
 
@@ -143,7 +149,8 @@ public class StationConnectivityService {
                         station.id(),
                         previousStatus.name(),
                         currentStatus.name(),
-                        occurredAt
+                        occurredAt,
+                        station.organizationId()
                 ),
                 occurredAt
         );

@@ -41,6 +41,7 @@ class StationRegistrationServiceTests {
         when(stationReader.findById("STATION-003"))
                 .thenReturn(Optional.empty());
 
+        when(stationWriter.insert(any())).thenReturn(true);
         var station = service.register(
                 "STATION-003",
                 "Galle Central"
@@ -53,7 +54,7 @@ class StationRegistrationServiceTests {
         );
 
         assertThat(station).isEqualTo(expected);
-        verify(stationWriter).save(expected);
+        verify(stationWriter).insert(expected);
     }
 
     @Test
@@ -87,12 +88,13 @@ class StationRegistrationServiceTests {
         when(stationReader.findById(maxLengthId))
                 .thenReturn(Optional.empty());
 
+        when(stationWriter.insert(any())).thenReturn(true);
         var station = service.register(maxLengthId, name);
 
         assertThat(station.id()).isEqualTo(maxLengthId);
         assertThat(station.id().length()).isEqualTo(255);
         assertThat(station.status()).isEqualTo(StationStatus.OFFLINE);
-        verify(stationWriter).save(new ChargingStation(maxLengthId, name, StationStatus.OFFLINE));
+        verify(stationWriter).insert(new ChargingStation(maxLengthId, name, StationStatus.OFFLINE));
     }
 
     @Test
@@ -101,7 +103,7 @@ class StationRegistrationServiceTests {
                 .thenReturn(Optional.empty());
 
         org.mockito.Mockito.doThrow(new org.springframework.dao.DataIntegrityViolationException("duplicate key"))
-                .when(stationWriter).save(any());
+                .when(stationWriter).insert(any());
 
         assertThatThrownBy(() -> service.register("STATION-FAIL", "Failing Station"))
                 .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);

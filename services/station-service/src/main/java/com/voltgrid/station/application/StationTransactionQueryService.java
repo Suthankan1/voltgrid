@@ -34,8 +34,32 @@ public class StationTransactionQueryService {
     }
 
     @Transactional(readOnly = true)
+    public Optional<ChargingTransaction> findByIdAndOrganizationId(
+            String stationId,
+            String transactionId,
+            String organizationId
+    ) {
+        if (organizationId == null || organizationId.isBlank()) {
+            return findById(stationId, transactionId);
+        }
+        return transactionReader.findByIdAndOrganizationId(
+                stationId,
+                transactionId,
+                organizationId
+        );
+    }
+
+    @Transactional(readOnly = true)
     public List<ChargingTransaction> findAll() {
         return transactionReader.findAll();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ChargingTransaction> findByOrganizationId(String organizationId) {
+        if (organizationId == null || organizationId.isBlank()) {
+            return findAll();
+        }
+        return transactionReader.findByOrganizationId(organizationId);
     }
 
     @Transactional(readOnly = true)
@@ -48,10 +72,42 @@ public class StationTransactionQueryService {
     }
 
     @Transactional(readOnly = true)
+    public List<ChargingTransaction> findByStationIdAndOrganizationId(
+            String stationId,
+            String organizationId
+    ) {
+        if (organizationId == null || organizationId.isBlank()) {
+            return findByStationId(stationId);
+        }
+        return transactionReader.findByStationIdAndOrganizationId(
+                stationId,
+                organizationId
+        );
+    }
+
+    @Transactional(readOnly = true)
     public List<TransactionMeterSample> findMeterSamples(
             String stationId,
             String transactionId
     ) {
+        return meterSampleReader.findByTransaction(
+                stationId,
+                transactionId
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<TransactionMeterSample> findMeterSamplesAndOrganizationId(
+            String stationId,
+            String transactionId,
+            String organizationId
+    ) {
+        if (organizationId != null && !organizationId.isBlank()) {
+            var tx = findByIdAndOrganizationId(stationId, transactionId, organizationId);
+            if (tx.isEmpty()) {
+                return List.of();
+            }
+        }
         return meterSampleReader.findByTransaction(
                 stationId,
                 transactionId

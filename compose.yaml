@@ -13,8 +13,8 @@ services:
       AUTHORIZATION_DB_URL: jdbc:postgresql://authorization-postgres:5432/voltgrid_authorization
       AUTHORIZATION_DB_USER: voltgrid
       AUTHORIZATION_DB_PASSWORD: voltgrid_dev
-      AUTHORIZATION_TOKEN_HMAC_KEY: voltgrid-local-development-hmac-key-change-me
-      SERVICE_IDENTITY_STATION_SERVICE_KEY: station-service-dev-key
+      AUTHORIZATION_TOKEN_HMAC_KEY: ${AUTHORIZATION_TOKEN_HMAC_KEY:?Generate an authorization HMAC key}
+      SERVICE_IDENTITY_STATION_SERVICE_KEY: ${SERVICE_IDENTITY_STATION_SERVICE_KEY:?Generate a station service identity key}
 
     ports:
       - "127.0.0.1:9090:9090"
@@ -49,6 +49,9 @@ services:
 
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
 
+      VOLTGRID_SECURITY_JWT_ISSUER: ${OIDC_ISSUER:?Configure the operator OIDC issuer}
+      VOLTGRID_SECURITY_JWT_JWK_SET_URI: ${SERVICE_OIDC_JWKS_URI:?Configure a JWKS URL reachable from the containers}
+      VOLTGRID_STATION_ACCESS_BASE_URL: http://station-service:8080
       SERVER_PORT: "8081"
 
     ports:
@@ -73,7 +76,10 @@ services:
 
       AUTHORIZATION_GRPC_HOST: authorization-service
       AUTHORIZATION_GRPC_PORT: "9090"
-      SERVICE_IDENTITY_STATION_SERVICE_KEY: station-service-dev-key
+      AUTHORIZATION_GRPC_TLS_ENABLED: "false"
+      VOLTGRID_SECURITY_JWT_ISSUER: ${OIDC_ISSUER:?Configure the operator OIDC issuer}
+      VOLTGRID_SECURITY_JWT_JWK_SET_URI: ${SERVICE_OIDC_JWKS_URI:?Configure a JWKS URL reachable from the containers}
+      SERVICE_IDENTITY_STATION_SERVICE_KEY: ${SERVICE_IDENTITY_STATION_SERVICE_KEY:?Generate a station service identity key}
 
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       OUTBOX_RELAY_ENABLED: "true"

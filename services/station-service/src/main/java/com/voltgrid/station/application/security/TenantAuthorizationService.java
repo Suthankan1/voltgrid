@@ -1,80 +1,88 @@
 package com.voltgrid.station.application.security;
 
 import com.voltgrid.station.api.security.SecurityContext;
+import com.voltgrid.station.domain.security.AuthenticatedUser;
 import com.voltgrid.station.domain.security.Permission;
 import com.voltgrid.station.domain.security.Role;
 import com.voltgrid.station.domain.security.RolePermissions;
 import com.voltgrid.station.infrastructure.persistence.jpa.OrganizationMembershipEntity;
+import com.voltgrid.station.infrastructure.persistence.jpa.OrganizationJpaRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import com.voltgrid.station.infrastructure.persistence.jpa.OrganizationMembershipJpaRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
-import java.util.Optional;
 
 @Service
 public class TenantAuthorizationService {
 
     private final OrganizationMembershipJpaRepository membershipRepository;
     private final boolean requireAuth;
+    private final OrganizationJpaRepository organizationRepository;
 
+    @Autowired
     public TenantAuthorizationService(
             OrganizationMembershipJpaRepository membershipRepository,
-            @Value("${voltgrid.security.require-auth:false}") boolean requireAuth
+            OrganizationJpaRepository organizationRepository,
+            @Value("${voltgrid.security.require-auth:true}") boolean requireAuth
     ) {
         this.membershipRepository = membershipRepository;
+        this.organizationRepository = organizationRepository;
         this.requireAuth = requireAuth;
     }
 
     public void assertAuthorized(String organizationId, Permission permission) {
-        var user = SecurityContext.get();
+        AuthenticatedUser user = SecurityContext.get();
 
         if (user == null) {
             if (requireAuth) {
                 throw new TenantAccessDeniedException("Unauthenticated access denied");
             }
-            return; // In development with auth disabled, allow passthrough
-        }
-
-        // Platform administrators have global access across organizations
-        if (user.roles().contains(Role.PLATFORM_ADMIN.name())) {
             return;
         }
 
-        if (organizationId == null || organizationId.isBlank()) {
-            throw new TenantAccessDeniedException("Organization context is required");
+        if (!RolePermissions.hasPermission(authorizedRole(organizationId), permission)) {
+            throw new TenantAccessDeniedException("Organization permission denied");
         }
+    }
 
-        // Verify membership in target organization
-        Optional<OrganizationMembershipEntity> membershipOpt =
-                membershipRepository.findByOrganizationIdAndUserId(organizationId, user.userId());
-
-        if (membershipOpt.isEmpty() || !"ACTIVE".equalsIgnoreCase(membershipOpt.get().getStatus())) {
-            throw new TenantAccessDeniedException(
-                    "User " + user.userId() + " is not an active member of organization " + organizationId
-            );
+    public Role authorizedRole(String organizationId) {
+        AuthenticatedUser user = SecurityContext.get();
+        if (user == null || organizationId == null || organizationId.isBlank()
+                || organizationRepository.findById(organizationId)
+                        .filter(org -> "ACTIVE".equals(org.getStatus())).isEmpty()) {
+            throw new TenantAccessDeniedException("Active organization access required");
         }
+        if (user.roles().contains(Role.PLATFORM_ADMIN.name())) {
+            return Role.PLATFORM_ADMIN;
+        }
+        return membershipRepository.findByOrganizationIdAndUserId(organizationId, user.userId())
+                .filter(membership -> "ACTIVE".equals(membership.getStatus()))
+                .map(OrganizationMembershipEntity::getRole)
+                .filter(role -> !Role.PLATFORM_ADMIN.name().equals(role))
+                .map(TenantAuthorizationService::parseRole)
+                .orElseThrow(() -> new TenantAccessDeniedException("Active organization membership required"));
+    }
 
-        String roleStr = membershipOpt.get().getRole();
+    private static Role parseRole(String role) {
         try {
-            Role role = Role.valueOf(roleStr);
-            if (!RolePermissions.hasPermission(role, permission)) {
-                throw new TenantAccessDeniedException(
-                        "Role " + role + " lacks required permission: " + permission.getValue()
-                );
-            }
+            return Role.valueOf(role);
         } catch (IllegalArgumentException e) {
-            throw new TenantAccessDeniedException("Invalid role assigned: " + roleStr);
+            throw new TenantAccessDeniedException("Invalid organization role");
         }
     }
 
     public String resolveAuthorizedOrganizationId(String requestedOrgId) {
-        var user = SecurityContext.get();
-        if (user != null && user.activeOrganizationId() != null && !user.activeOrganizationId().isBlank()) {
-            return user.activeOrganizationId();
+        AuthenticatedUser user = SecurityContext.get();
+        if (user == null) {
+            if (requireAuth) {
+                throw new TenantAccessDeniedException("Unauthenticated access denied");
+            }
+            return requestedOrgId != null ? requestedOrgId : "";
         }
-        if (requestedOrgId != null && !requestedOrgId.isBlank()) {
-            return requestedOrgId;
-        }
-        return "org_voltgrid_default";
+
+        String organizationId = requestedOrgId != null && !requestedOrgId.isBlank()
+                ? requestedOrgId : user.activeOrganizationId();
+        authorizedRole(organizationId);
+        return organizationId;
     }
 }

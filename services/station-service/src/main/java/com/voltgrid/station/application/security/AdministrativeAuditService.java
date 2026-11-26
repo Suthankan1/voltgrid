@@ -7,14 +7,19 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
-import java.util.regex.Pattern;
 
 @Service
 public class AdministrativeAuditService {
 
-    private static final Pattern SENSITIVE_PATTERN =
-            Pattern.compile("(?i)(\"?(?:password|token|secret|key|credential|authorization)\"?\\s*:\\s*\")[^\"]*(\")");
+    private static final JsonMapper JSON = JsonMapper.builder().build();
+    private static final Set<String> METADATA_FIELDS = Set.of("stationId", "userId", "role", "newRole");
 
     private final AdministrativeAuditEventJpaRepository auditRepository;
 
@@ -40,7 +45,7 @@ public class AdministrativeAuditService {
 
         var event = new AdministrativeAuditEventEntity(
                 eventId,
-                organizationId != null ? organizationId : "org_voltgrid_default",
+                organizationId,
                 eventType,
                 actorId != null ? actorId : "SYSTEM",
                 actorType != null ? actorType : "USER",
@@ -64,10 +69,27 @@ public class AdministrativeAuditService {
         );
     }
 
-    public String redactSensitiveData(String json) {
-        if (json == null || json.isBlank()) {
+    public static String metadata(Map<String, String> fields) {
+        return JSON.writeValueAsString(fields);
+    }
+
+    private String redactSensitiveData(String json) {
+        if (json == null || json.isBlank()) return "{}";
+        try {
+            var tree = JSON.readTree(json);
+            if (!tree.isObject()) return "{}";
+
+            Map<String, String> sanitized = new LinkedHashMap<>();
+            for (var field : tree.properties()) {
+                if (METADATA_FIELDS.contains(field.getKey()) && field.getValue().isString()) {
+                    sanitized.put(field.getKey(), field.getValue().asString());
+                } else {
+                    sanitized.put("redacted", "[REDACTED]");
+                }
+            }
+            return metadata(sanitized);
+        } catch (JacksonException invalidMetadata) {
             return "{}";
         }
-        return SENSITIVE_PATTERN.matcher(json).replaceAll("$1[REDACTED]$2");
     }
 }

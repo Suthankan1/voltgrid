@@ -72,7 +72,7 @@ class OcppHandshakeInterceptorCredentialTests {
                 new ChargingStation("STA-001", "Station 1", StationStatus.OFFLINE)
         ));
         setBasicAuth("STA-001", "CorrectPassword123!");
-        when(credentialService.validateCredential("STA-001", "CorrectPassword123!")).thenReturn(true);
+        when(credentialService.authenticateCredential("STA-001", "CorrectPassword123!")).thenReturn(Optional.of("cred-1"));
 
         boolean allowed = interceptor.beforeHandshake(request, response, wsHandler, attributes);
 
@@ -102,7 +102,7 @@ class OcppHandshakeInterceptorCredentialTests {
         ));
         when(response.getHeaders()).thenReturn(responseHeaders);
         setBasicAuth("STA-001", "WrongPassword!");
-        when(credentialService.validateCredential("STA-001", "WrongPassword!")).thenReturn(false);
+        when(credentialService.authenticateCredential("STA-001", "WrongPassword!")).thenReturn(Optional.empty());
 
         boolean allowed = interceptor.beforeHandshake(request, response, wsHandler, attributes);
 
@@ -123,7 +123,7 @@ class OcppHandshakeInterceptorCredentialTests {
 
         assertThat(allowed).isFalse();
         verify(response).setStatusCode(HttpStatus.UNAUTHORIZED);
-        verify(credentialService, never()).validateCredential(any(), any());
+        verify(credentialService, never()).authenticateCredential(any(), any());
     }
 
     @Test
@@ -134,6 +134,6 @@ class OcppHandshakeInterceptorCredentialTests {
 
         assertThat(allowed).isFalse();
         verify(response).setStatusCode(HttpStatus.NOT_FOUND);
-        verify(credentialService, never()).validateCredential(any(), any());
+        verify(credentialService, never()).authenticateCredential(any(), any());
     }
 }

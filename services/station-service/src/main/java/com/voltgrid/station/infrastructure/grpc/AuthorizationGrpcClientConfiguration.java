@@ -16,7 +16,7 @@ import org.springframework.grpc.client.GrpcChannelBuilderCustomizer;
 @Configuration(proxyBeanMethods = false)
 public class AuthorizationGrpcClientConfiguration {
 
-    @Value("${voltgrid.service-auth.station-service-key:voltgrid-station-service-secret-key}")
+    @Value("${voltgrid.service-auth.station-service-key:${SERVICE_IDENTITY_STATION_SERVICE_KEY:}}")
     private String stationServiceKey;
 
     @Bean
@@ -45,7 +45,7 @@ public class AuthorizationGrpcClientConfiguration {
                                     );
                                     headers.put(
                                             Metadata.Key.of("x-voltgrid-service-key", Metadata.ASCII_STRING_MARSHALLER),
-                                            stationServiceKey != null ? stationServiceKey : ""
+                                            stationServiceKey
                                     );
                                     super.start(responseListener, headers);
                                 }
