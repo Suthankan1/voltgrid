@@ -95,7 +95,27 @@ export function TopBar() {
           </ol>
         </nav>
 
-        <div className="ml-auto flex shrink-0 items-center">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <Link
+            href="/admin"
+            className="hidden items-center gap-1.5 rounded-[var(--vg-radius-md)] border border-[color:var(--vg-border)] bg-[color:var(--vg-surface-subtle)] px-2.5 py-1.5 font-sans text-xs font-semibold text-[color:var(--vg-text-secondary)] transition-colors hover:border-[color:var(--vg-brand)] hover:text-[color:var(--vg-brand)] sm:inline-flex"
+            title="Commercial Administration & Multi-Tenant Management"
+          >
+            <svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M8 2 3.5 3.5v4c0 3 2 5 4.5 6 2.5-1 4.5-3 4.5-6v-4L8 2Z" />
+              <path d="m6.5 8 1 1 2-2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span>Admin</span>
+          </Link>
+
+          <Link
+            href="/login"
+            className="hidden items-center gap-1.5 rounded-[var(--vg-radius-md)] border border-[color:var(--vg-border)] px-2.5 py-1.5 font-sans text-xs font-medium text-[color:var(--vg-text-secondary)] transition-colors hover:text-[color:var(--vg-text-primary)] md:inline-flex"
+            title="Switch operator persona or sign in"
+          >
+            <span>Portal</span>
+          </Link>
+
           <Button
             variant="secondary"
             size="md"
