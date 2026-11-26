@@ -33,3 +33,14 @@ previous IAM-001 HTTP matrix gap is covered by the signed-token suites.
 IAM-001 remains partially resolved pending the remaining provider evidence.
 IAM-002, IAM-003, IAM-004 and SEC-002 retain their dispositions above.
 [Backend JWT HTTP acceptance](03a-jwt-http-acceptance.md)
+
+## VG-202R.3C evidence update
+
+| Finding | Combined evidence | Disposition |
+| --- | --- | --- |
+| IAM-001 | Both backend JWT HTTP matrices and the BFF JWT, JWKS and provider matrices passed. | Authentication slice verified locally. Release acceptance remains open. |
+| IAM-002 | The existing protected layout and the callback's initial session issuance have browser and route evidence. | Partially resolved pending direct server actions and the complete session boundary. |
+| IAM-003 | Real Keycloak browser evidence and focused callback, discovery, PKCE, nonce, state and replay tests. | Callback slice verified locally. Release acceptance remains open. |
+| IAM-004 | The callback allocates a session only after identity binding and initial organization authorization. | Partially resolved pending the browser session lifecycle cases in VG-202R.3D. |
+
+[BFF OIDC provider acceptance](03b-bff-oidc-provider-acceptance.md)

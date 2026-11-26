@@ -112,3 +112,10 @@ The backend HTTP matrices exercise the actual application filters, production
 RS256 decoder configuration, signed token purpose and authorized GraphQL
 queries. The earlier live Keycloak and browser evidence above covers a
 separate slice. [Backend JWT HTTP acceptance](03a-jwt-http-acceptance.md)
+
+## VG-202R.3C BFF and provider evidence
+
+The BFF enforces the same Keycloak access-token purpose as the two APIs. The
+controlled suite covers discovery, JWT verification, JWKS cache behavior,
+authorization code exchange, session allocation and fail-closed callback
+outcomes. [BFF OIDC provider acceptance](03b-bff-oidc-provider-acceptance.md)

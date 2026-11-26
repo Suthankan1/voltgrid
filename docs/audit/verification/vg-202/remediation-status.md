@@ -67,3 +67,11 @@ authentication filter through HTTP, including signed token purpose, rejected
 requests stopping before GraphQL, and request-context cleanup. Browser and
 provider failure acceptance remains open.
 [Backend JWT HTTP acceptance](final-acceptance/03a-jwt-http-acceptance.md)
+
+## VG-202R.3C BFF and provider acceptance
+
+The BFF aligns its signed access-token purpose check with Station and
+Operations. Controlled JWT, JWKS, discovery, provider failure and callback
+tests verify IAM-001 and IAM-003 within this slice. Initial session creation
+adds evidence for IAM-002 and IAM-004. The complete browser session lifecycle
+remains open under VG-202R.3D. [BFF OIDC provider acceptance](final-acceptance/03b-bff-oidc-provider-acceptance.md)
