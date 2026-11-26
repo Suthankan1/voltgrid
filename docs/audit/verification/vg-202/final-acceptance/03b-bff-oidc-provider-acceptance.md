@@ -55,15 +55,22 @@ Run from `apps/operator-web` using Node 24 or later and the pinned pnpm 12.4.2.
 | `pnpm exec tsc --noEmit` | Passed |
 | `pnpm build` | Passed |
 | `pnpm test:e2e` | 36 Chromium tests passed with Keycloak and the GraphQL fixture |
+| `pnpm test:a11y` | One Chromium accessibility test passed |
 
 The [Operator Web workflow](../../../../../.github/workflows/operator-web-ci.yml) executes the controlled fixture through `pnpm test`, then starts real Keycloak for the authenticated Chromium and accessibility suite and the cross-browser job. It tears down the Keycloak fixture on completion. [Operator Web workflow runs](https://github.com/Suthankan1/voltgrid/actions/workflows/operator-web-ci.yml)
+
+The initial Linux run reached the controlled provider suite and failed
+because the test resolver recursively resolved `next/server` on Node 26.
+The fixture now resolves the package path before installing its module hook.
+[Initial workflow run](https://github.com/Suthankan1/voltgrid/actions/runs/45848730195)
+[PR head checks](https://github.com/Suthankan1/voltgrid/pull/71/checks)
 
 ## Real Keycloak and Station
 
 `node integration-tests/oidc/operator-session.mjs` passed with the
 production BFF build, local Keycloak 26.8.2, and the disposable Station
-database seeded from `organizations.sql`. The Station container used the
-previously built VG-202R.2 live fixture image. The browser authenticated as
+database seeded from `organizations.sql`. It passed first with the prior
+VG-202R.2 Station fixture image, then with Station rebuilt from the branch. The browser authenticated as
 the registered operator, landed at the configured application origin and
 received an opaque HttpOnly session with the Station-authorized
 `ORG_OWNER` role. The journey also observed role and station changes on

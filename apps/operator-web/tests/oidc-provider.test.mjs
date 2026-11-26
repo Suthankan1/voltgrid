@@ -229,11 +229,12 @@ test("BFF OIDC provider acceptance", { timeout: 30_000 }, async t => {
   await t.test("production login and callback route handlers", async t => {
     keys = [replacement.jwk];
     const require = createRequire(import.meta.url);
+    const nextServerPath = require.resolve("next/server");
     const { NextRequest } = require("next/server");
     const lib = new URL("../src/lib/", import.meta.url);
     const hooks = registerHooks({
       resolve(specifier, context, nextResolve) {
-        if (specifier === "next/server") return nextResolve(require.resolve(specifier), context);
+        if (specifier === "next/server") return nextResolve(nextServerPath, context);
         if (specifier.startsWith("@/lib/")) {
           return nextResolve(new URL(specifier.slice(6) + ".ts", lib).href, context);
         }
