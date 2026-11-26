@@ -41,7 +41,7 @@ export function Card({
 }: CardProps) {
   const Component = as;
   const classes = [
-    "rounded-[var(--vg-radius-lg)] shadow-none",
+    "min-w-0 rounded-[var(--vg-radius-lg)] shadow-none",
     CARD_VARIANT_CLASSES[variant],
     CARD_PADDING_CLASSES[padding],
     className,
@@ -90,7 +90,7 @@ export function CardTitle({
 }: CardTitleProps) {
   const Component = as;
   const classes = [
-    "font-sans text-[1rem] font-semibold leading-[1.5rem] text-[color:var(--vg-text-primary)]",
+    "min-w-0 break-words font-sans text-[1rem] font-semibold leading-[1.5rem] text-[color:var(--vg-text-primary)]",
     className,
   ]
     .filter(Boolean)
@@ -112,7 +112,7 @@ export function CardDescription({
   ...props
 }: CardDescriptionProps) {
   const classes = [
-    "mt-1 font-sans text-[0.8125rem] leading-[1.25rem] text-[color:var(--vg-text-secondary)]",
+    "mt-1 min-w-0 break-words font-sans text-[0.8125rem] leading-[1.25rem] text-[color:var(--vg-text-secondary)]",
     className,
   ]
     .filter(Boolean)

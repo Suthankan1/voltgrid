@@ -78,7 +78,7 @@ export function MetricCard({
         ) : null}
       </div>
       <p
-        className={`mt-2 font-sans text-[2rem] font-bold leading-[2.5rem] tabular-nums ${
+        className={`mt-2 min-w-0 break-words font-sans text-[min(2rem,11vw)] font-bold leading-[1.25] tabular-nums ${
           display.isUnknown
             ? "text-[color:var(--vg-text-secondary)]"
             : "text-[color:var(--vg-text-primary)]"

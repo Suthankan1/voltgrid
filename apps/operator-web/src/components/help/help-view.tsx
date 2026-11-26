@@ -47,11 +47,11 @@ const TROUBLESHOOTING_ITEMS: readonly DisclosureItem[] = [
       <div className="space-y-2">
         <p>
           Registering a station creates its record in Station Service and immediately sets initial connectivity to Offline until the charger connects. Verify that the physical or simulated charger points its OCPP 2.0.1 WebSocket client to the station&apos;s{" "}
-          <code className="font-mono text-[0.8125rem] text-[color:var(--vg-text-primary)]">
+          <code className="break-all font-mono text-[0.8125rem] text-[color:var(--vg-text-primary)]">
             /ocpp/&lt;stationId&gt;
           </code>{" "}
           path on your configured Station Service host using WebSocket subprotocol{" "}
-          <code className="font-mono text-[0.8125rem] text-[color:var(--vg-text-primary)]">
+          <code className="break-all font-mono text-[0.8125rem] text-[color:var(--vg-text-primary)]">
             ocpp2.0.1
           </code>
           , then send a BootNotification and refresh the station page.
@@ -257,7 +257,7 @@ export function HelpView() {
         className="scroll-mt-24"
       >
         <CardHeader className="mb-4">
-          <div>
+          <div className="min-w-0 flex-1">
             <CardTitle id="help-getting-started-title">
               Getting started
             </CardTitle>
@@ -302,7 +302,7 @@ export function HelpView() {
           className="scroll-mt-24"
         >
           <CardHeader className="mb-3">
-            <div>
+            <div className="min-w-0 flex-1">
               <CardTitle id="help-register-title">
                 Registering and connecting a station
               </CardTitle>
@@ -312,7 +312,7 @@ export function HelpView() {
             </div>
           </CardHeader>
 
-          <CardContent className="space-y-3 font-sans text-[0.875rem] leading-[1.45rem] text-[color:var(--vg-text-secondary)]">
+          <CardContent className="space-y-3 [overflow-wrap:anywhere] font-sans text-[0.875rem] leading-[1.45rem] text-[color:var(--vg-text-secondary)]">
             <ul className="list-disc space-y-2 pl-5">
               <li>
                 <strong className="text-[color:var(--vg-text-primary)]">
@@ -338,11 +338,11 @@ export function HelpView() {
                   Registration vs connection:
                 </strong>{" "}
                 Registration records the station ID in Station Service with initial status Offline. The charger becomes Online only after opening a WebSocket connection using subprotocol{" "}
-                <code className="font-mono text-[0.8125rem] text-[color:var(--vg-text-primary)]">
+                <code className="break-all font-mono text-[0.8125rem] text-[color:var(--vg-text-primary)]">
                   ocpp2.0.1
                 </code>{" "}
                 to{" "}
-                <code className="font-mono text-[0.8125rem] text-[color:var(--vg-text-primary)]">
+                <code className="break-all font-mono text-[0.8125rem] text-[color:var(--vg-text-primary)]">
                   /ocpp/&lt;stationId&gt;
                 </code>{" "}
                 on your provisioned Station Service host and sending a BootNotification.
@@ -365,7 +365,7 @@ export function HelpView() {
           className="scroll-mt-24"
         >
           <CardHeader className="mb-3">
-            <div>
+            <div className="min-w-0 flex-1">
               <CardTitle id="help-stations-title">
                 Understanding charging stations
               </CardTitle>
@@ -375,7 +375,7 @@ export function HelpView() {
             </div>
           </CardHeader>
 
-          <CardContent className="space-y-3 font-sans text-[0.875rem] leading-[1.45rem] text-[color:var(--vg-text-secondary)]">
+          <CardContent className="space-y-3 [overflow-wrap:anywhere] font-sans text-[0.875rem] leading-[1.45rem] text-[color:var(--vg-text-secondary)]">
             <ul className="list-disc space-y-2 pl-5">
               <li>
                 <strong className="text-[color:var(--vg-text-primary)]">
@@ -419,7 +419,7 @@ export function HelpView() {
           className="scroll-mt-24"
         >
           <CardHeader className="mb-3">
-            <div>
+            <div className="min-w-0 flex-1">
               <CardTitle id="help-sessions-title">
                 Understanding charging sessions
               </CardTitle>
@@ -429,7 +429,7 @@ export function HelpView() {
             </div>
           </CardHeader>
 
-          <CardContent className="space-y-3 font-sans text-[0.875rem] leading-[1.45rem] text-[color:var(--vg-text-secondary)]">
+          <CardContent className="space-y-3 [overflow-wrap:anywhere] font-sans text-[0.875rem] leading-[1.45rem] text-[color:var(--vg-text-secondary)]">
             <ul className="list-disc space-y-2 pl-5">
               <li>
                 <strong className="text-[color:var(--vg-text-primary)]">
@@ -465,7 +465,7 @@ export function HelpView() {
           className="scroll-mt-24"
         >
           <CardHeader className="mb-3">
-            <div>
+            <div className="min-w-0 flex-1">
               <CardTitle id="help-measurements-title">
                 Understanding measurements
               </CardTitle>
@@ -475,7 +475,7 @@ export function HelpView() {
             </div>
           </CardHeader>
 
-          <CardContent className="space-y-3 font-sans text-[0.875rem] leading-[1.45rem] text-[color:var(--vg-text-secondary)]">
+          <CardContent className="space-y-3 [overflow-wrap:anywhere] font-sans text-[0.875rem] leading-[1.45rem] text-[color:var(--vg-text-secondary)]">
             <p>
               Session charts show persisted OCPP MeterValues already stored by Station Service—they do not stream live telemetry.
             </p>
@@ -533,7 +533,7 @@ export function HelpView() {
         className="scroll-mt-24"
       >
         <CardHeader className="mb-3">
-          <div>
+          <div className="min-w-0 flex-1">
             <CardTitle id="help-diagnostics-title">
               Understanding diagnostics
             </CardTitle>
@@ -543,7 +543,7 @@ export function HelpView() {
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-3 font-sans text-[0.875rem] leading-[1.45rem] text-[color:var(--vg-text-secondary)]">
+        <CardContent className="space-y-3 [overflow-wrap:anywhere] font-sans text-[0.875rem] leading-[1.45rem] text-[color:var(--vg-text-secondary)]">
           <p>
             VoltGrid separates operational writes and connectivity in Station Service from the event-driven read model maintained by Operations Service over a transactional outbox and Kafka pipeline.
           </p>
@@ -585,7 +585,7 @@ export function HelpView() {
         className="scroll-mt-24"
       >
         <CardHeader className="mb-2">
-          <div>
+          <div className="min-w-0 flex-1">
             <CardTitle id="help-troubleshooting-title">
               Troubleshooting
             </CardTitle>
@@ -595,7 +595,7 @@ export function HelpView() {
           </div>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="[overflow-wrap:anywhere]">
           <DisclosureList items={TROUBLESHOOTING_ITEMS} />
         </CardContent>
       </Card>

@@ -140,7 +140,7 @@ export function AttentionSessionsSection({
                 <Link
                   href={item.sessionHref}
                   aria-label={`Sequence details for session ${item.transaction.transactionId} at ${item.transaction.stationId}`}
-                  className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-[var(--vg-radius-md)] border border-[color:var(--vg-border-control)] bg-[color:var(--vg-surface)] px-3.5 py-2 font-sans text-[0.875rem] font-semibold text-[color:var(--vg-text-primary)] transition-colors duration-[var(--vg-transition-fast)] hover:bg-[color:var(--vg-surface-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
+                  className="inline-flex min-h-11 max-w-full flex-wrap items-center gap-1 rounded-[var(--vg-radius-md)] border border-[color:var(--vg-border-control)] bg-[color:var(--vg-surface)] px-3.5 py-2 font-sans text-[0.875rem] font-semibold text-[color:var(--vg-text-primary)] transition-colors duration-[var(--vg-transition-fast)] hover:bg-[color:var(--vg-surface-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vg-focus)]"
                 >
                   <span>Sequence details</span>
                   <span aria-hidden="true">→</span>

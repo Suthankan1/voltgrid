@@ -35,7 +35,7 @@ export function ConnectorCard({ item, stationOffline }: ConnectorCardProps) {
           <ChargerIllustration status={connector.status} size="md" />
         </div>
 
-        <div className="min-w-[9.5rem] flex-1 space-y-2.5">
+        <div className="min-w-[min(9.5rem,100%)] flex-1 space-y-2.5">
           <div>
             <h3 className="font-sans text-[1rem] font-semibold leading-[1.5rem] text-[color:var(--vg-text-primary)]">
               Connector {connector.connectorId}

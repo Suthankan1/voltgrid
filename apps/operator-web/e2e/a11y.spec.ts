@@ -33,6 +33,7 @@ async function waitForHttpOk(url: string): Promise<void> {
 }
 
 async function expectNoAxeViolations(page: Page, contextLabel: string) {
+  await expect(page).toHaveTitle("VoltGrid Operator Console");
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();
@@ -445,6 +446,7 @@ test("automated WCAG 2.2 AA audit across all canonical screens, dialogs, and fai
     await page.getByLabel("Station identifier", { exact: true }).fill("CP-A11Y-1");
     await page.getByRole("button", { name: "Register station", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Station registered" })).toBeVisible();
+    await page.waitForLoadState("networkidle");
     await expectNoAxeViolations(page, "Registration (confirmed success)");
 
     await page.getByRole("button", { name: "Register another station" }).click();

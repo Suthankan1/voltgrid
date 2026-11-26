@@ -28,7 +28,8 @@ test("cross-browser responsive matrix across all 8 viewports, navigation modes, 
   const pageErrors: string[] = [];
 
   const isWebKitAbortedRscPrefetch = (text: string) =>
-    /^(?:https?:)?\/*127\.0\.0\.1:4310\/.*\?_rsc=.*due to access control checks\.?$/.test(
+    testInfo.project.name === "webkit" &&
+    /^(?:https?:)?\/*127\.0\.0\.1:4310\/[^\s]*[?&]_rsc=[A-Za-z0-9_-]+ due to access control checks\.?$/.test(
       text,
     );
 
