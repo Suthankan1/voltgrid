@@ -23,3 +23,21 @@ The existing Station and Operations GitHub workflows discover the migration test
 An independent agent reviewed the migration SQL, tests and runbook. It identified the need to test a non-superuser migration role and give exact Flyway commands and reserved maintenance object names. The final targeted run exercises the separate migration role. Review scope was limited to this migration change. Full independent security acceptance remains open.
 
 The reviewer also checked the owner-removal lock and identified its dependence on PostgreSQL READ COMMITTED semantics. The membership mutations explicitly select that isolation level.
+
+## Authenticated local stack
+
+`pnpm test:e2e:live` from `apps/operator-web` passed its one existing Playwright journey in 13.7 seconds. The disposable Compose project ran Keycloak 26.8.2, PostgreSQL 18.6, Kafka 4.2.1, Station Service, Operations Service and Authorization Service. The run used an isolated seed for two organizations and a generated RFID fixture. The standard image build stalled during Maven dependency resolution. The run used the verified Maven jars in temporary local Station and Operations images and the repository-built Authorization image. Containers, networks and test database volumes were removed on exit.
+
+| Requested steps | Result |
+| --- | --- |
+| 1–2 | Passed. Anonymous browser redirected and the operator signed in through Keycloak. |
+| 3–4 | Skipped. The journey used the fixture user's initial organization and did not select or create a site. |
+| 5 | Passed for organization-scoped registration. Site-specific registration was skipped. |
+| 6–11 | Passed. Credential provisioning, anonymous device denial, authenticated connection, boot, heartbeat and connector status were exercised. |
+| 12 | Passed. The simulated device saw an unregistered RFID denied and the seeded RFID accepted through Station's authenticated gRPC call. |
+| 13–18 | Passed. Transaction start, measurements, end, Kafka/outbox projection, scoped Operations status, and session and meter reads were observed. |
+| 19 | Passed for browser denial of the second organization's direct Station lookup. Associated transaction, meter and projection denial checks were skipped. |
+| 20–24 | Passed. Rotation, old credential rejection, revocation, both active socket invalidations and visibility of the device audit events were exercised. |
+| 25–26 | Skipped. Active browser membership revocation and subsequent Station and Operations denial were not exercised. |
+| 27 | Passed. Application logout returned the browser to login. |
+| 28 | Skipped. The test ends at the logout redirect. |
