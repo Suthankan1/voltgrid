@@ -36,9 +36,37 @@ jobs:
         run: pnpm test
       - name: Lint
         run: pnpm lint
-      - name: Production build and type check
-        run: pnpm exec next build --webpack
-      - name: Install browser
+      - name: TypeScript type check
+        run: pnpm exec tsc --noEmit
+      - name: Production build
+        run: pnpm build
+      - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
       - name: Operator browser regression tests
         run: pnpm test:e2e
+      - name: Automated accessibility tests (WCAG 2.2 AA)
+        run: pnpm test:a11y
+
+  cross-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: test
+    defaults:
+      run:
+        working-directory: apps/operator-web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "26"
+          package-manager-cache: false
+      - name: Install pinned package manager
+        run: npm install --global pnpm@12.4.2
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Production build
+        run: pnpm build
+      - name: Install Chromium, Firefox, and WebKit
+        run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - name: Cross-browser operator matrix
+        run: pnpm test:e2e:cross-browser

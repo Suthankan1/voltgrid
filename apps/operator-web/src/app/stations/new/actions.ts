@@ -1,15 +1,48 @@
 "use server";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+
 import { revalidatePath } from "next/cache";
-import { registerStation, type RegistrationState } from "@/lib/station-registration";
-export async function registerStationAction(_previous: RegistrationState, formData: FormData): Promise<RegistrationState> {
-  const host = (await headers()).get("host") ?? "";
-  try {
-    if (!["localhost", "127.0.0.1", "[::1]"].includes(new URL(`http://${host}`).hostname)) return {message:"Registration is available only from the local console."};
-  } catch { return {message:"Registration is available only from the local console."}; }
-  const result = await registerStation(formData.get("id"), formData.get("name"));
-  if (!result.stationId) return result;
-  revalidatePath("/");
-  redirect(`/stations/${encodeURIComponent(result.stationId)}`);
+import { headers } from "next/headers";
+import {
+  executeRegisterStationAction,
+  executeVerifyStationRegistrationAction,
+  type RegistrationActionState,
+  type RegistrationVerificationOutcome,
+} from "@/lib/station-registration-actions";
+
+export type {
+  RegistrationActionState,
+  RegistrationVerificationOutcome,
+} from "@/lib/station-registration-actions";
+
+async function readRequestActionContext() {
+  const headerStore = await headers();
+  return {
+    hostHeader: headerStore.get("host"),
+    forwardedHostHeader: headerStore.get("x-forwarded-host"),
+    revalidate: revalidatePath,
+  };
+}
+
+/**
+ * Registers a charging station through Station Service and returns structured
+ * success, duplicate, validation, failure, disabled, or uncertain feedback without auto-redirecting.
+ */
+export async function registerStationAction(
+  _previousState: RegistrationActionState,
+  formData: FormData,
+): Promise<RegistrationActionState> {
+  const context = await readRequestActionContext();
+  return executeRegisterStationAction(formData, context);
+}
+
+/**
+ * Performs an explicit read-only station lookup so operators can verify whether
+ * an uncertain submission created a station before trying again.
+ */
+export async function verifyStationRegistrationAction(
+  _previousState: RegistrationVerificationOutcome,
+  formData: FormData,
+): Promise<RegistrationVerificationOutcome> {
+  const context = await readRequestActionContext();
+  return executeVerifyStationRegistrationAction(formData, context);
 }

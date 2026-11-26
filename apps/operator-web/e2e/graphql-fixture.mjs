@@ -5,6 +5,7 @@ const transaction = {stationId:'CP-1',transactionId:'TX-1',evseId:1,connectorId:
 const completeness = {status:'COMPLETE',firstSequenceNumber:0,lastSequenceNumber:2,missingSequenceNumbers:[]};
 createServer(async (req,res) => {
  if(req.url === '/health') {res.end('ok');return;}
+ if(req.url === '/__reset' && req.method === 'POST') {registered.clear();res.end('ok');return;}
  let body='';for await(const chunk of req) body+=chunk;
  const {query,variables={}}=JSON.parse(body);
  let data;

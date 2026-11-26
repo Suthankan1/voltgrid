@@ -8,22 +8,25 @@
     "start": "next start --hostname 127.0.0.1",
     "lint": "eslint",
     "test": "node --test tests/*.test.mjs",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --project=chromium",
+    "test:e2e:cross-browser": "playwright test e2e/operator.spec.ts e2e/shell.spec.ts e2e/cross-browser.spec.ts",
+    "test:a11y": "playwright test --project=chromium e2e/a11y.spec.ts",
     "test:e2e:live": "playwright test --config playwright.live.config.ts"
   },
   "dependencies": {
-    "next": "16.3.5",
+    "next": "16.4.6",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.1",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.5",
+    "eslint-config-next": "16.4.6",
     "tailwindcss": "^4",
     "typescript": "^5"
   },

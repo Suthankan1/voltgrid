@@ -1,68 +1,82 @@
 import { test, expect } from '@playwright/test';
+
+test.beforeEach(async ({ request }) => {
+ const response = await request.post('http://127.0.0.1:4311/__reset');
+ expect(response.ok()).toBe(true);
+});
 test('dashboard to station details and transaction inspector', async ({ page }) => {
  await page.goto('/');
  await page.getByRole('link',{name:'Colombo Central'}).click();
  await expect(page.getByRole('heading',{name:'Colombo Central'})).toBeVisible();
- await expect(page.getByText('AVAILABLE',{exact:true}).first()).toBeVisible();
+ await expect(page.getByText('Available',{exact:true}).first()).toBeVisible();
  await page.goto('/stations/CP-1/transactions/TX-1');
- await expect(page.getByRole('heading',{name:'TX-1',exact:true})).toBeVisible();
- await expect(page.getByText('Integrity assessment',{exact:true})).toBeVisible();
+ await expect(page).toHaveURL(/\/stations\/CP-1\/sessions\/TX-1$/);
+ await expect(page.getByRole('heading',{name:'Session TX-1',exact:true})).toBeVisible();
+ await expect(page.getByText('Sequence completeness',{exact:true})).toBeVisible();
 });
-test('transaction ledger renders and active filter excludes ended sessions', async ({ page }) => {
- await page.goto('/transactions');
- await expect(page.getByRole('heading',{name:'Transaction operations'})).toBeVisible();
+test('charging sessions directory renders and current-page active filter excludes ended sessions', async ({ page }) => {
+ await page.goto('/sessions');
+ await expect(page.getByRole('heading',{name:'Charging sessions',exact:true})).toBeVisible();
  await expect(page.getByText('TX-1',{exact:true}).first()).toBeVisible();
- await page.getByRole('button',{name:'Active',exact:true}).click();
+ await page.getByRole('button',{name:'Active on page',exact:true}).click();
  await expect(page.getByText('TX-1',{exact:true})).toHaveCount(0);
 });
 test('Operations navigation, cursor pagination and failure state', async ({ page }) => {
  await page.goto('/');
- await page.getByRole('link',{name:'View Operations status →'}).click();
- await expect(page.getByRole('heading',{name:'Operations status'})).toBeVisible();
- await expect(page.getByRole('cell',{name:'ONLINE',exact:true})).toBeVisible();
- await page.getByRole('link',{name:'Next page →'}).click();
+ await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'Diagnostics', exact: true }).click();
+ await expect(page).toHaveURL(/\/diagnostics$/);
+ await expect(page.getByRole('heading',{name:'Diagnostics',exact:true})).toBeVisible();
+ await expect(page.getByRole('table').getByText('Online',{exact:true}).first()).toBeVisible();
+ await page.getByRole('link',{name:'Next page'}).click();
  await expect(page).toHaveURL(/after=cursor-2/);
- await expect(page.getByText('No projected stations.',{exact:true})).toBeVisible();
+ await expect(page.getByText('No operational status records available',{exact:true})).toBeVisible();
  await page.goto('/operations?after=failure');
- await expect(page.getByRole('alert').filter({hasText:'Operations data'})).toContainText('could not be loaded');
+ await expect(page).toHaveURL(/\/diagnostics\?after=failure$/);
+ await expect(page.getByRole('alert').filter({hasText:'could not be loaded'})).toBeVisible();
 });
 test('unknown station and transaction return 404', async ({ page }) => {
  expect((await page.goto('/stations/missing'))?.status()).toBe(404);
+ expect((await page.goto('/stations/CP-1/sessions/missing'))?.status()).toBe(404);
  expect((await page.goto('/stations/CP-1/transactions/missing'))?.status()).toBe(404);
 });
 
 test('Operations filter resets the cursor and persists on next page', async ({page}) => {
  await page.goto('/operations?after=cursor-2');
- await page.getByLabel('Station status').selectOption('OFFLINE');
- await page.getByRole('button',{name:'Apply status filter'}).click();
+ await expect(page).toHaveURL(/\/diagnostics\?after=cursor-2$/);
+ await page.getByLabel('Projected status').selectOption('OFFLINE');
+ await page.getByRole('button',{name:'Apply filters'}).click();
  await expect(page).toHaveURL(/status=OFFLINE/);
  expect(new URL(page.url()).searchParams.has('after')).toBe(false);
- await expect(page.getByRole('cell',{name:'OFFLINE',exact:true})).toBeVisible();
- await page.getByRole('link',{name:'Next page →'}).click();
+ await expect(page.getByRole('table').getByText('Offline',{exact:true}).first()).toBeVisible();
+ await page.getByRole('link',{name:'Next page'}).click();
  await expect(page).toHaveURL(/status=OFFLINE/);
- await page.getByRole('link',{name:'Reset / first page'}).click();
- await expect(page.getByRole('combobox',{name:'Station status',exact:true})).toHaveValue('');
+ await page.locator('form').getByRole('link',{name:'Reset filters'}).click();
+ await expect(page.getByRole('combobox',{name:'Projected status',exact:true})).toHaveValue('');
  await page.goto('/operations?status=ONLINE&status=OFFLINE');
- await expect(page.getByRole('cell',{name:'ONLINE',exact:true})).toBeVisible();
+ await expect(page).toHaveURL(/\/diagnostics\?status=ONLINE$/);
+ await expect(page.getByRole('table').getByText('Online',{exact:true}).first()).toBeVisible();
 });
 test('literal percent identifiers are decoded once', async ({page}) => {
  expect((await page.goto('/stations/CP%251'))?.status()).toBe(200);
  await expect(page.getByRole('heading',{name:'Colombo Central'})).toBeVisible();
- expect((await page.goto('/stations/CP%251/transactions/TX%251'))?.status()).toBe(200);
- await expect(page.getByRole('heading',{name:'TX%1',exact:true})).toBeVisible();
+ expect((await page.goto('/stations/CP%251/sessions/TX%251'))?.status()).toBe(200);
+ await expect(page.getByRole('heading',{name:'Session TX%1',exact:true})).toBeVisible();
+ await page.goto('/stations/CP%251/transactions/TX%251');
+ await expect(page).toHaveURL(/\/stations\/CP%251\/sessions\/TX%251$/);
+ await expect(page.getByRole('heading',{name:'Session TX%1',exact:true})).toBeVisible();
 });
 
-test('shared navigation, keyboard skip link and refresh work on every view', async ({page}) => {
- for (const route of ['/', '/transactions','/operations','/stations/CP-1']) {
+test('shared navigation, keyboard skip link and refresh work on every view', async ({page, browserName}) => {
+ for (const route of ['/', '/sessions','/operations','/stations/CP-1']) {
   await page.goto(route);
-  const navigation=page.getByRole('navigation',{name:'Operator navigation'});
-  await expect(navigation.getByRole('link',{name:'Operations',exact:true})).toBeVisible();
+  const navigation=page.getByRole('navigation',{name:'Primary navigation'});
+  await expect(navigation.getByRole('link',{name:'Diagnostics',exact:true})).toBeVisible();
   await expect(page.locator('main#main-content')).toHaveCount(1);
   await page.getByRole('button',{name:'Refresh data'}).click();
   await expect(page.getByRole('button',{name:'Refresh data'})).toBeEnabled();
  }
  await page.goto('/');
- await page.keyboard.press('Tab');
+ await page.keyboard.press(browserName === 'webkit' ? 'Alt+Tab' : 'Tab');
  await expect(page.getByRole('link',{name:'Skip to main content'})).toBeFocused();
  await page.keyboard.press('Enter');
  await expect(page.locator('#main-content')).toBeFocused();
@@ -72,9 +86,9 @@ test('shared navigation, keyboard skip link and refresh work on every view', asy
 
 test('operator views fit mobile and retain navigation', async ({page}, testInfo) => {
  await page.setViewportSize({width:390,height:844});
- for (const [name,route] of [['network','/'],['transactions','/transactions'],['operations','/operations'],['station','/stations/CP-1'],['inspector','/stations/CP-1/transactions/TX-1']]) {
+ for (const [name,route] of [['network','/'],['sessions','/sessions'],['operations','/operations'],['station','/stations/CP-1'],['inspector','/stations/CP-1/sessions/TX-1']]) {
   await page.goto(route);
-  await expect(page.getByRole('navigation',{name:'Operator navigation'})).toBeVisible();
+  await expect(page.getByRole('button',{name:/Menu/i})).toBeVisible();
   await expect(page.locator('main h1')).toBeVisible();
   await expect(page.locator('main:visible')).toHaveCount(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
@@ -84,34 +98,64 @@ test('operator views fit mobile and retain navigation', async ({page}, testInfo)
 
 test('dark action links retain readable white text', async ({page}) => {
  await page.goto('/');
- const action=page.getByRole('link',{name:'Open transactions →'});
+ const action=page.getByRole('link',{name:'Add station'});
  expect(await action.evaluate(element=>getComputedStyle(element).color)).toBe('rgb(255, 255, 255)');
 });
 
-test('fleet search combines name and connectivity while retaining network totals', async ({page}) => {
+test('fleet search combines name and connectivity in the stations directory while retaining network totals', async ({page}) => {
  await page.goto('/');
+ await page.getByRole('link',{name:'Browse stations'}).click();
+ await expect(page).toHaveURL(/\/stations$/);
  await page.getByLabel('Search stations').fill('Colombo');
  await page.getByLabel('Connectivity',{exact:true}).selectOption('OFFLINE');
- await page.getByRole('button',{name:'Search fleet'}).click();
+ await page.getByRole('button',{name:'Apply filters'}).click();
  await expect(page.getByText('No stations match the selected filters.')).toBeVisible();
  await page.getByRole('link',{name:'Clear filters'}).click();
  await expect(page.getByLabel('Search stations')).toHaveValue('');
  await expect(page.getByLabel('Connectivity',{exact:true})).toHaveValue('');
  await page.getByLabel('Connectivity',{exact:true}).selectOption('OFFLINE');
- await page.getByRole('button',{name:'Search fleet'}).click();
- await expect(page.getByRole('link',{name:'Kandy Depot →',exact:true})).toBeVisible();
- await expect(page.getByRole('link',{name:'Colombo Central →',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Apply filters'}).click();
+ await expect(page).toHaveURL(/\/stations\?.*status=OFFLINE/);
+ await expect(page.getByRole('link',{name:'Kandy Depot',exact:true})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Colombo Central',exact:true})).toHaveCount(0);
 });
-test('local registration redirects to the new offline station and reports duplicates', async ({page}) => {
+test('local registration confirms new offline station with connection guidance and reports duplicates', async ({page, browserName}) => {
+ const stationId = `NEW-CP-${browserName.toUpperCase()}-1`;
  await page.goto('/stations/new');
- await page.getByLabel('Station identifier',{exact:true}).fill('NEW-CP-1');
+ await page.getByLabel('Station identifier',{exact:true}).fill(stationId);
  await page.getByLabel('Station name',{exact:true}).fill('New local station');
  await page.getByRole('button',{name:'Register station',exact:true}).click();
- await expect(page).toHaveURL(/stations\/NEW-CP-1/);
+ await expect(page.getByRole('heading',{name:'Station registered'})).toBeVisible();
+ await expect(page.getByText(`/ocpp/${stationId}`)).toBeVisible();
+ await page.getByRole('link',{name:'Inspect station details'}).click();
+ await expect(page).toHaveURL(new RegExp(`stations/${stationId}`));
  await expect(page.getByRole('heading',{name:'New local station'})).toBeVisible();
  await page.goto('/stations/new');
- await page.getByLabel('Station identifier',{exact:true}).fill('NEW-CP-1');
+ await page.getByLabel('Station identifier',{exact:true}).fill(stationId);
  await page.getByLabel('Station name',{exact:true}).fill('Duplicate');
  await page.getByRole('button',{name:'Register station',exact:true}).click();
  await expect(page.getByRole('alert').filter({hasText:'already registered'})).toBeVisible();
+});
+
+test('Voltmark brand assets and favicons load cleanly without metadata regressions', async ({page, request}) => {
+ await page.goto('/');
+ await expect(page).toHaveTitle('VoltGrid Operator Console');
+ const iconHrefs = await page.locator('head link[rel*="icon"]').evaluateAll(links =>
+  links.map(link => ({rel: link.getAttribute('rel'), href: link.getAttribute('href'), type: link.getAttribute('type')}))
+ );
+ expect(iconHrefs.some(icon => icon.href?.includes('icon.svg') && icon.type === 'image/svg+xml')).toBe(true);
+ expect(iconHrefs.some(icon => icon.href?.includes('favicon.ico'))).toBe(true);
+
+ for (const icon of iconHrefs) {
+  const response = await request.get(icon.href!);
+  expect(response.ok()).toBe(true);
+ }
+
+ for (const asset of ['/brand/voltmark.svg', '/brand/voltmark-reversed.svg', '/brand/voltmark-monochrome.svg']) {
+  const response = await request.get(asset);
+  expect(response.ok()).toBe(true);
+  expect(response.headers()['content-type']).toContain('image/svg+xml');
+  const body = await response.text();
+  expect(body).toContain('viewBox="0 0 80 80"');
+ }
 });
