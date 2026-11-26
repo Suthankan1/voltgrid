@@ -98,3 +98,10 @@ passed 41 tests with zero failures, errors or skips. With Keycloak and fixture
 GraphQL, `pnpm test:e2e` passed 36 cases and `pnpm test:a11y` passed one.
 `pnpm test:e2e:cross-browser` passed 36 Chromium and WebKit cases. Firefox
 reported 18 launch failures because it could not find its profile directory.
+
+The live journey completed after 122 seconds. The application session and
+Operations query remained authenticated beyond the original access-token
+lifetime. Logout invalidated the local session, and Chromium remained
+unauthenticated after presenting the old handle. The full refresh race,
+production cookie, provider failure, callback and direct action matrices
+remain open.
