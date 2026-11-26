@@ -11,6 +11,7 @@ import com.voltgrid.station.domain.ChargingStation;
 import com.voltgrid.station.domain.security.Permission;
 import com.voltgrid.station.domain.security.Role;
 import com.voltgrid.station.application.security.TenantAccessDeniedException;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import com.voltgrid.station.infrastructure.persistence.jpa.AdministrativeAuditEventEntity;
 import com.voltgrid.station.infrastructure.persistence.jpa.OrganizationEntity;
@@ -230,9 +231,9 @@ public class StationGraphQlController {
     }
 
     @MutationMapping
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrganizationMembershipEntity inviteMember(@Argument @Valid InviteMemberInput input) {
-        tenantAuthorizationService.assertAuthorized(input.organizationId(), Permission.MEMBER_MANAGE);
+        authorizeMembershipUpdate(input.organizationId());
 
         var membership = new OrganizationMembershipEntity(
                 "mem_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16),
@@ -262,18 +263,22 @@ public class StationGraphQlController {
     }
 
     @MutationMapping
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrganizationMembershipEntity updateMemberRole(
             @Argument String organizationId,
             @Argument String userId,
             @Argument String role
     ) {
-        tenantAuthorizationService.assertAuthorized(organizationId, Permission.MEMBER_MANAGE);
+        authorizeMembershipUpdate(organizationId);
 
         var membership = membershipRepository.findByOrganizationIdAndUserId(organizationId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Membership not found for user: " + userId));
 
-        membership.setRole(organizationRole(role).name());
+        var newRole = organizationRole(role);
+        if (newRole != Role.ORG_OWNER) {
+            assertRemainingOwner(membership);
+        }
+        membership.setRole(newRole.name());
         membershipRepository.save(membership);
 
         var user = SecurityContext.get();
@@ -294,13 +299,14 @@ public class StationGraphQlController {
     }
 
     @MutationMapping
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public boolean revokeMember(@Argument String organizationId, @Argument String userId) {
-        tenantAuthorizationService.assertAuthorized(organizationId, Permission.MEMBER_MANAGE);
+        authorizeMembershipUpdate(organizationId);
 
         var membershipOpt = membershipRepository.findByOrganizationIdAndUserId(organizationId, userId);
         if (membershipOpt.isPresent()) {
             var membership = membershipOpt.get();
+            assertRemainingOwner(membership);
             membership.setStatus("REVOKED");
             membershipRepository.save(membership);
 
@@ -320,6 +326,21 @@ public class StationGraphQlController {
             return true;
         }
         return false;
+    }
+
+    private void authorizeMembershipUpdate(String organizationId) {
+        // Serialize membership changes before reading the caller's role or counting owners.
+        organizationRepository.lockForMembershipUpdate(organizationId)
+                .orElseThrow(() -> new TenantAccessDeniedException("Organization permission denied"));
+        tenantAuthorizationService.assertAuthorized(organizationId, Permission.MEMBER_MANAGE);
+    }
+
+    private void assertRemainingOwner(OrganizationMembershipEntity membership) {
+        if ("ACTIVE".equals(membership.getStatus()) && Role.ORG_OWNER.name().equals(membership.getRole())
+                && membershipRepository.countByOrganizationIdAndRoleAndStatus(
+                        membership.getOrganizationId(), Role.ORG_OWNER.name(), "ACTIVE") <= 1) {
+            throw new TenantAccessDeniedException("An organization must retain an active owner");
+        }
     }
 
     private static Role organizationRole(String value) {

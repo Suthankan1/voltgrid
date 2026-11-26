@@ -50,3 +50,5 @@ The local browser fixture and scope are documented in the [OIDC test guide](../.
 Local verification used Java 25, Maven 3.9.16, Node 24, pnpm 12.4.2, PostgreSQL 18.6, Keycloak 26.8.2, and Kafka 4.2.1. Firefox failed to launch its temporary browser profile on the local macOS host.
 
 For databases still below V15, inventory station identifiers longer than 59 characters before attempting that migration. V15 prefixes the original station ID when seeding its old credential ID, so this historical step can fail before the forward fixes apply. Keep the migration history intact and use a separately validated upgrade procedure for affected databases.
+
+The VG-202R.2 historical upgrade procedure and regression scope are recorded in the [final acceptance dossier](final-acceptance/README.md).
