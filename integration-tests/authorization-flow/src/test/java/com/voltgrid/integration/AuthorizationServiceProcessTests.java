@@ -149,8 +149,11 @@ class AuthorizationServiceProcessTests {
 
         environment.put(
                 "AUTHORIZATION_TOKEN_HMAC_KEY",
-                "0123456789abcdef0123456789abcdef"
+                AuthorizationFlowTestEnvironment.temporarySecret()
         );
+
+        environment.put("SPRING_GRPC_SERVER_ADDRESS", "127.0.0.1");
+        environment.put("SERVICE_IDENTITY_STATION_SERVICE_KEY", AuthorizationFlowTestEnvironment.temporarySecret());
 
         return processBuilder.start();
     }

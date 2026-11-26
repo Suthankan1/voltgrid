@@ -7,6 +7,10 @@ import javax.crypto.spec.SecretKeySpec;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
+import java.util.Base64;
+import java.security.SecureRandom;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.SecretKeyFactory;
 import java.nio.charset.StandardCharsets;
 import java.sql.DriverManager;
 import java.sql.Types;
@@ -41,10 +45,10 @@ class AuthorizationFlowE2ETests {
                 var httpClient =
                         HttpClient.newHttpClient()
         ) {
-            seedStation(
-                    environment,
-                    "STATION-E2E"
-            );
+            var stationPassword = AuthorizationFlowTestEnvironment.temporarySecret();
+            seedStation(environment, "STATION-E2E", stationPassword);
+            var basicAuth = "Basic " + Base64.getEncoder().encodeToString(
+                    ("STATION-E2E:" + stationPassword).getBytes(java.nio.charset.StandardCharsets.UTF_8));
 
             seedToken(
                     environment,
@@ -74,6 +78,7 @@ class AuthorizationFlowE2ETests {
             var webSocket =
                     httpClient
                             .newWebSocketBuilder()
+                            .header("Authorization", basicAuth)
                             .subprotocols(
                                     "ocpp2.0.1"
                             )
@@ -206,7 +211,8 @@ class AuthorizationFlowE2ETests {
 
     private void seedStation(
             AuthorizationFlowTestEnvironment environment,
-            String stationId
+            String stationId,
+            String password
     ) throws Exception {
 
         var postgres =
@@ -218,13 +224,15 @@ class AuthorizationFlowE2ETests {
                     id,
                     name,
                     status,
-                    last_seen_at
+                    last_seen_at,
+                    organization_id
                 )
                 VALUES (
                     ?,
                     ?,
                     'OFFLINE',
-                    NULL
+                    NULL,
+                    'org_voltgrid_default'
                 )
                 """;
 
@@ -252,6 +260,20 @@ class AuthorizationFlowE2ETests {
             );
 
             statement.executeUpdate();
+
+            byte[] salt = new SecureRandom().generateSeed(16);
+            var spec = new PBEKeySpec(password.toCharArray(), salt, 65_536, 256);
+            byte[] hash = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).getEncoded();
+            spec.clearPassword();
+            var hex = java.util.HexFormat.of();
+            try (var credential = connection.prepareStatement("""
+                    INSERT INTO station_credentials (id, station_id, password_hash)
+                    VALUES ('cred_fixture', ?, ?)
+                    """)) {
+                credential.setString(1, stationId);
+                credential.setString(2, "pbkdf2:" + hex.formatHex(salt) + ":" + hex.formatHex(hash));
+                credential.executeUpdate();
+            }
         }
     }
 

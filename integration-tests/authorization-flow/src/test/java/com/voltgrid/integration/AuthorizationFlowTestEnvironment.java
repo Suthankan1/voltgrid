@@ -9,6 +9,8 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.security.SecureRandom;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -17,8 +19,12 @@ import static org.junit.jupiter.api.Assertions.fail;
 final class AuthorizationFlowTestEnvironment
         implements AutoCloseable {
 
-    static final String TEST_HMAC_KEY =
-            "0123456789abcdef0123456789abcdef";
+    static final String TEST_HMAC_KEY = temporarySecret();
+    private final String serviceIdentityKey = temporarySecret();
+
+    static String temporarySecret() {
+        return HexFormat.of().formatHex(new SecureRandom().generateSeed(32));
+    }
 
     private static final Duration STARTUP_TIMEOUT =
             Duration.ofSeconds(45);
@@ -188,11 +194,8 @@ final class AuthorizationFlowTestEnvironment
                         "--spring.datasource.password="
                                 + authorizationPostgres.getPassword(),
 
-                        "--spring.grpc.server.port="
-                                + authorizationGrpcPort,
-
-                        "--voltgrid.authorization.token-hmac-key="
-                                + TEST_HMAC_KEY
+                        "--spring.grpc.server.port=" + authorizationGrpcPort,
+                        "--spring.grpc.server.address=127.0.0.1"
                 );
 
         return startSpringBootProcess(
@@ -225,6 +228,8 @@ final class AuthorizationFlowTestEnvironment
                                 + "static://localhost:"
                                 + authorizationGrpcPort,
 
+                        "--server.address=127.0.0.1",
+                        "--voltgrid.security.require-auth=false",
                         "--spring.grpc.client.channel.authorization.ssl.enabled=false"
                 );
 
@@ -264,6 +269,8 @@ final class AuthorizationFlowTestEnvironment
                 logFile.toFile()
         );
 
+        processBuilder.environment().put("SERVICE_IDENTITY_STATION_SERVICE_KEY", serviceIdentityKey);
+        processBuilder.environment().put("AUTHORIZATION_TOKEN_HMAC_KEY", TEST_HMAC_KEY);
         return processBuilder.start();
     }
 

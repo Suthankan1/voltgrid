@@ -58,6 +58,17 @@ try {
   await page.waitForURL(base + "/login");
   assert.equal((await currentSession()).authenticated, false);
   console.log("Logout invalidated the browser session");
+
+  const otherOperator = await browser.newPage();
+  await otherOperator.goto(base + "/login");
+  await otherOperator.getByRole("button", { name: "Continue to sign in" }).click();
+  await otherOperator.locator("#username").fill("operator-b");
+  await otherOperator.locator("#password").fill(password);
+  await otherOperator.locator("#kc-login").click();
+  await otherOperator.waitForURL(base + "/", { timeout: 25_000 });
+  const inaccessible = await otherOperator.goto(base + "/stations/VG-FIXTURE-A-STATION");
+  assert.equal(inaccessible?.status(), 404);
+  console.log("An operator outside Organization A could not open its station");
 } finally {
   await browser.close();
 }

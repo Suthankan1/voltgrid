@@ -145,13 +145,6 @@ public class StationTransactionGraphQlController {
             tenantAuthorizationService.assertAuthorized(org, Permission.SESSION_READ);
         }
 
-        if (stationQueryService != null && org != null && !org.isBlank()) {
-            var stationOpt = stationQueryService.findByIdAndOrganizationId(stationId, org);
-            if (stationOpt.isEmpty()) {
-                throw new TenantAccessDeniedException("Station not found or access denied: " + stationId);
-            }
-        }
-
         var list = (org != null && !org.isBlank())
                 ? queryService.findByStationIdAndOrganizationId(stationId, org)
                 : queryService.findByStationId(stationId);

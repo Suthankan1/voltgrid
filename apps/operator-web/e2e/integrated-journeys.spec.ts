@@ -504,6 +504,7 @@ test("integrated UI-110 journeys, legacy routes, failure recovery, and mandatory
     await expect(page.getByRole("button", { name: "Register station" })).toHaveCount(0);
 
     // Legacy compatibility routes
+    await signIn(page, base);
     await page.goto(`${base}/?q=Kandy&status=OFFLINE`);
     await expect(page).toHaveURL(/\/stations\?q=Kandy&status=OFFLINE$/);
     await page.goto(`${base}/transactions?station=CP-OFFLINE&integrity=INCOMPLETE`);
