@@ -12,6 +12,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -76,5 +77,33 @@ class StationRegistrationServiceTests {
                 .hasMessage("Station already exists: STATION-001");
 
         verifyNoInteractions(stationWriter);
+    }
+
+    @Test
+    void shouldRegisterStationWithMaximumLengthIdentifier() {
+        String maxLengthId = "S".repeat(255);
+        String name = "Max Length Station";
+
+        when(stationReader.findById(maxLengthId))
+                .thenReturn(Optional.empty());
+
+        var station = service.register(maxLengthId, name);
+
+        assertThat(station.id()).isEqualTo(maxLengthId);
+        assertThat(station.id().length()).isEqualTo(255);
+        assertThat(station.status()).isEqualTo(StationStatus.OFFLINE);
+        verify(stationWriter).save(new ChargingStation(maxLengthId, name, StationStatus.OFFLINE));
+    }
+
+    @Test
+    void shouldPropagateExceptionWhenDatabaseWriterFails() {
+        when(stationReader.findById("STATION-FAIL"))
+                .thenReturn(Optional.empty());
+
+        org.mockito.Mockito.doThrow(new org.springframework.dao.DataIntegrityViolationException("duplicate key"))
+                .when(stationWriter).save(any());
+
+        assertThatThrownBy(() -> service.register("STATION-FAIL", "Failing Station"))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
     }
 }

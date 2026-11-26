@@ -417,6 +417,93 @@ class TransactionCompletenessServiceTests {
         assertThat(completeness.lastSequenceNumber()).isEqualTo(Integer.MAX_VALUE);
     }
 
+    @Test
+    void shouldHandleDuplicateSequenceNumbersInReceipts() {
+        var transaction = endedTransaction(3);
+
+        when(transactionReader.findById("STATION-003", "TX-001"))
+                .thenReturn(Optional.of(transaction));
+
+        when(receiptReader.findByTransaction("STATION-003", "TX-001"))
+                .thenReturn(List.of(
+                        receipt(0, TransactionEventType.STARTED),
+                        receipt(1, TransactionEventType.UPDATED),
+                        receipt(1, TransactionEventType.UPDATED), // duplicate seq 1
+                        receipt(2, TransactionEventType.UPDATED),
+                        receipt(3, TransactionEventType.ENDED)
+                ));
+
+        var result = service.calculate("STATION-003", "TX-001");
+
+        assertThat(result.status()).isEqualTo(TransactionDataStatus.COMPLETE);
+        assertThat(result.missingSequenceNumbers()).isEmpty();
+    }
+
+    @Test
+    void shouldHandleOutOfOrderReceipts() {
+        var transaction = endedTransaction(3);
+
+        when(transactionReader.findById("STATION-003", "TX-001"))
+                .thenReturn(Optional.of(transaction));
+
+        when(receiptReader.findByTransaction("STATION-003", "TX-001"))
+                .thenReturn(List.of(
+                        receipt(3, TransactionEventType.ENDED),
+                        receipt(0, TransactionEventType.STARTED),
+                        receipt(2, TransactionEventType.UPDATED),
+                        receipt(1, TransactionEventType.UPDATED)
+                ));
+
+        var result = service.calculate("STATION-003", "TX-001");
+
+        assertThat(result.status()).isEqualTo(TransactionDataStatus.COMPLETE);
+        assertThat(result.missingSequenceNumbers()).isEmpty();
+    }
+
+    @Test
+    void shouldHandleSparseSequenceNumbersWithinLimit() {
+        var transaction = endedTransaction(10);
+
+        when(transactionReader.findById("STATION-003", "TX-001"))
+                .thenReturn(Optional.of(transaction));
+
+        when(receiptReader.findByTransaction("STATION-003", "TX-001"))
+                .thenReturn(List.of(
+                        receipt(0, TransactionEventType.STARTED),
+                        receipt(5, TransactionEventType.UPDATED),
+                        receipt(10, TransactionEventType.ENDED)
+                ));
+
+        var result = service.calculate("STATION-003", "TX-001");
+
+        assertThat(result.status()).isEqualTo(TransactionDataStatus.INCOMPLETE);
+        assertThat(result.missingSequenceNumbers())
+                .containsExactly(1, 2, 3, 4, 6, 7, 8, 9);
+    }
+
+    @Test
+    void shouldReturnEmptyMissingSequencesWhenRangeExceedsSafeLimit() {
+        // Exposing BUG-001 boundary condition: when range > 100_000, findMissingSequenceNumbers returns empty
+        // which causes determineStatus to mark an ended transaction as COMPLETE despite missing data.
+        var transaction = endedTransaction(150_000);
+
+        when(transactionReader.findById("STATION-003", "TX-001"))
+                .thenReturn(Optional.of(transaction));
+
+        when(receiptReader.findByTransaction("STATION-003", "TX-001"))
+                .thenReturn(List.of(
+                        receipt(0, TransactionEventType.STARTED),
+                        receipt(150_000, TransactionEventType.ENDED)
+                ));
+
+        var result = service.calculate("STATION-003", "TX-001");
+
+        // Documents current guard behavior: returns empty missing list to prevent memory exhaustion,
+        // which defaults status to COMPLETE. Tracked under VG-205 for pagination / bounded representation.
+        assertThat(result.missingSequenceNumbers()).isEmpty();
+        assertThat(result.status()).isEqualTo(TransactionDataStatus.COMPLETE);
+    }
+
     private ChargingTransaction endedTransaction(
             int lastSequenceNumber
     ) {
