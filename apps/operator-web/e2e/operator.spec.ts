@@ -1,4 +1,9 @@
 import { test, expect } from '@playwright/test';
+
+test.beforeEach(async ({ request }) => {
+ const response = await request.post('http://127.0.0.1:4311/__reset');
+ expect(response.ok()).toBe(true);
+});
 test('dashboard to station details and transaction inspector', async ({ page }) => {
  await page.goto('/');
  await page.getByRole('link',{name:'Colombo Central'}).click();

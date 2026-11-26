@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
 
+test.beforeEach(async ({ request }) => {
+  const response = await request.post("http://127.0.0.1:4311/__reset");
+  expect(response.ok()).toBe(true);
+});
+
 const VIEWPORT_MATRIX = [
   [320, 568],
   [390, 844],
