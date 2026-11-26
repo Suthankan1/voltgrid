@@ -5,6 +5,7 @@ import com.voltgrid.authorization.infrastructure.persistence.AuthorizationTokenE
 import com.voltgrid.authorization.infrastructure.persistence.AuthorizationTokenRepository;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 
@@ -22,24 +23,41 @@ public class AuthorizationDecisionService {
         this.fingerprintService = fingerprintService;
     }
 
+    @Transactional
     public TokenAuthorizationDecision authorize(
             String stationId,
             String rawToken
     ) {
-        var fingerprint =
-                fingerprintService.fingerprint(
-                        rawToken
-                );
+        if (rawToken == null || rawToken.isBlank()) {
+            return TokenAuthorizationDecision.UNKNOWN_TOKEN;
+        }
 
         try {
-            return tokenRepository
-                    .findByTokenFingerprint(
-                            fingerprint
-                    )
-                    .map(this::evaluate)
-                    .orElse(
-                            TokenAuthorizationDecision.UNKNOWN_TOKEN
-                    );
+            var activeFingerprint = fingerprintService.fingerprint(rawToken);
+            var activeMatch = tokenRepository.findByTokenFingerprint(activeFingerprint);
+            if (activeMatch.isPresent()) {
+                return evaluate(activeMatch.get());
+            }
+
+            // Transparent legacy key migration: check configured legacy keys
+            var candidates = fingerprintService.candidateFingerprints(rawToken);
+            for (var entry : candidates.entrySet()) {
+                var version = entry.getKey();
+                if (!version.equals(fingerprintService.getActiveKeyVersion())) {
+                    var legacyFingerprint = entry.getValue();
+                    var legacyMatch = tokenRepository.findByTokenFingerprint(legacyFingerprint);
+                    if (legacyMatch.isPresent()) {
+                        var token = legacyMatch.get();
+                        token.setTokenFingerprint(activeFingerprint);
+                        token.setKeyVersion(fingerprintService.getActiveKeyVersion());
+                        token.setUpdatedAt(Instant.now());
+                        tokenRepository.save(token);
+                        return evaluate(token);
+                    }
+                }
+            }
+
+            return TokenAuthorizationDecision.UNKNOWN_TOKEN;
 
         } catch (DataAccessException exception) {
             throw new AuthorizationBackendUnavailableException(
@@ -52,19 +70,12 @@ public class AuthorizationDecisionService {
     private TokenAuthorizationDecision evaluate(
             AuthorizationTokenEntity token
     ) {
-        if (token.getStatus()
-                == AuthorizationTokenStatus.BLOCKED) {
-
+        if (token.getStatus() == AuthorizationTokenStatus.BLOCKED) {
             return TokenAuthorizationDecision.BLOCKED_TOKEN;
         }
 
-        var expiresAt =
-                token.getExpiresAt();
-
-        if (expiresAt != null
-                && !expiresAt.isAfter(
-                        Instant.now()
-                )) {
+        if (token.getExpiresAt() != null
+                && token.getExpiresAt().isBefore(Instant.now())) {
 
             return TokenAuthorizationDecision.EXPIRED_TOKEN;
         }

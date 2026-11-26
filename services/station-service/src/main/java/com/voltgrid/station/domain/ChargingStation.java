@@ -6,14 +6,25 @@ public record ChargingStation(
         String id,
         String name,
         StationStatus status,
-        Instant lastSeenAt
+        Instant lastSeenAt,
+        String organizationId,
+        String siteId
 ) {
+
+    public ChargingStation(
+            String id,
+            String name,
+            StationStatus status,
+            Instant lastSeenAt
+    ) {
+        this(id, name, status, lastSeenAt, "org_voltgrid_default", null);
+    }
 
     public ChargingStation(
             String id,
             String name,
             StationStatus status
     ) {
-        this(id, name, status, null);
+        this(id, name, status, null, "org_voltgrid_default", null);
     }
 }

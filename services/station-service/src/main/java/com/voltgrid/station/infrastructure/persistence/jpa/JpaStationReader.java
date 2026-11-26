@@ -30,12 +30,30 @@ public class JpaStationReader implements StationReader {
                 .toList();
     }
 
+    @Override
+    public List<ChargingStation> findByOrganizationId(String organizationId) {
+        return repository.findAll()
+                .stream()
+                .filter(e -> organizationId != null && organizationId.equals(e.getOrganizationId()))
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
+    public Optional<ChargingStation> findByIdAndOrganizationId(String id, String organizationId) {
+        return repository.findById(id)
+                .filter(e -> organizationId != null && organizationId.equals(e.getOrganizationId()))
+                .map(this::toDomain);
+    }
+
     private ChargingStation toDomain(ChargingStationEntity entity) {
         return new ChargingStation(
                 entity.getId(),
                 entity.getName(),
                 entity.getStatus(),
-                entity.getLastSeenAt()
+                entity.getLastSeenAt(),
+                entity.getOrganizationId(),
+                entity.getSiteId()
         );
     }
 }

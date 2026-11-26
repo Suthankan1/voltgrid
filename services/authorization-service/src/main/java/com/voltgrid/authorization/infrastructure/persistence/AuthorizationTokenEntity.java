@@ -38,6 +38,13 @@ public class AuthorizationTokenEntity {
     private Instant expiresAt;
 
     @Column(
+            name = "key_version",
+            nullable = false,
+            length = 32
+    )
+    private String keyVersion = "v1";
+
+    @Column(
             name = "created_at",
             nullable = false
     )
@@ -60,10 +67,23 @@ public class AuthorizationTokenEntity {
             Instant createdAt,
             Instant updatedAt
     ) {
+        this(id, tokenFingerprint, status, expiresAt, "v1", createdAt, updatedAt);
+    }
+
+    public AuthorizationTokenEntity(
+            UUID id,
+            String tokenFingerprint,
+            AuthorizationTokenStatus status,
+            Instant expiresAt,
+            String keyVersion,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
         this.id = id;
         this.tokenFingerprint = tokenFingerprint;
         this.status = status;
         this.expiresAt = expiresAt;
+        this.keyVersion = (keyVersion != null && !keyVersion.isBlank()) ? keyVersion : "v1";
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -76,6 +96,10 @@ public class AuthorizationTokenEntity {
         return tokenFingerprint;
     }
 
+    public void setTokenFingerprint(String tokenFingerprint) {
+        this.tokenFingerprint = tokenFingerprint;
+    }
+
     public AuthorizationTokenStatus getStatus() {
         return status;
     }
@@ -84,11 +108,23 @@ public class AuthorizationTokenEntity {
         return expiresAt;
     }
 
+    public String getKeyVersion() {
+        return keyVersion;
+    }
+
+    public void setKeyVersion(String keyVersion) {
+        this.keyVersion = keyVersion;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

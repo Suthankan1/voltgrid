@@ -1,6 +1,7 @@
 package com.voltgrid.station.api.ocpp;
 
 import com.voltgrid.station.application.StationReader;
+import com.voltgrid.station.application.security.StationCredentialService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -21,19 +22,30 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
     public static final String STATION_ID_ATTRIBUTE = "stationId";
 
     private final StationReader stationReader;
+    private final StationCredentialService credentialService;
     private final boolean authRequired;
 
     @Autowired
     public OcppHandshakeInterceptor(
             StationReader stationReader,
+            StationCredentialService credentialService,
             @Value("${voltgrid.ocpp.auth-required:false}") boolean authRequired
     ) {
         this.stationReader = stationReader;
+        this.credentialService = credentialService;
         this.authRequired = authRequired;
     }
 
     public OcppHandshakeInterceptor(StationReader stationReader) {
-        this(stationReader, false);
+        this(stationReader, null, false);
+    }
+
+    public OcppHandshakeInterceptor(StationReader stationReader, boolean authRequired) {
+        this(stationReader, null, authRequired);
+    }
+
+    public OcppHandshakeInterceptor(StationReader stationReader, StationCredentialService credentialService) {
+        this(stationReader, credentialService, false);
     }
 
     @Override
@@ -43,7 +55,6 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
             WebSocketHandler wsHandler,
             Map<String, Object> attributes
     ) {
-
         if (!supportsOcpp201(request)) {
             response.setStatusCode(HttpStatus.BAD_REQUEST);
             return false;
@@ -63,7 +74,6 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
         }
 
         attributes.put(STATION_ID_ATTRIBUTE, stationId);
-
         return true;
     }
 
@@ -93,8 +103,21 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
                         StandardCharsets.UTF_8
                 );
                 var parts = credentials.split(":", 2);
+                if (parts.length != 2) {
+                    return false;
+                }
                 var username = parts[0];
-                return stationId.equals(username);
+                var password = parts[1];
+
+                if (!stationId.equals(username)) {
+                    return false;
+                }
+
+                if (credentialService != null) {
+                    return credentialService.validateCredential(stationId, password);
+                }
+
+                return true;
             } catch (IllegalArgumentException e) {
                 return false;
             }
@@ -102,6 +125,9 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
 
         if (authHeader.startsWith("Bearer ")) {
             var token = authHeader.substring(7).trim();
+            if (credentialService != null) {
+                return !token.isBlank() && credentialService.validateCredential(stationId, token);
+            }
             return !token.isBlank();
         }
 

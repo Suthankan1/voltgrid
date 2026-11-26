@@ -18,6 +18,12 @@ public class ChargingStationEntity {
     @Column(name = "id", nullable = false, updatable = false)
     private String id;
 
+    @Column(name = "organization_id", nullable = false)
+    private String organizationId = "org_voltgrid_default";
+
+    @Column(name = "site_id")
+    private String siteId;
+
     @Column(name = "name", nullable = false)
     private String name;
 
@@ -36,12 +42,7 @@ public class ChargingStationEntity {
             String name,
             StationStatus status
     ) {
-        this(
-                id,
-                name,
-                status,
-                null
-        );
+        this(id, name, status, null, "org_voltgrid_default", null);
     }
 
     public ChargingStationEntity(
@@ -50,14 +51,43 @@ public class ChargingStationEntity {
             StationStatus status,
             Instant lastSeenAt
     ) {
+        this(id, name, status, lastSeenAt, "org_voltgrid_default", null);
+    }
+
+    public ChargingStationEntity(
+            String id,
+            String name,
+            StationStatus status,
+            Instant lastSeenAt,
+            String organizationId,
+            String siteId
+    ) {
         this.id = id;
         this.name = name;
         this.status = status;
         this.lastSeenAt = lastSeenAt;
+        this.organizationId = (organizationId != null && !organizationId.isBlank()) ? organizationId : "org_voltgrid_default";
+        this.siteId = siteId;
     }
 
     public String getId() {
         return id;
+    }
+
+    public String getOrganizationId() {
+        return organizationId;
+    }
+
+    public void setOrganizationId(String organizationId) {
+        this.organizationId = organizationId;
+    }
+
+    public String getSiteId() {
+        return siteId;
+    }
+
+    public void setSiteId(String siteId) {
+        this.siteId = siteId;
     }
 
     public String getName() {
@@ -70,5 +100,13 @@ public class ChargingStationEntity {
 
     public Instant getLastSeenAt() {
         return lastSeenAt;
+    }
+
+    public void updateStatus(
+            StationStatus status,
+            Instant lastSeenAt
+    ) {
+        this.status = status;
+        this.lastSeenAt = lastSeenAt;
     }
 }

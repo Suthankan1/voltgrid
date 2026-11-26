@@ -1,6 +1,7 @@
 package com.voltgrid.station.api.graphql;
 
 import com.voltgrid.station.application.StationAlreadyExistsException;
+import com.voltgrid.station.application.security.TenantAccessDeniedException;
 import graphql.GraphQLError;
 import graphql.GraphqlErrorBuilder;
 import jakarta.validation.ConstraintViolationException;
@@ -38,6 +39,17 @@ public class StationGraphQlExceptionHandler {
         return errorBuilder
                 .errorType(ErrorType.BAD_REQUEST)
                 .message(message)
+                .build();
+    }
+
+    @GraphQlExceptionHandler
+    public GraphQLError handleAccessDenied(
+            GraphqlErrorBuilder<?> errorBuilder,
+            TenantAccessDeniedException exception
+    ) {
+        return errorBuilder
+                .errorType(ErrorType.FORBIDDEN)
+                .message(exception.getMessage())
                 .build();
     }
 }

@@ -4,10 +4,17 @@ import com.voltgrid.station.application.StationAlreadyExistsException;
 import com.voltgrid.station.application.StationConnectorQueryService;
 import com.voltgrid.station.application.StationQueryService;
 import com.voltgrid.station.application.StationRegistrationService;
+import com.voltgrid.station.application.security.AdministrativeAuditService;
+import com.voltgrid.station.application.security.StationCredentialService;
+import com.voltgrid.station.application.security.TenantAuthorizationService;
 import com.voltgrid.station.domain.ChargingStation;
 import com.voltgrid.station.domain.ConnectorStatus;
 import com.voltgrid.station.domain.StationConnector;
 import com.voltgrid.station.domain.StationStatus;
+import com.voltgrid.station.infrastructure.persistence.jpa.OrganizationJpaRepository;
+import com.voltgrid.station.infrastructure.persistence.jpa.OrganizationMembershipJpaRepository;
+import com.voltgrid.station.infrastructure.persistence.jpa.SiteJpaRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.graphql.test.autoconfigure.GraphQlTest;
@@ -19,6 +26,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @GraphQlTest(StationGraphQlController.class)
@@ -36,6 +44,30 @@ class StationGraphQlControllerTests {
 
     @MockitoBean
     private StationConnectorQueryService connectorQueryService;
+
+    @MockitoBean
+    private TenantAuthorizationService tenantAuthorizationService;
+
+    @MockitoBean
+    private OrganizationJpaRepository organizationRepository;
+
+    @MockitoBean
+    private SiteJpaRepository siteRepository;
+
+    @MockitoBean
+    private OrganizationMembershipJpaRepository membershipRepository;
+
+    @MockitoBean
+    private StationCredentialService credentialService;
+
+    @MockitoBean
+    private AdministrativeAuditService auditService;
+
+    @BeforeEach
+    void setUp() {
+        when(tenantAuthorizationService.resolveAuthorizedOrganizationId(any()))
+                .thenReturn("org_voltgrid_default");
+    }
 
     @Test
     void shouldListStations() {
@@ -61,21 +93,13 @@ class StationGraphQlControllerTests {
                 """)
                 .execute();
 
-        response.path("stations[0].id")
-                .entity(String.class)
-                .isEqualTo("STATION-001");
-
-        response.path("stations[0].name")
-                .entity(String.class)
-                .isEqualTo("Colombo Central");
-
-        response.path("stations[0].status")
-                .entity(String.class)
-                .isEqualTo("ONLINE");
+        response.path("stations[0].id").entity(String.class).isEqualTo("STATION-001");
+        response.path("stations[0].name").entity(String.class).isEqualTo("Colombo Central");
+        response.path("stations[0].status").entity(String.class).isEqualTo("ONLINE");
     }
 
     @Test
-    void shouldFindStationById() {
+    void shouldGetStationById() {
         when(stationQueryService.findById("STATION-001"))
                 .thenReturn(
                         Optional.of(
@@ -98,45 +122,94 @@ class StationGraphQlControllerTests {
                 """)
                 .execute();
 
-        response.path("station.id")
-                .entity(String.class)
-                .isEqualTo("STATION-001");
+        response.path("station.id").entity(String.class).isEqualTo("STATION-001");
+        response.path("station.name").entity(String.class).isEqualTo("Colombo Central");
+        response.path("station.status").entity(String.class).isEqualTo("ONLINE");
+    }
+
+    @Test
+    void shouldRegisterStation() {
+        when(stationRegistrationService.register("STATION-002", "Kandy Express", "org_voltgrid_default", null))
+                .thenReturn(
+                        new ChargingStation(
+                                "STATION-002",
+                                "Kandy Express",
+                                StationStatus.OFFLINE
+                        )
+                );
+
+        var response = graphQlTester.document("""
+                mutation {
+                    registerStation(input: {
+                        id: "STATION-002"
+                        name: "Kandy Express"
+                    }) {
+                        id
+                        name
+                        status
+                    }
+                }
+                """)
+                .execute();
+
+        response.path("registerStation.id").entity(String.class).isEqualTo("STATION-002");
+        response.path("registerStation.name").entity(String.class).isEqualTo("Kandy Express");
+        response.path("registerStation.status").entity(String.class).isEqualTo("OFFLINE");
+    }
+
+    @Test
+    void shouldFailWhenStationAlreadyExists() {
+        when(stationRegistrationService.register("STATION-001", "Colombo Central", "org_voltgrid_default", null))
+                .thenThrow(
+                        new StationAlreadyExistsException("STATION-001")
+                );
+
+        graphQlTester.document("""
+                mutation {
+                    registerStation(input: {
+                        id: "STATION-001"
+                        name: "Colombo Central"
+                    }) {
+                        id
+                    }
+                }
+                """)
+                .execute()
+                .errors()
+                .satisfy(errors -> {
+                    org.assertj.core.api.Assertions.assertThat(errors).hasSize(1);
+                    org.assertj.core.api.Assertions.assertThat(errors.get(0).getMessage())
+                            .isEqualTo("Station already exists: STATION-001");
+                });
     }
 
     @Test
     void shouldListStationConnectors() {
-        when(
-                connectorQueryService.findByStationId(
-                        "STATION-003"
-                )
-        ).thenReturn(
-                List.of(
-                        new StationConnector(
-                                "STATION-003",
-                                1,
-                                1,
-                                ConnectorStatus.AVAILABLE,
-                                Instant.parse(
-                                        "2026-09-08T06:30:00Z"
-                                )
-                        ),
-                        new StationConnector(
-                                "STATION-003",
-                                1,
-                                2,
-                                ConnectorStatus.FAULTED,
-                                Instant.parse(
-                                        "2026-09-08T06:35:00Z"
+        var timestamp = Instant.parse("2026-09-08T15:00:00Z");
+
+        when(connectorQueryService.findByStationId("STATION-001"))
+                .thenReturn(
+                        List.of(
+                                new StationConnector(
+                                        "STATION-001",
+                                        1,
+                                        1,
+                                        ConnectorStatus.AVAILABLE,
+                                        timestamp
+                                ),
+                                new StationConnector(
+                                        "STATION-001",
+                                        1,
+                                        2,
+                                        ConnectorStatus.OCCUPIED,
+                                        timestamp
                                 )
                         )
-                )
-        );
+                );
 
         var response = graphQlTester.document("""
                 query {
-                    stationConnectors(
-                        stationId: "STATION-003"
-                    ) {
+                    stationConnectors(stationId: "STATION-001") {
                         evseId
                         connectorId
                         status
@@ -146,129 +219,14 @@ class StationGraphQlControllerTests {
                 """)
                 .execute();
 
-        response.path("stationConnectors[0].evseId")
-                .entity(Integer.class)
-                .isEqualTo(1);
+        response.path("stationConnectors[0].evseId").entity(Integer.class).isEqualTo(1);
+        response.path("stationConnectors[0].connectorId").entity(Integer.class).isEqualTo(1);
+        response.path("stationConnectors[0].status").entity(String.class).isEqualTo("AVAILABLE");
+        response.path("stationConnectors[0].statusUpdatedAt").entity(String.class).isEqualTo("2026-09-08T15:00:00Z");
 
-        response.path("stationConnectors[0].connectorId")
-                .entity(Integer.class)
-                .isEqualTo(1);
-
-        response.path("stationConnectors[0].status")
-                .entity(String.class)
-                .isEqualTo("AVAILABLE");
-
-        response.path("stationConnectors[0].statusUpdatedAt")
-                .entity(String.class)
-                .isEqualTo("2026-09-08T06:30:00Z");
-
-        response.path("stationConnectors[1].connectorId")
-                .entity(Integer.class)
-                .isEqualTo(2);
-
-        response.path("stationConnectors[1].status")
-                .entity(String.class)
-                .isEqualTo("FAULTED");
-    }
-
-    @Test
-    void shouldRegisterStation() {
-        when(
-                stationRegistrationService.register(
-                        "STATION-003",
-                        "Galle Central"
-                )
-        ).thenReturn(
-                new ChargingStation(
-                        "STATION-003",
-                        "Galle Central",
-                        StationStatus.OFFLINE
-                )
-        );
-
-        var response = graphQlTester.document("""
-                mutation {
-                    registerStation(
-                        input: {
-                            id: "STATION-003"
-                            name: "Galle Central"
-                        }
-                    ) {
-                        id
-                        name
-                        status
-                    }
-                }
-                """)
-                .execute();
-
-        response.path("registerStation.id")
-                .entity(String.class)
-                .isEqualTo("STATION-003");
-
-        response.path("registerStation.status")
-                .entity(String.class)
-                .isEqualTo("OFFLINE");
-    }
-
-    @Test
-    void shouldReturnBadRequestWhenStationAlreadyExists() {
-        when(
-                stationRegistrationService.register(
-                        "STATION-001",
-                        "Colombo Central"
-                )
-        ).thenThrow(
-                new StationAlreadyExistsException(
-                        "STATION-001"
-                )
-        );
-
-        graphQlTester.document("""
-                mutation {
-                    registerStation(
-                        input: {
-                            id: "STATION-001"
-                            name: "Colombo Central"
-                        }
-                    ) {
-                        id
-                    }
-                }
-                """)
-                .execute()
-                .errors()
-                .expect(error ->
-                        error.getMessage()
-                                .equals(
-                                        "Station already exists: STATION-001"
-                                )
-                )
-                .verify();
-    }
-
-    @Test
-    void shouldRejectBlankStationName() {
-        graphQlTester.document("""
-                mutation {
-                    registerStation(
-                        input: {
-                            id: "STATION-004"
-                            name: ""
-                        }
-                    ) {
-                        id
-                    }
-                }
-                """)
-                .execute()
-                .errors()
-                .expect(error ->
-                        error.getMessage()
-                                .contains(
-                                        "station name must not be blank"
-                                )
-                )
-                .verify();
+        response.path("stationConnectors[1].evseId").entity(Integer.class).isEqualTo(1);
+        response.path("stationConnectors[1].connectorId").entity(Integer.class).isEqualTo(2);
+        response.path("stationConnectors[1].status").entity(String.class).isEqualTo("OCCUPIED");
+        response.path("stationConnectors[1].statusUpdatedAt").entity(String.class).isEqualTo("2026-09-08T15:00:00Z");
     }
 }

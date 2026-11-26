@@ -14,6 +14,7 @@ services:
       AUTHORIZATION_DB_USER: voltgrid
       AUTHORIZATION_DB_PASSWORD: voltgrid_dev
       AUTHORIZATION_TOKEN_HMAC_KEY: voltgrid-local-development-hmac-key-change-me
+      SERVICE_IDENTITY_STATION_SERVICE_KEY: station-service-dev-key
 
     ports:
       - "127.0.0.1:9090:9090"
@@ -72,6 +73,7 @@ services:
 
       AUTHORIZATION_GRPC_HOST: authorization-service
       AUTHORIZATION_GRPC_PORT: "9090"
+      SERVICE_IDENTITY_STATION_SERVICE_KEY: station-service-dev-key
 
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       OUTBOX_RELAY_ENABLED: "true"

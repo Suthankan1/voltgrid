@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -16,11 +17,22 @@ import java.io.IOException;
 public class OperatorApiSecurityFilter extends OncePerRequestFilter {
 
     private final String expectedToken;
+    private final boolean requireAuth;
+    private final JwtTokenValidator tokenValidator;
 
+    @Autowired
     public OperatorApiSecurityFilter(
-            @Value("${voltgrid.security.api-token:}") String expectedToken
+            @Value("${voltgrid.security.api-token:}") String expectedToken,
+            @Value("${voltgrid.security.require-auth:false}") boolean requireAuth,
+            JwtTokenValidator tokenValidator
     ) {
         this.expectedToken = expectedToken != null ? expectedToken.trim() : "";
+        this.requireAuth = requireAuth;
+        this.tokenValidator = tokenValidator;
+    }
+
+    public OperatorApiSecurityFilter(String expectedToken) {
+        this(expectedToken, false, new JwtTokenValidator("", "voltgrid-api", false));
     }
 
     @Override
@@ -31,19 +43,41 @@ public class OperatorApiSecurityFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         String path = request.getRequestURI();
 
-        // Only enforce token when configured and request is targeting GraphQL
-        if (!expectedToken.isEmpty() && path != null && path.startsWith("/graphql")) {
+        if (path != null && path.startsWith("/graphql")) {
             String authHeader = request.getHeader("Authorization");
+            String requestedOrg = request.getHeader("X-Tenant-Id");
 
-            if (authHeader == null || !authHeader.startsWith("Bearer ")
-                    || !expectedToken.equals(authHeader.substring(7).trim())) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.setContentType("application/json");
-                response.getWriter().write("{\"errors\":[{\"message\":\"Unauthorized\"}]}");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7).trim();
+
+                if (!expectedToken.isEmpty() && expectedToken.equals(token)) {
+                    var user = tokenValidator.validateAndExtract("voltgrid-dev-token", requestedOrg);
+                    user.ifPresent(SecurityContext::set);
+                } else {
+                    var userOpt = tokenValidator.validateAndExtract(token, requestedOrg);
+                    if (userOpt.isPresent()) {
+                        SecurityContext.set(userOpt.get());
+                    } else if (requireAuth || !expectedToken.isEmpty()) {
+                        rejectUnauthorized(response);
+                        return;
+                    }
+                }
+            } else if (requireAuth || !expectedToken.isEmpty()) {
+                rejectUnauthorized(response);
                 return;
             }
         }
 
-        filterChain.doFilter(request, response);
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            SecurityContext.clear();
+        }
+    }
+
+    private void rejectUnauthorized(HttpServletResponse response) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json");
+        response.getWriter().write("{\"errors\":[{\"message\":\"Unauthorized\"}]}");
     }
 }
