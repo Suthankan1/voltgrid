@@ -69,7 +69,7 @@ class OcppHandshakeInterceptorCredentialTests {
     @Test
     void shouldAcceptValidCredentialAndBindStationIdAttribute() {
         when(stationReader.findById("STA-001")).thenReturn(Optional.of(
-                new ChargingStation("STA-001", "Station 1", StationStatus.OFFLINE)
+                new ChargingStation("STA-001", "Station 1", StationStatus.OFFLINE, null, "org-test", null)
         ));
         setBasicAuth("STA-001", "CorrectPassword123!");
         when(credentialService.authenticateCredential("STA-001", "CorrectPassword123!")).thenReturn(Optional.of("cred-1"));
@@ -84,7 +84,7 @@ class OcppHandshakeInterceptorCredentialTests {
     @Test
     void shouldRejectWhenMissingAuthorizationHeader() {
         when(stationReader.findById("STA-001")).thenReturn(Optional.of(
-                new ChargingStation("STA-001", "Station 1", StationStatus.OFFLINE)
+                new ChargingStation("STA-001", "Station 1", StationStatus.OFFLINE, null, "org-test", null)
         ));
         when(response.getHeaders()).thenReturn(responseHeaders);
 
@@ -98,7 +98,7 @@ class OcppHandshakeInterceptorCredentialTests {
     @Test
     void shouldRejectWhenPasswordIsIncorrect() {
         when(stationReader.findById("STA-001")).thenReturn(Optional.of(
-                new ChargingStation("STA-001", "Station 1", StationStatus.OFFLINE)
+                new ChargingStation("STA-001", "Station 1", StationStatus.OFFLINE, null, "org-test", null)
         ));
         when(response.getHeaders()).thenReturn(responseHeaders);
         setBasicAuth("STA-001", "WrongPassword!");
@@ -113,7 +113,7 @@ class OcppHandshakeInterceptorCredentialTests {
     @Test
     void shouldRejectWhenStationIdInCredentialMismatchesPath() {
         when(stationReader.findById("STA-001")).thenReturn(Optional.of(
-                new ChargingStation("STA-001", "Station 1", StationStatus.OFFLINE)
+                new ChargingStation("STA-001", "Station 1", StationStatus.OFFLINE, null, "org-test", null)
         ));
         when(response.getHeaders()).thenReturn(responseHeaders);
         // Attacker attempts to connect to /ocpp/STA-001 using STA-002 credentials
@@ -124,6 +124,19 @@ class OcppHandshakeInterceptorCredentialTests {
         assertThat(allowed).isFalse();
         verify(response).setStatusCode(HttpStatus.UNAUTHORIZED);
         verify(credentialService, never()).authenticateCredential(any(), any());
+    }
+
+    @Test
+    void shouldRejectQuarantinedStationBeforeCheckingCredentials() {
+        when(stationReader.findById("STA-001")).thenReturn(Optional.of(
+                new ChargingStation("STA-001", "Quarantined station", StationStatus.OFFLINE)
+        ));
+        when(response.getHeaders()).thenReturn(responseHeaders);
+        setBasicAuth("STA-001", "FixturePassword");
+
+        assertThat(interceptor.beforeHandshake(request, response, wsHandler, attributes)).isFalse();
+        verify(response).setStatusCode(HttpStatus.UNAUTHORIZED);
+        verifyNoInteractions(credentialService);
     }
 
     @Test

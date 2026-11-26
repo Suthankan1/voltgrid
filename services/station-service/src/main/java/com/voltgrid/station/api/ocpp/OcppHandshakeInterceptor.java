@@ -63,12 +63,18 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
 
         var stationId = extractStationId(request);
 
-        if (stationId == null || stationReader.findById(stationId).isEmpty()) {
+        if (stationId == null) {
+            response.setStatusCode(HttpStatus.NOT_FOUND);
+            return false;
+        }
+        var station = stationReader.findById(stationId).orElse(null);
+        if (station == null) {
             response.setStatusCode(HttpStatus.NOT_FOUND);
             return false;
         }
 
-        if (!authenticateStation(request, stationId, attributes)) {
+        boolean mapped = station.organizationId() != null && !station.organizationId().isBlank();
+        if ((authRequired && !mapped) || !authenticateStation(request, stationId, attributes)) {
             response.setStatusCode(HttpStatus.UNAUTHORIZED);
             if (response.getHeaders() != null) {
                 response.getHeaders().set("WWW-Authenticate", "Basic realm=\"VoltGrid CSMS\"");
