@@ -21,3 +21,9 @@ This update retains the prior remediation record as historical evidence. “Part
 | DATA-001 | Station and Operations support long identifiers through their migration paths. | PostgreSQL verified Station IDs up to 255 characters across pre-V15 and Operations projection width through V5. | Verified resolved for the database width path | Application-wide identifier boundary coverage and Operations replay are separate evidence. |
 | Final owner protection | Membership writes serialize on the organization row and reject the final active owner's revocation or downgrade. | PostgreSQL tested two competing removals and verified the committed result and audit event. | Verified resolved for current membership mutations | Future suspension or bulk membership writers must observe the same invariant. |
 | Administrative audit | Success events join administrative mutations and V17 rejects row rewrites, deletes and truncation. | PostgreSQL verified the trigger and the membership outcomes above. | Partially resolved | Full event coverage, denied actions, redaction, runtime role separation and ADM-02 retention. |
+
+VG-202R.3 verifies the Keycloak access-token type policy and controlled JWKS
+rotation, warm-cache outage behavior and recovery at the Station and Operations
+decoders. IAM-001 remains partially resolved pending both HTTP matrices and
+remaining provider evidence. IAM-002 through IAM-004 remain partially resolved.
+[Authentication verification](03-authentication-and-session-verification.md)

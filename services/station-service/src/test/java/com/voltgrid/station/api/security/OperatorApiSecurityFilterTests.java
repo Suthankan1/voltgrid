@@ -56,6 +56,7 @@ class OperatorApiSecurityFilterTests {
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
                 .subject(sub)
                 .claim("email", email)
+                .claim("typ", "Bearer")
                 .issuer(ISSUER)
                 .audience(AUDIENCE)
                 .claim("roles", List.of("OPERATOR"))

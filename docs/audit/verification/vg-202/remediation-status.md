@@ -52,3 +52,10 @@ Local verification used Java 25, Maven 3.9.16, Node 24, pnpm 12.4.2, PostgreSQL 
 For databases still below V15, inventory station identifiers longer than 59 characters before attempting that migration. V15 prefixes the original station ID when seeding its old credential ID, so this historical step can fail before the forward fixes apply. Keep the migration history intact and use a separately validated upgrade procedure for affected databases.
 
 The VG-202R.2 historical upgrade procedure and regression scope are recorded in the [final acceptance dossier](final-acceptance/README.md).
+
+## VG-202R.3 authentication slice
+
+Station and Operations enforce the configured Keycloak bearer access-token
+type. Both Java decoder suites verified rotation, warm-cache outage behavior,
+expiry and recovery. HTTP matrices and browser authentication acceptance remain
+open. [Authentication verification](final-acceptance/03-authentication-and-session-verification.md)

@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.*;
 import org.springframework.stereotype.Component;
 
@@ -30,7 +31,8 @@ public class JwtTokenValidator {
             this.jwtDecoder = null;
             return;
         }
-        this.jwtDecoder = configure(NimbusJwtDecoder.withJwkSetUri(jwksUri).build(), issuer, audience);
+        this.jwtDecoder = configure(NimbusJwtDecoder.withJwkSetUri(jwksUri)
+                .jwsAlgorithm(SignatureAlgorithm.RS256).build(), issuer, audience);
     }
 
     private static JwtDecoder configure(NimbusJwtDecoder decoder, String issuer, String audience) {
@@ -41,7 +43,8 @@ public class JwtTokenValidator {
                         values -> values != null && values.contains(audience)),
                 new JwtClaimValidator<String>(JwtClaimNames.SUB,
                         subject -> subject != null && !subject.isBlank()),
-                new JwtClaimValidator<Object>(JwtClaimNames.EXP, Objects::nonNull)
+                new JwtClaimValidator<Object>(JwtClaimNames.EXP, Objects::nonNull),
+                new JwtClaimValidator<Object>("typ", "Bearer"::equals)
         );
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(validators));
         return decoder;

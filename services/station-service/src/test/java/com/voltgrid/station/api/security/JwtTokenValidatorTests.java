@@ -36,6 +36,7 @@ class JwtTokenValidatorTests {
         JWTClaimsSet.Builder builder = new JWTClaimsSet.Builder()
                 .subject(sub)
                 .claim("email", email)
+                .claim("typ", "Bearer")
                 .issuer(iss)
                 .audience(aud)
                 .claim("roles", List.of("OPERATOR", "ORG_ADMIN"))

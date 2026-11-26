@@ -52,3 +52,6 @@ jobs:
           VOLTGRID_OCPP_AUTH_REQUIRED: "false"
           AUTHORIZATION_GRPC_TLS_ENABLED: "false"
         run: ./mvnw --batch-mode --no-transfer-progress verify
+
+      - name: Verify signed access tokens with authentication required
+        run: ./mvnw --batch-mode --no-transfer-progress -Dtest=KeycloakAccessTokenPolicyTests test

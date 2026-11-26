@@ -13,3 +13,7 @@
 - Full secure-mode CI, Java dependency and configuration scans, the expanded authenticated end-to-end lifecycle and independent acceptance remain open. A separate agent reviewed the migration change. Independent review of the full application remains open.
 
 Production transport and distributed operation remain separate VG-203 and VG-204 gates. Production activation requires independent release acceptance and owner approval.
+
+## VG-202R.3 partial evidence
+
+- [Authentication boundaries, Keycloak token-purpose policy and Java JWKS verification](03-authentication-and-session-verification.md)
