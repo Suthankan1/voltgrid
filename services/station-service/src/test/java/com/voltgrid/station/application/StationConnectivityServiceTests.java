@@ -351,4 +351,40 @@ class StationConnectivityServiceTests {
                 any()
         );
     }
+
+    @Test
+    void shouldTransitionOfflineStationToOnlineOnRecordActivityAndEmitOutboxEvent() {
+        var previousSeenAt = Instant.parse("2026-09-07T15:00:00Z");
+        var heartbeatAt = Instant.parse("2026-09-07T15:30:00Z");
+
+        when(stationReader.findById("STATION-003"))
+                .thenReturn(Optional.of(
+                        new ChargingStation(
+                                "STATION-003",
+                                "Galle Central",
+                                StationStatus.OFFLINE,
+                                previousSeenAt
+                        )
+                ));
+
+        service.recordActivity("STATION-003", heartbeatAt);
+
+        verify(stationWriter).save(
+                new ChargingStation(
+                        "STATION-003",
+                        "Galle Central",
+                        StationStatus.ONLINE,
+                        heartbeatAt
+                )
+        );
+
+        var eventCaptor = ArgumentCaptor.forClass(StationStatusChangedEvent.class);
+        verify(stationStatusOutboxWriter).save(eventCaptor.capture(), eq(heartbeatAt));
+
+        var event = eventCaptor.getValue();
+        assertEquals("STATION-003", event.stationId());
+        assertEquals("OFFLINE", event.previousStatus());
+        assertEquals("ONLINE", event.currentStatus());
+        assertEquals(heartbeatAt, event.occurredAt());
+    }
 }
