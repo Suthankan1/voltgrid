@@ -53,3 +53,11 @@ Human identities are keyed by the tuple `(issuer, subject)` to ensure stability 
 
 ## Remaining Dependencies
 - Production identity provider selection and DNS/TLS setup (deferred to VG-203 infrastructure milestone).
+
+## Current implementation
+
+Each deployment trusts one issuer. Station membership records use the verified
+subject alone, so replacing the issuer requires an explicit identity migration.
+The Java APIs accept RS256 Keycloak bearer access tokens with the configured API
+audience and signed `typ: Bearer` payload claim. A different provider needs a
+review of its token format and subject mapping before adoption.

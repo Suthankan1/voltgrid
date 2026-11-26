@@ -45,3 +45,13 @@ audience and map the API audience into access tokens only. This policy applies
 to the Keycloak bearer configuration used by the fixture. Review these claims
 before changing providers or enabling a different Keycloak token type.
 [Keycloak 26.8.2 token issuance](https://github.com/keycloak/keycloak/blob/26.8.2/services/src/main/java/org/keycloak/protocol/oidc/TokenManager.java#L1431)
+
+For the authentication acceptance journey, apply [operations-projection.sql](operations-projection.sql)
+to the isolated Operations database after Flyway and alongside the Station fixture
+setup above. Start both APIs with operator authentication required and point the
+BFF at those APIs. The fixture's two-minute access-token lifetime lets the test
+check refresh after the original token expires.
+
+```sh
+node integration-tests/oidc/authentication-acceptance.mjs
+```

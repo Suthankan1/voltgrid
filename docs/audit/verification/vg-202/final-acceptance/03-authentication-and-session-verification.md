@@ -74,3 +74,27 @@ The initial in-sandbox Maven runs could not reach the Docker daemon. An approved
 retry reached Docker. Full Station and Operations runs without fixture settings
 reported missing issuer and JWKS configuration in legacy test contexts. The
 secure decoder tests set their own isolated issuer and JWKS endpoint.
+
+## Authenticated browser and HTTP acceptance
+
+The local run of the [authentication acceptance journey](../../../../../integration-tests/oidc/authentication-acceptance.mjs)
+used Chromium, the production BFF build, Keycloak 26.8.2, packaged Station and
+Operations services with authentication required, PostgreSQL 18.6 and Kafka
+4.2.1. It used synthetic station and projection records in disposable databases.
+
+- Both GraphQL endpoints returned HTTP 401 without protected data for missing,
+  empty, malformed and historical development bearer tokens.
+- Anonymous direct HTTP requests to all 13 inventoried operator routes
+  redirected to login. The responses contained no seeded station data.
+- Login used a fixed callback, authorization code flow and S256 PKCE. The
+  callback rejected missing login context and provider denial.
+- Real Keycloak sign-in produced an opaque HttpOnly, SameSite Lax browser
+  handle. The browser displayed seeded data from both APIs.
+- Both logout and organization switching returned HTTP 403 for a foreign
+  origin while the authenticated session remained active.
+
+Operations `VOLTGRID_SECURITY_REQUIRE_AUTH=false mvn -B -o -f services/operations-service/pom.xml verify`
+passed 41 tests with zero failures, errors or skips. With Keycloak and fixture
+GraphQL, `pnpm test:e2e` passed 36 cases and `pnpm test:a11y` passed one.
+`pnpm test:e2e:cross-browser` passed 36 Chromium and WebKit cases. Firefox
+reported 18 launch failures because it could not find its profile directory.

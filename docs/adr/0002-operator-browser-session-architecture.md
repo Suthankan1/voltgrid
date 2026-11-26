@@ -52,3 +52,12 @@ Implement a **Backend-For-Frontend (BFF) session architecture** in Next.js:
 
 ## Remaining Dependencies
 - None. Fully implementable within `apps/operator-web`.
+
+## Current implementation
+
+The operator cookie contains an opaque session handle. Access and refresh tokens
+live in a bounded in-process store. The handle lifetime is eight hours, and a
+process restart clears all sessions. Logout invalidates the application handle
+before attempting refresh-token revocation. Keycloak can retain its own SSO
+session. A deployment with multiple operator processes depends on the shared
+session design tracked under VG-204.
