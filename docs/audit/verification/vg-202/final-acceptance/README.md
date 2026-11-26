@@ -5,6 +5,7 @@
 - [Historical migration and recovery procedure](02-historical-migration-verification.md)
 - [Current GraphQL authorization inventory](04-graphql-authorization-inventory.md)
 - [Local test and review evidence](08-test-and-review-evidence.md)
+- [Findings disposition](09-findings-disposition.md)
 - The PostgreSQL audit trigger has a regression case for update, delete and truncate. Database role separation, denied-action coverage and transactional audit behavior still require dedicated evidence.
 - Station preserves the final active owner during revocation and role downgrade. The supporting PostgreSQL test verifies concurrent removal attempts serialize at commit. Browser and Operations revocation propagation remain open.
 - Operations projection replay, explicit historical ownership mapping, and two-organization GraphQL coverage remain open.

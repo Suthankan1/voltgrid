@@ -11,6 +11,7 @@ import com.voltgrid.station.domain.ChargingStation;
 import com.voltgrid.station.domain.security.Permission;
 import com.voltgrid.station.domain.security.Role;
 import com.voltgrid.station.application.security.TenantAccessDeniedException;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import com.voltgrid.station.infrastructure.persistence.jpa.AdministrativeAuditEventEntity;
 import com.voltgrid.station.infrastructure.persistence.jpa.OrganizationEntity;
@@ -230,7 +231,7 @@ public class StationGraphQlController {
     }
 
     @MutationMapping
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrganizationMembershipEntity inviteMember(@Argument @Valid InviteMemberInput input) {
         authorizeMembershipUpdate(input.organizationId());
 
@@ -262,7 +263,7 @@ public class StationGraphQlController {
     }
 
     @MutationMapping
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrganizationMembershipEntity updateMemberRole(
             @Argument String organizationId,
             @Argument String userId,
@@ -298,7 +299,7 @@ public class StationGraphQlController {
     }
 
     @MutationMapping
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public boolean revokeMember(@Argument String organizationId, @Argument String userId) {
         authorizeMembershipUpdate(organizationId);
 
