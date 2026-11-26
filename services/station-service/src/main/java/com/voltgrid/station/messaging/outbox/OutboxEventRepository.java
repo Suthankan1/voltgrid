@@ -18,6 +18,7 @@ public interface OutboxEventRepository
                     SELECT *
                     FROM outbox_events
                     WHERE published_at IS NULL
+                      AND retry_count < 5
                     ORDER BY created_at ASC
                     FOR UPDATE SKIP LOCKED
                     LIMIT 1

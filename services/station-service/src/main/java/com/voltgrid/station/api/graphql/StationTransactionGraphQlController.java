@@ -30,11 +30,15 @@ public class StationTransactionGraphQlController {
                 networkTransactionQueryService;
     }
 
+    private static final int MAX_UNPAGINATED_LIMIT = 500;
+    private static final int MAX_PAGE_SIZE = 100;
+
     @QueryMapping
     public List<ChargingTransactionView> transactions() {
         return queryService
                 .findAll()
                 .stream()
+                .limit(MAX_UNPAGINATED_LIMIT)
                 .map(ChargingTransactionView::from)
                 .toList();
     }
@@ -44,6 +48,7 @@ public class StationTransactionGraphQlController {
         return networkTransactionQueryService
                 .findAll()
                 .stream()
+                .limit(MAX_UNPAGINATED_LIMIT)
                 .map(NetworkTransactionView::from)
                 .toList();
     }
@@ -56,10 +61,13 @@ public class StationTransactionGraphQlController {
             @Argument String transactionId,
             @Argument TransactionDataStatus integrityStatus
     ) {
+        int boundedSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
+        int boundedPage = Math.max(0, page);
+
         return NetworkTransactionPageView.from(
                 networkTransactionQueryService.findPage(
-                        page,
-                        size,
+                        boundedPage,
+                        boundedSize,
                         new TransactionPageFilter(
                                 stationId,
                                 transactionId,
@@ -76,6 +84,7 @@ public class StationTransactionGraphQlController {
         return queryService
                 .findByStationId(stationId)
                 .stream()
+                .limit(MAX_UNPAGINATED_LIMIT)
                 .map(ChargingTransactionView::from)
                 .toList();
     }
@@ -105,6 +114,7 @@ public class StationTransactionGraphQlController {
                         transactionId
                 )
                 .stream()
+                .limit(MAX_UNPAGINATED_LIMIT)
                 .map(TransactionMeterSampleView::from)
                 .toList();
     }

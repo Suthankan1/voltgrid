@@ -113,6 +113,13 @@ public class OcppMessageProcessor {
                                 message.get(3)
                         );
 
+                case "MeterValues" ->
+                        handleMeterValues(
+                                stationId,
+                                messageId,
+                                message.get(3)
+                        );
+
                 default ->
                         callError(
                                 messageId,
@@ -236,7 +243,7 @@ public class OcppMessageProcessor {
         Instant statusUpdatedAt;
 
         try {
-            statusUpdatedAt = Instant.parse(
+            statusUpdatedAt = parseTimestamp(
                     request.timestamp()
             );
         } catch (RuntimeException exception) {
@@ -396,7 +403,7 @@ public class OcppMessageProcessor {
         Instant eventAt;
 
         try {
-            eventAt = Instant.parse(
+            eventAt = parseTimestamp(
                     request.timestamp()
             );
         } catch (RuntimeException exception) {
@@ -757,5 +764,42 @@ public class OcppMessageProcessor {
     ) {
         return value == null
                 || value.isBlank();
+    }
+
+    private Instant parseTimestamp(String timestamp) {
+        if (timestamp == null || timestamp.isBlank()) {
+            throw new IllegalArgumentException("Timestamp must not be blank");
+        }
+        try {
+            return java.time.OffsetDateTime.parse(timestamp).toInstant();
+        } catch (Exception ex) {
+            return Instant.parse(timestamp);
+        }
+    }
+
+    private String handleMeterValues(
+            String stationId,
+            String messageId,
+            JsonNode payload
+    ) {
+        if (payload == null || !payload.isObject()) {
+            return callError(
+                    messageId,
+                    "FormatViolation",
+                    "Invalid MeterValues payload"
+            );
+        }
+
+        connectivityService.recordActivity(
+                stationId,
+                Instant.now()
+        );
+
+        var response = jsonMapper.createArrayNode();
+        response.add(CALL_RESULT);
+        response.add(messageId);
+        response.add(jsonMapper.createObjectNode());
+
+        return jsonMapper.writeValueAsString(response);
     }
 }

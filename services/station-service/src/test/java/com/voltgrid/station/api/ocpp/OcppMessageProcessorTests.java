@@ -1466,4 +1466,64 @@ class OcppMessageProcessorTests {
                         .stringValue()
         ).isEqualTo("Expired");
     }
+
+    @Test
+    void shouldHandleMeterValuesAndRecordActivity() throws Exception {
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "mv-001",
+                  "MeterValues",
+                  {
+                    "evseId": 1,
+                    "meterValue": [
+                      {
+                        "timestamp": "2026-11-26T13:00:00+05:30",
+                        "sampledValue": [
+                          {
+                            "value": 15000.5,
+                            "measurand": "Energy.Active.Import.Register"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+
+        assertThat(json.get(0).intValue()).isEqualTo(3);
+        assertThat(json.get(1).stringValue()).isEqualTo("mv-001");
+        assertThat(json.get(2).isObject()).isTrue();
+
+        verify(connectivityService).recordActivity(eq("STATION-003"), any(Instant.class));
+    }
+
+    @Test
+    void shouldParseTimestampWithTimezoneOffsetInStatusNotification() throws Exception {
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "status-tz",
+                  "StatusNotification",
+                  {
+                    "timestamp": "2026-11-26T13:30:00+02:00",
+                    "connectorStatus": "Available",
+                    "evseId": 1,
+                    "connectorId": 1
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+        assertThat(json.get(0).intValue()).isEqualTo(3);
+        assertThat(json.get(1).stringValue()).isEqualTo("status-tz");
+    }
 }

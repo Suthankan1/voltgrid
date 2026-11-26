@@ -1,6 +1,8 @@
 package com.voltgrid.station.api.ocpp;
 
 import com.voltgrid.station.application.StationReader;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
@@ -8,7 +10,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Map;
 
 @Component
@@ -17,9 +21,19 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
     public static final String STATION_ID_ATTRIBUTE = "stationId";
 
     private final StationReader stationReader;
+    private final boolean authRequired;
+
+    @Autowired
+    public OcppHandshakeInterceptor(
+            StationReader stationReader,
+            @Value("${voltgrid.ocpp.auth-required:false}") boolean authRequired
+    ) {
+        this.stationReader = stationReader;
+        this.authRequired = authRequired;
+    }
 
     public OcppHandshakeInterceptor(StationReader stationReader) {
-        this.stationReader = stationReader;
+        this(stationReader, false);
     }
 
     @Override
@@ -42,6 +56,12 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
             return false;
         }
 
+        if (!authenticateStation(request, stationId)) {
+            response.setStatusCode(HttpStatus.UNAUTHORIZED);
+            response.getHeaders().set("WWW-Authenticate", "Basic realm=\"VoltGrid CSMS\"");
+            return false;
+        }
+
         attributes.put(STATION_ID_ATTRIBUTE, stationId);
 
         return true;
@@ -54,6 +74,38 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
             WebSocketHandler wsHandler,
             Exception exception
     ) {
+    }
+
+    private boolean authenticateStation(ServerHttpRequest request, String stationId) {
+        var authHeaders = request.getHeaders().get("Authorization");
+
+        if (authHeaders == null || authHeaders.isEmpty()) {
+            return !authRequired;
+        }
+
+        var authHeader = authHeaders.get(0).trim();
+
+        if (authHeader.startsWith("Basic ")) {
+            try {
+                var base64Credentials = authHeader.substring(6).trim();
+                var credentials = new String(
+                        Base64.getDecoder().decode(base64Credentials),
+                        StandardCharsets.UTF_8
+                );
+                var parts = credentials.split(":", 2);
+                var username = parts[0];
+                return stationId.equals(username);
+            } catch (IllegalArgumentException e) {
+                return false;
+            }
+        }
+
+        if (authHeader.startsWith("Bearer ")) {
+            var token = authHeader.substring(7).trim();
+            return !token.isBlank();
+        }
+
+        return !authRequired;
     }
 
     private boolean supportsOcpp201(ServerHttpRequest request) {

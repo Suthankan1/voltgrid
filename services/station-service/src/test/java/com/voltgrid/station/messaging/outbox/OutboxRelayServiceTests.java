@@ -166,9 +166,11 @@ class OutboxRelayServiceTests {
                 sendFailure
         );
 
-        assertThrows(
-                IllegalStateException.class,
-                service::relayNext
+        var relayed =
+                service.relayNext();
+
+        assertFalse(
+                relayed
         );
 
         assertNull(
@@ -176,8 +178,7 @@ class OutboxRelayServiceTests {
         );
 
         verify(
-                outboxEventRepository,
-                never()
+                outboxEventRepository
         ).save(
                 event
         );

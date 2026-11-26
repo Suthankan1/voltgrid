@@ -94,6 +94,8 @@ public class OutboxRelayService {
                 publishTimeout;
     }
 
+    private static final int MAX_RETRIES = 5;
+
     @Transactional
     public boolean relayNext() {
         var event =
@@ -105,19 +107,32 @@ public class OutboxRelayService {
             return false;
         }
 
-        publish(
-                event
-        );
+        try {
+            publish(
+                    event
+            );
 
-        event.markPublished(
-                Instant.now()
-        );
+            event.markPublished(
+                    Instant.now()
+            );
 
-        outboxEventRepository.save(
-                event
-        );
+            outboxEventRepository.save(
+                    event
+            );
 
-        return true;
+            return true;
+        } catch (Exception exception) {
+            event.recordFailure(
+                    exception.getMessage(),
+                    Instant.now()
+            );
+
+            outboxEventRepository.save(
+                    event
+            );
+
+            return false;
+        }
     }
 
     private void publish(

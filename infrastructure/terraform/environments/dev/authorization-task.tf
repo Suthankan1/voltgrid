@@ -100,6 +100,10 @@ resource "aws_ecs_task_definition" "authorization" {
         {
           name  = "AUTHORIZATION_DB_URL"
           value = "jdbc:postgresql://${aws_db_instance.postgres.address}:${aws_db_instance.postgres.port}/voltgrid_authorization"
+        },
+        {
+          name  = "AUTHORIZATION_TOKEN_HMAC_KEY"
+          value = var.authorization_token_hmac_key != "" ? var.authorization_token_hmac_key : "voltgrid-local-development-hmac-key-change-me"
         }
       ]
 
