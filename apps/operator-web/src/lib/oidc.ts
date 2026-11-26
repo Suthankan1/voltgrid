@@ -12,6 +12,7 @@ export function appOrigin(): string {
 
 async function discover() {
   const issuer = new URL(process.env.OIDC_ISSUER ?? "");
+  if (issuer.pathname.includes("/.well-known/")) throw new Error("OIDC issuer must be an issuer identifier");
   const id = process.env.OIDC_CLIENT_ID;
   const secret = process.env.OIDC_CLIENT_SECRET;
   const audience = process.env.OIDC_AUDIENCE ?? "voltgrid-api";
@@ -22,26 +23,43 @@ async function discover() {
     process.env.OIDC_LOCAL_HTTP === "true" &&
     new URL(appOrigin()).protocol === "http:";
   const client = await oidc.discovery(issuer, id, secret, undefined, {
+    timeout: 5,
     execute: local
       ? [oidc.allowInsecureRequests, oidc.enableNonRepudiationChecks]
       : [oidc.enableNonRepudiationChecks],
   });
   const metadata = client.serverMetadata();
-  if (!metadata.jwks_uri) throw new Error("OIDC provider is missing JWKS");
-  const jwksUrl = new URL(metadata.jwks_uri);
-  if (jwksUrl.protocol !== "https:" && !(local && jwksUrl.origin === issuer.origin)) {
-    throw new Error("OIDC JWKS requires HTTPS");
-  }
+  if (new URL(metadata.issuer).href !== issuer.href) throw new Error("OIDC issuer mismatch");
+  const jwksUrl = providerEndpoint(metadata.jwks_uri);
+  providerEndpoint(metadata.authorization_endpoint);
+  providerEndpoint(metadata.token_endpoint);
   const keys = createRemoteJWKSet(jwksUrl);
+
+  function providerEndpoint(value: string | undefined) {
+    if (!value) throw new Error("OIDC provider endpoint is missing");
+    const url = new URL(value);
+    if (url.protocol !== "https:" && !(local && url.protocol === "http:" && url.origin === issuer.origin)) {
+      throw new Error("OIDC provider endpoint requires HTTPS");
+    }
+    return url;
+  }
+
   return {
     client,
-    verify: (token: string, subject: string) => jwtVerify(token, keys, {
-      issuer: metadata.issuer,
-      audience,
-      subject,
-      algorithms: ["RS256"],
-      requiredClaims: ["exp", "sub"],
-    }),
+    async verify(token: string, subject: string) {
+      const verified = await jwtVerify(token, keys, {
+        issuer: metadata.issuer,
+        audience,
+        subject,
+        algorithms: ["RS256"],
+        requiredClaims: ["exp", "sub"],
+      });
+      if (typeof verified.payload.sub !== "string" || !verified.payload.sub.trim()) {
+        throw new Error("Missing OIDC subject");
+      }
+      if (verified.payload.typ !== "Bearer") throw new Error("Invalid Keycloak access token purpose");
+      return verified;
+    },
   };
 }
 

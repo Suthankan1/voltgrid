@@ -32,7 +32,7 @@ jobs:
         run: npm install --global pnpm@12.4.2
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Client regression tests
+      - name: Operator regression and BFF OIDC security acceptance
         run: pnpm test
       - name: Lint
         run: pnpm lint
@@ -45,23 +45,28 @@ jobs:
       - name: Start isolated OIDC provider
         working-directory: .
         run: |
-          export VG_TEST_OIDC_CLIENT_SECRET=$(openssl rand -hex 32)
-          export VG_TEST_OIDC_PASSWORD=$(openssl rand -hex 24)
+          VG_TEST_OIDC_CLIENT_SECRET=$(openssl rand -hex 32)
+          VG_TEST_OIDC_PASSWORD=$(openssl rand -hex 24)
+          export VG_TEST_OIDC_CLIENT_SECRET VG_TEST_OIDC_PASSWORD
           echo "::add-mask::$VG_TEST_OIDC_CLIENT_SECRET"
           echo "::add-mask::$VG_TEST_OIDC_PASSWORD"
-          docker compose -f compose.oidc-test.yaml up -d
           issuer=http://127.0.0.1:8180/realms/voltgrid-test
-          curl -fsS --retry 20 --retry-all-errors --retry-delay 2 "$issuer/.well-known/openid-configuration" >/dev/null
           {
             echo "OIDC_ISSUER=$issuer"
             echo "OIDC_CLIENT_ID=voltgrid-operator-web"
             echo "OIDC_CLIENT_SECRET=$VG_TEST_OIDC_CLIENT_SECRET"
             echo "VG_TEST_OIDC_PASSWORD=$VG_TEST_OIDC_PASSWORD"
           } >> "$GITHUB_ENV"
+          docker compose -f compose.oidc-test.yaml up -d
+          curl -fsS --max-time 5 --retry 20 --retry-all-errors --retry-delay 2 "$issuer/.well-known/openid-configuration" >/dev/null
       - name: Operator browser regression tests
         run: pnpm test:e2e
       - name: Automated accessibility tests (WCAG 2.2 AA)
         run: pnpm test:a11y
+      - name: Stop isolated OIDC provider
+        if: ${{ always() && env.OIDC_CLIENT_SECRET != '' }}
+        working-directory: .
+        run: VG_TEST_OIDC_CLIENT_SECRET="$OIDC_CLIENT_SECRET" docker compose -f compose.oidc-test.yaml down -v
 
   cross-browser:
     runs-on: ubuntu-latest
@@ -87,18 +92,23 @@ jobs:
       - name: Start isolated OIDC provider
         working-directory: .
         run: |
-          export VG_TEST_OIDC_CLIENT_SECRET=$(openssl rand -hex 32)
-          export VG_TEST_OIDC_PASSWORD=$(openssl rand -hex 24)
+          VG_TEST_OIDC_CLIENT_SECRET=$(openssl rand -hex 32)
+          VG_TEST_OIDC_PASSWORD=$(openssl rand -hex 24)
+          export VG_TEST_OIDC_CLIENT_SECRET VG_TEST_OIDC_PASSWORD
           echo "::add-mask::$VG_TEST_OIDC_CLIENT_SECRET"
           echo "::add-mask::$VG_TEST_OIDC_PASSWORD"
-          docker compose -f compose.oidc-test.yaml up -d
           issuer=http://127.0.0.1:8180/realms/voltgrid-test
-          curl -fsS --retry 20 --retry-all-errors --retry-delay 2 "$issuer/.well-known/openid-configuration" >/dev/null
           {
             echo "OIDC_ISSUER=$issuer"
             echo "OIDC_CLIENT_ID=voltgrid-operator-web"
             echo "OIDC_CLIENT_SECRET=$VG_TEST_OIDC_CLIENT_SECRET"
             echo "VG_TEST_OIDC_PASSWORD=$VG_TEST_OIDC_PASSWORD"
           } >> "$GITHUB_ENV"
+          docker compose -f compose.oidc-test.yaml up -d
+          curl -fsS --max-time 5 --retry 20 --retry-all-errors --retry-delay 2 "$issuer/.well-known/openid-configuration" >/dev/null
       - name: Cross-browser operator matrix
         run: pnpm test:e2e:cross-browser
+      - name: Stop isolated OIDC provider
+        if: ${{ always() && env.OIDC_CLIENT_SECRET != '' }}
+        working-directory: .
+        run: VG_TEST_OIDC_CLIENT_SECRET="$OIDC_CLIENT_SECRET" docker compose -f compose.oidc-test.yaml down -v

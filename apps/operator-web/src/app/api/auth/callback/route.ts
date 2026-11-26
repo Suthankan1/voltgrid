@@ -11,10 +11,15 @@ export async function GET(request: NextRequest) {
   if (id) logins.delete(id);
 
   try {
-    if (!login) throw new Error("Login has expired");
-    const { client } = await getProvider();
+    if (!login || !login.verifier || !login.state || !login.nonce) throw new Error("Invalid login transaction");
     const callback = new URL("/api/auth/callback", appOrigin());
     callback.search = request.nextUrl.search;
+    const names = new Set<string>();
+    for (const name of callback.searchParams.keys()) {
+      if (names.has(name)) throw new Error("Ambiguous callback parameters");
+      names.add(name);
+    }
+    const { client } = await getProvider();
     const tokens = await oidc.authorizationCodeGrant(client, callback, {
       pkceCodeVerifier: login.verifier,
       expectedState: login.state,
@@ -35,6 +40,8 @@ export async function GET(request: NextRequest) {
     response.cookies.set(SESSION_COOKIE_NAME, sessionId, cookieOptions(SESSION_MAX_AGE));
     return response;
   } catch {
-    return NextResponse.json({ error: "Sign-in failed" }, { status: 401, headers: PRIVATE_HEADERS });
+    const response = NextResponse.json({ error: "Sign-in failed" }, { status: 401, headers: PRIVATE_HEADERS });
+    if (id) response.cookies.delete(LOGIN_COOKIE_NAME);
+    return response;
   }
 }
