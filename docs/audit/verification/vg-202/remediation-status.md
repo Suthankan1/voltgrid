@@ -59,3 +59,11 @@ Station and Operations enforce the configured Keycloak bearer access-token
 type. Both Java decoder suites verified rotation, warm-cache outage behavior,
 expiry and recovery. HTTP matrices and browser authentication acceptance remain
 open. [Authentication verification](final-acceptance/03-authentication-and-session-verification.md)
+
+## VG-202R.3B backend JWT HTTP acceptance
+
+Station and Operations exercise the production RS256 decoder and
+authentication filter through HTTP, including signed token purpose, rejected
+requests stopping before GraphQL, and request-context cleanup. Browser and
+provider failure acceptance remains open.
+[Backend JWT HTTP acceptance](final-acceptance/03a-jwt-http-acceptance.md)
