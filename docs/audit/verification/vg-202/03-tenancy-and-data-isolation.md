@@ -1,5 +1,7 @@
 # VG-202: 03 - Tenancy & Data Isolation
 
+> Historical VG-202 evidence. Current remediation and readiness are tracked in [VG-202R remediation status](remediation-status.md).
+
 ## 1. Multi-Tenant Domain Model
 
 In compliance with ADR-0003 and Issue [#13](https://github.com/Suthankan1/voltgrid/issues/13):

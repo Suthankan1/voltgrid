@@ -1,5 +1,7 @@
 # VG-202: 05 - Service Identity & Key Migration
 
+> Historical VG-202 evidence. Current remediation and readiness are tracked in [VG-202R remediation status](remediation-status.md).
+
 ## 1. Finding Resolution: SEC-003
 
 In compliance with ADR-0006, ADR-0007, and historical finding SEC-003:

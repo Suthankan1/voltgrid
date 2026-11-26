@@ -1,5 +1,7 @@
 # VG-202 Verification Dossier: Commercial Identity, Authentication, Authorization & Multi-Tenant Security Foundation
 
+> Historical VG-202 evidence. Current remediation and readiness are tracked in [VG-202R remediation status](remediation-status.md).
+
 ## Milestone Overview
 
 - **Milestone ID**: VG-202
@@ -7,7 +9,7 @@
 - **Primary Issue**: [#4](https://github.com/Suthankan1/voltgrid/issues/4)
 - **Master Issue**: [#64](https://github.com/Suthankan1/voltgrid/issues/64)
 - **Priority**: P0
-- **Implementation Status**: Completed & Empirically Verified
+- **Implementation Status**: Open. Remediation and verification in progress
 - **Commit Reference**: `feature/vg-202-identity-access-management`
 
 ## Dossier Index

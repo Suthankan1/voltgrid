@@ -1,12 +1,16 @@
 # VG-202: 09 - VG-203 Readiness & Transition Gates
 
+> Historical VG-202 evidence. Current remediation and readiness are tracked in [VG-202R remediation status](remediation-status.md).
+
 ## 1. Readiness Determination
 
-Milestone VG-202 is formally completed. The platform now provides authenticated operator identity, multi-tenant organization boundaries, role permissions, PBKDF2 device credentials, versioned HMAC tokens, and an administrative audit trail.
+VG-202 completion is pending. The current [VG-202R remediation record](remediation-status.md) tracks verified controls and open release gates.
 
-**Status: READY FOR VG-203 (Transport and Network Security Foundation).**
+**Status: VG-203 readiness withheld.**
 
-## 2. Transition Gates Satisfied
+## 2. Historical transition assessment
+
+The entries below are retained as the original assessment. Their status labels were superseded by the remediation review.
 
 | Gate | Requirement | Verification Method | Status |
 |---|---|---|:---:|
@@ -18,7 +22,7 @@ Milestone VG-202 is formally completed. The platform now provides authenticated 
 | Gate 6 | Operator Web UI Auth & Admin Implemented | Login portal, persona switcher, admin hub & subpages | **PASSED** |
 | Gate 7 | Regression Prevention | All 253 backend + 175 frontend + 4 integration tests green | **PASSED** |
 
-## 3. Non-Blocking Limitations & Scope for VG-203
+## 3. Historical dependency assessment
 
 The following items are intentional architectural dependencies deferred to milestone VG-203:
 1. **mTLS (Mutual TLS) for Charging Stations**: VG-202 established the application-layer salted credential baseline (Basic Auth over WSS). VG-203 will introduce transport-level mTLS with client certificate validation (SEC-004).

@@ -1,5 +1,7 @@
 # VG-202: 04 - Device Credentials & OCPP Security
 
+> Historical VG-202 evidence. Current remediation and readiness are tracked in [VG-202R remediation status](remediation-status.md).
+
 ## 1. Finding Resolution: SEC-001
 
 In compliance with ADR-0005, Issue [#15](https://github.com/Suthankan1/voltgrid/issues/15), and historical finding SEC-001:

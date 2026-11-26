@@ -44,7 +44,7 @@ Operations Service consumes those events and maintains its own PostgreSQL-backed
 
 Each service owns its own PostgreSQL database boundary.
 
-The complete local platform can be started from the repository root with:
+Set up the local identity provider and temporary secrets before starting the platform from the repository root. [Local OIDC guide](integration-tests/oidc/README.md)
 
 ```bash
 docker compose up -d --build
@@ -198,7 +198,7 @@ The default root Docker Compose stack focuses on the executable application path
 
 ## Local Infrastructure
 
-The default local environment is started from the repository root with:
+After configuring local OIDC and service credentials, start the backend from the repository root. [Local OIDC guide](integration-tests/oidc/README.md)
 
 ```bash
 docker compose up -d --build

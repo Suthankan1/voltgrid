@@ -1,5 +1,7 @@
 # VG-202: 06 - Administrative Audit Trail
 
+> Historical VG-202 evidence. Current remediation and readiness are tracked in [VG-202R remediation status](remediation-status.md).
+
 ## 1. Architectural Mandate
 
 In compliance with ADR-0008 and Issue [#16](https://github.com/Suthankan1/voltgrid/issues/16):
