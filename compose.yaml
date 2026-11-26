@@ -16,7 +16,7 @@ services:
       AUTHORIZATION_TOKEN_HMAC_KEY: voltgrid-local-development-hmac-key-change-me
 
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
 
     depends_on:
       authorization-postgres:
@@ -51,7 +51,7 @@ services:
       SERVER_PORT: "8081"
 
     ports:
-      - "8081:8081"
+      - "127.0.0.1:8081:8081"
 
     depends_on:
       operations-postgres:
@@ -77,7 +77,7 @@ services:
       OUTBOX_RELAY_ENABLED: "true"
 
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
 
     depends_on:
       postgres:

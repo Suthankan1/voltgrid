@@ -2,6 +2,7 @@ package com.voltgrid.station.application;
 
 import com.voltgrid.station.domain.ChargingStation;
 import com.voltgrid.station.domain.StationStatus;
+import com.voltgrid.station.messaging.outbox.StationStatusOutboxWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,6 +14,8 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,13 +29,17 @@ class StationLivenessServiceTests {
     @Mock
     private StationWriter stationWriter;
 
+    @Mock
+    private StationStatusOutboxWriter outboxWriter;
+
     private StationLivenessService service;
 
     @BeforeEach
     void setUp() {
         service = new StationLivenessService(
                 stationReader,
-                stationWriter
+                stationWriter,
+                outboxWriter
         );
     }
 
@@ -70,6 +77,11 @@ class StationLivenessServiceTests {
                         StationStatus.OFFLINE,
                         lastSeenAt
                 )
+        );
+
+        verify(outboxWriter).save(
+                any(),
+                eq(now)
         );
     }
 

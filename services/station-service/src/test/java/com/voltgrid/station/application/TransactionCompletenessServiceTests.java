@@ -380,6 +380,43 @@ class TransactionCompletenessServiceTests {
         );
     }
 
+    @Test
+    void shouldNotHangOnExtremeSequenceNumber() {
+        var transaction = endedTransaction(
+                Integer.MAX_VALUE
+        );
+
+        when(
+                transactionReader.findById(
+                        "STATION-003",
+                        "TX-001"
+                )
+        ).thenReturn(
+                Optional.of(transaction)
+        );
+
+        when(
+                receiptReader.findByTransaction(
+                        "STATION-003",
+                        "TX-001"
+                )
+        ).thenReturn(
+                List.of(
+                        receipt(
+                                0,
+                                TransactionEventType.STARTED
+                        )
+                )
+        );
+
+        var completeness = service.calculate(
+                "STATION-003",
+                "TX-001"
+        );
+
+        assertThat(completeness.lastSequenceNumber()).isEqualTo(Integer.MAX_VALUE);
+    }
+
     private ChargingTransaction endedTransaction(
             int lastSequenceNumber
     ) {

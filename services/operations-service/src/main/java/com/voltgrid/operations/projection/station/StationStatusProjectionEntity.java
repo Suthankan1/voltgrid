@@ -116,7 +116,7 @@ public class StationStatusProjectionEntity {
             return false;
         }
 
-        if (!statusChangedAt.isAfter(this.statusChangedAt)) {
+        if (statusChangedAt.isBefore(this.statusChangedAt)) {
             return false;
         }
 

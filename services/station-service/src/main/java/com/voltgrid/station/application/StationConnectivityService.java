@@ -70,14 +70,31 @@ public class StationConnectivityService {
                         stationId
                 );
 
+        var previousStatus =
+                station.status();
+
+        var currentStatus =
+                previousStatus == StationStatus.OFFLINE
+                        ? StationStatus.ONLINE
+                        : previousStatus;
+
         stationWriter.save(
                 new ChargingStation(
                         station.id(),
                         station.name(),
-                        station.status(),
+                        currentStatus,
                         seenAt
                 )
         );
+
+        if (previousStatus != currentStatus) {
+            writeStatusChangedEvent(
+                    station,
+                    previousStatus,
+                    currentStatus,
+                    seenAt
+            );
+        }
     }
 
     @Transactional

@@ -10,6 +10,7 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class OcppWebSocketHandler
@@ -21,6 +22,8 @@ public class OcppWebSocketHandler
     private final OcppMessageProcessor messageProcessor;
     private final StationConnectivityService connectivityService;
     private final ApplicationShutdownState shutdownState;
+    private final ConcurrentHashMap<String, String> activeStationSessions =
+            new ConcurrentHashMap<>();
 
     public OcppWebSocketHandler(
             OcppMessageProcessor messageProcessor,
@@ -38,6 +41,21 @@ public class OcppWebSocketHandler
     }
 
     @Override
+    public void afterConnectionEstablished(
+            WebSocketSession session
+    ) throws Exception {
+        super.afterConnectionEstablished(session);
+
+        var stationId = (String) session
+                .getAttributes()
+                .get(OcppHandshakeInterceptor.STATION_ID_ATTRIBUTE);
+
+        if (stationId != null) {
+            activeStationSessions.put(stationId, session.getId());
+        }
+    }
+
+    @Override
     protected void handleTextMessage(
             WebSocketSession session,
             TextMessage message
@@ -46,6 +64,10 @@ public class OcppWebSocketHandler
         var stationId = (String) session
                 .getAttributes()
                 .get(OcppHandshakeInterceptor.STATION_ID_ATTRIBUTE);
+
+        if (stationId != null) {
+            activeStationSessions.put(stationId, session.getId());
+        }
 
         try {
             var response = messageProcessor.process(
@@ -79,7 +101,18 @@ public class OcppWebSocketHandler
                 .get(OcppHandshakeInterceptor.STATION_ID_ATTRIBUTE);
 
         if (stationId != null) {
-            connectivityService.markOffline(stationId);
+            String activeId = activeStationSessions.get(stationId);
+            String closingId = session.getId();
+
+            boolean shouldMarkOffline = (activeId == null) || (closingId != null && closingId.equals(activeId));
+
+            if (closingId != null && closingId.equals(activeId)) {
+                activeStationSessions.remove(stationId, activeId);
+            }
+
+            if (shouldMarkOffline) {
+                connectivityService.markOffline(stationId);
+            }
         }
     }
 }
