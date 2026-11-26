@@ -5,9 +5,11 @@ import { revalidatePath } from "next/cache";
 
 const ROLES = [
   "ORG_OWNER",
-  "STATION_OPERATOR",
-  "BILLING_ANALYST",
-  "READ_ONLY",
+  "ORG_ADMIN",
+  "OPERATOR",
+  "TECHNICIAN",
+  "SUPPORT",
+  "FINANCE",
 ];
 
 export const dynamic = "force-dynamic";
@@ -186,7 +188,7 @@ export default async function MembersAdminPage() {
                 </label>
                 <select
                   name="role"
-                  defaultValue="STATION_OPERATOR"
+                  defaultValue="OPERATOR"
                   className="w-full rounded-[var(--vg-radius-md)] border border-[color:var(--vg-border-control)] bg-[color:var(--vg-surface)] px-3 py-1.5 text-sm text-[color:var(--vg-text-primary)]"
                 >
                   {ROLES.map(r => (
