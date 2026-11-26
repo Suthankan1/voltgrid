@@ -79,6 +79,7 @@ public class StationTransactionGraphQlController {
         if (tenantAuthorizationService != null) {
             org = tenantAuthorizationService.resolveAuthorizedOrganizationId(organizationId);
             tenantAuthorizationService.assertAuthorized(org, Permission.SESSION_READ);
+            tenantAuthorizationService.assertAuthorized(org, Permission.INTEGRITY_READ);
         }
 
         var list = (org != null && !org.isBlank())
@@ -108,6 +109,7 @@ public class StationTransactionGraphQlController {
         if (tenantAuthorizationService != null) {
             org = tenantAuthorizationService.resolveAuthorizedOrganizationId(organizationId);
             tenantAuthorizationService.assertAuthorized(org, Permission.SESSION_READ);
+            tenantAuthorizationService.assertAuthorized(org, Permission.INTEGRITY_READ);
         }
 
         int boundedSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
@@ -190,7 +192,7 @@ public class StationTransactionGraphQlController {
         String org = organizationId;
         if (tenantAuthorizationService != null) {
             org = tenantAuthorizationService.resolveAuthorizedOrganizationId(organizationId);
-            tenantAuthorizationService.assertAuthorized(org, Permission.SESSION_READ);
+            tenantAuthorizationService.assertAuthorized(org, Permission.METER_READ);
         }
 
         if (stationQueryService != null && org != null && !org.isBlank()) {
@@ -219,7 +221,7 @@ public class StationTransactionGraphQlController {
         String org = organizationId;
         if (tenantAuthorizationService != null) {
             org = tenantAuthorizationService.resolveAuthorizedOrganizationId(organizationId);
-            tenantAuthorizationService.assertAuthorized(org, Permission.SESSION_READ);
+            tenantAuthorizationService.assertAuthorized(org, Permission.INTEGRITY_READ);
         }
 
         if (stationQueryService != null && org != null && !org.isBlank()) {

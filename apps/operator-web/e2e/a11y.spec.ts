@@ -468,8 +468,9 @@ test("automated WCAG 2.2 AA audit across all canonical screens, dialogs, and fai
     await expectNoAxeViolations(page, "Registration (confirmed success)");
 
     await page.getByRole("button", { name: "Register another station" }).click();
-    await page.waitForLoadState("networkidle");
-    await page.getByLabel("Station name", { exact: true }).fill("Duplicate A11y");
+    const stationName = page.getByLabel("Station name", { exact: true });
+    await expect(stationName).toBeFocused();
+    await stationName.fill("Duplicate A11y");
     await page.getByLabel("Station identifier", { exact: true }).fill("CP-A11Y-1");
     await page.getByRole("button", { name: "Register station", exact: true }).click();
     await expect(page.getByRole("alert").filter({ hasText: "already exists" })).toBeVisible();

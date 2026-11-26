@@ -1,3 +1,5 @@
 allowBuilds:
   sharp: false
   unrs-resolver: false
+overrides:
+  "@typescript-eslint/typescript-estree>minimatch": 11.0.1
