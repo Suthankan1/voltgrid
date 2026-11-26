@@ -164,6 +164,15 @@ public class TransactionCompletenessService {
             int firstSequenceNumber,
             int lastSequenceNumber
     ) {
+        if (firstSequenceNumber < 0 || lastSequenceNumber < firstSequenceNumber) {
+            return List.of();
+        }
+
+        // Guard against massive sequence ranges that would exhaust memory
+        if ((long) lastSequenceNumber - firstSequenceNumber > 100_000) {
+            return List.of();
+        }
+
         var receivedNumbers =
                 new HashSet<Integer>();
 
@@ -180,7 +189,7 @@ public class TransactionCompletenessService {
                 int sequenceNumber =
                         firstSequenceNumber;
                 sequenceNumber <=
-                        lastSequenceNumber;
+                        lastSequenceNumber && sequenceNumber >= 0;
                 sequenceNumber++
         ) {
             if (!receivedNumbers.contains(
@@ -189,6 +198,9 @@ public class TransactionCompletenessService {
                 missing.add(
                         sequenceNumber
                 );
+            }
+            if (sequenceNumber == Integer.MAX_VALUE) {
+                break;
             }
         }
 

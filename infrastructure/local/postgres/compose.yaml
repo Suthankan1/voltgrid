@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: voltgrid_dev
 
     ports:
-      - "5434:5432"
+      - "127.0.0.1:5434:5432"
 
     volumes:
       - station-postgres-data:/var/lib/postgresql
@@ -32,7 +32,7 @@ services:
       POSTGRES_PASSWORD: voltgrid_dev
 
     ports:
-      - "5435:5432"
+      - "127.0.0.1:5435:5432"
 
     volumes:
       - authorization-postgres-data:/var/lib/postgresql
@@ -56,7 +56,7 @@ services:
       POSTGRES_PASSWORD: voltgrid_dev
 
     ports:
-      - "5436:5432"
+      - "127.0.0.1:5436:5432"
 
     volumes:
       - operations-postgres-data:/var/lib/postgresql
@@ -76,8 +76,8 @@ services:
     hostname: kafka
 
     ports:
-      - "9092:9092"
-      - "29092:29092"
+      - "127.0.0.1:9092:9092"
+      - "127.0.0.1:29092:29092"
 
     environment:
       KAFKA_NODE_ID: 1

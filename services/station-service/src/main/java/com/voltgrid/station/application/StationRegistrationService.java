@@ -3,6 +3,7 @@ package com.voltgrid.station.application;
 import com.voltgrid.station.domain.ChargingStation;
 import com.voltgrid.station.domain.StationStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class StationRegistrationService {
@@ -18,6 +19,7 @@ public class StationRegistrationService {
         this.stationWriter = stationWriter;
     }
 
+    @Transactional
     public ChargingStation register(String id, String name) {
         if (stationReader.findById(id).isPresent()) {
             throw new StationAlreadyExistsException(id);

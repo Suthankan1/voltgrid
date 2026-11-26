@@ -2,24 +2,30 @@ package com.voltgrid.station.application;
 
 import com.voltgrid.station.domain.ChargingStation;
 import com.voltgrid.station.domain.StationStatus;
+import com.voltgrid.station.messaging.event.StationStatusChangedEvent;
+import com.voltgrid.station.messaging.outbox.StationStatusOutboxWriter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.UUID;
 
 @Service
 public class StationLivenessService {
 
     private final StationReader stationReader;
     private final StationWriter stationWriter;
+    private final StationStatusOutboxWriter outboxWriter;
 
     public StationLivenessService(
             StationReader stationReader,
-            StationWriter stationWriter
+            StationWriter stationWriter,
+            StationStatusOutboxWriter outboxWriter
     ) {
         this.stationReader = stationReader;
         this.stationWriter = stationWriter;
+        this.outboxWriter = outboxWriter;
     }
 
     @Transactional
@@ -40,16 +46,26 @@ public class StationLivenessService {
                 )
                 .toList();
 
-        staleStations.forEach(station ->
-                stationWriter.save(
-                        new ChargingStation(
-                                station.id(),
-                                station.name(),
-                                StationStatus.OFFLINE,
-                                station.lastSeenAt()
-                        )
-                )
-        );
+        staleStations.forEach(station -> {
+            stationWriter.save(
+                    new ChargingStation(
+                            station.id(),
+                            station.name(),
+                            StationStatus.OFFLINE,
+                            station.lastSeenAt()
+                    )
+            );
+            outboxWriter.save(
+                    new StationStatusChangedEvent(
+                            UUID.randomUUID(),
+                            station.id(),
+                            StationStatus.ONLINE.name(),
+                            StationStatus.OFFLINE.name(),
+                            now
+                    ),
+                    now
+            );
+        });
 
         return staleStations.size();
     }

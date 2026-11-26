@@ -645,6 +645,7 @@ public class OcppMessageProcessor {
                 && !isBlank(request.triggerReason())
                 && request.seqNo() != null
                 && request.seqNo() >= 0
+                && request.seqNo() <= 1_000_000
                 && request.transactionInfo() != null
                 && !isBlank(
                         request.transactionInfo()
