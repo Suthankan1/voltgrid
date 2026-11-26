@@ -25,6 +25,7 @@ function loadTs(relPath) {
   const mod = { exports: {} };
   cache.set(absPath, mod.exports);
   const localRequire = (id) => {
+    if (id === "./auth") return { getAuthHeaders: async () => ({}) };
     if (id.startsWith("./")) {
       return loadTs(`${id.slice(2)}.ts`);
     }

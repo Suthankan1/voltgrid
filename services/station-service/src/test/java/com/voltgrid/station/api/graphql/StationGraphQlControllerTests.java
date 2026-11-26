@@ -71,7 +71,7 @@ class StationGraphQlControllerTests {
 
     @Test
     void shouldListStations() {
-        when(stationQueryService.findAll())
+        when(stationQueryService.findByOrganizationId("org_voltgrid_default"))
                 .thenReturn(
                         List.of(
                                 new ChargingStation(
@@ -100,7 +100,7 @@ class StationGraphQlControllerTests {
 
     @Test
     void shouldGetStationById() {
-        when(stationQueryService.findById("STATION-001"))
+        when(stationQueryService.findByIdAndOrganizationId("STATION-001", "org_voltgrid_default"))
                 .thenReturn(
                         Optional.of(
                                 new ChargingStation(
@@ -187,6 +187,8 @@ class StationGraphQlControllerTests {
     void shouldListStationConnectors() {
         var timestamp = Instant.parse("2026-09-08T15:00:00Z");
 
+        when(stationQueryService.findByIdAndOrganizationId("STATION-001", "org_voltgrid_default"))
+                .thenReturn(Optional.of(new ChargingStation("STATION-001", "Colombo Central", StationStatus.ONLINE)));
         when(connectorQueryService.findByStationId("STATION-001"))
                 .thenReturn(
                         List.of(

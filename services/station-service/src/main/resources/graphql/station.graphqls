@@ -3,9 +3,9 @@ type Query {
     station(id: ID!, organizationId: ID): ChargingStation
     stationConnectors(stationId: ID!): [StationConnector!]!
 
-    transactions: [ChargingTransaction!]!
+    transactions(organizationId: ID): [ChargingTransaction!]!
 
-    networkTransactions: [NetworkTransaction!]!
+    networkTransactions(organizationId: ID): [NetworkTransaction!]!
 
     networkTransactionPage(
         page: Int!
@@ -13,23 +13,30 @@ type Query {
         stationId: ID
         transactionId: String
         integrityStatus: TransactionDataStatus
+        organizationId: ID
     ): NetworkTransactionPage!
 
-    stationTransactions(stationId: ID!): [ChargingTransaction!]!
+    stationTransactions(
+        stationId: ID!
+        organizationId: ID
+    ): [ChargingTransaction!]!
 
     transaction(
         stationId: ID!
         transactionId: ID!
+        organizationId: ID
     ): ChargingTransaction
 
     transactionMeterSamples(
         stationId: ID!
         transactionId: ID!
+        organizationId: ID
     ): [TransactionMeterSample!]!
 
     transactionCompleteness(
         stationId: ID!
         transactionId: ID!
+        organizationId: ID
     ): TransactionCompleteness!
 
     # Multi-Tenant & Administrative Queries

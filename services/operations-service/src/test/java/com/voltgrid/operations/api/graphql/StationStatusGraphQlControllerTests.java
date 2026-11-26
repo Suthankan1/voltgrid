@@ -1,6 +1,10 @@
 package com.voltgrid.operations.api.graphql;
 
 import com.voltgrid.operations.application.StationStatusQueryService;
+import com.voltgrid.operations.api.security.SecurityContext;
+import com.voltgrid.operations.domain.security.AuthenticatedUser;
+import org.junit.jupiter.api.AfterEach;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.graphql.test.autoconfigure.GraphQlTest;
@@ -20,11 +24,17 @@ class StationStatusGraphQlControllerTests {
     @MockitoBean
     private StationStatusQueryService queryService;
 
+    @AfterEach
+    void clearOperator() {
+        SecurityContext.clear();
+    }
+
     @Test
     void shouldReturnStationStatus() {
+        SecurityContext.set(new AuthenticatedUser("test-operator", "", Set.of(), "org-a"));
         when(
-                queryService.findByStationId(
-                        "STATION-001"
+                queryService.findByStationIdAndOrganizationId(
+                        "STATION-001", "org-a"
                 )
         ).thenReturn(
                 new StationStatusView(

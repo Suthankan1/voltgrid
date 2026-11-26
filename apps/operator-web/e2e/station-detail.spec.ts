@@ -1,6 +1,8 @@
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
 import { test, expect } from "@playwright/test";
+import { signIn } from "./sign-in";
+import { respondToOrganizationAccess } from "./organization-fixture";
 
 function getFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -144,6 +146,7 @@ test("station detail covers all 5 statuses, repeated connector IDs, offline mode
   ];
 
   const apiServer = createServer((req, res) => {
+    if (respondToOrganizationAccess(req, res)) return;
     if (req.url === "/health") {
       res.end("ok");
       return;
@@ -223,7 +226,7 @@ test("station detail covers all 5 statuses, repeated connector IDs, offline mode
   });
 
   const apiPort = await getFreePort();
-  const appPort = await getFreePort();
+  const appPort = 4313;
   await new Promise<void>(resolve => apiServer.listen(apiPort, "127.0.0.1", resolve));
 
   const nextProc = spawn(
@@ -233,6 +236,8 @@ test("station detail covers all 5 statuses, repeated connector IDs, offline mode
       cwd: process.cwd(),
       env: {
         ...process.env,
+        OPERATOR_WEB_ORIGIN: `http://127.0.0.1:${appPort}`,
+        OIDC_LOCAL_HTTP: "true",
         OPERATOR_LOCAL_WRITES: "false",
         STATION_GRAPHQL_URL: `http://127.0.0.1:${apiPort}/graphql`,
         OPERATIONS_GRAPHQL_URL: `http://127.0.0.1:${apiPort}/graphql`,
@@ -254,6 +259,7 @@ test("station detail covers all 5 statuses, repeated connector IDs, offline mode
       await new Promise(r => setTimeout(r, 250));
     }
 
+    await signIn(page, origin);
     await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin });
     await page.setViewportSize({ width: 1280, height: 800 });
 

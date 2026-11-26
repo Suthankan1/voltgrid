@@ -7,6 +7,7 @@ import java.util.UUID;
 public record StationStatusChangedEvent(
         UUID eventId,
         String stationId,
+        String organizationId,
         String previousStatus,
         String currentStatus,
         Instant occurredAt
@@ -50,5 +51,15 @@ public record StationStatusChangedEvent(
                     "previousStatus and currentStatus must differ"
             );
         }
+    }
+
+    public StationStatusChangedEvent(
+            UUID eventId,
+            String stationId,
+            String previousStatus,
+            String currentStatus,
+            Instant occurredAt
+    ) {
+        this(eventId, stationId, null, previousStatus, currentStatus, occurredAt);
     }
 }

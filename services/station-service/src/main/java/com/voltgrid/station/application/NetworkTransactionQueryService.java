@@ -33,6 +33,16 @@ public class NetworkTransactionQueryService {
     }
 
     @Transactional(readOnly = true)
+    public List<NetworkTransactionSnapshot> findByOrganizationId(String organizationId) {
+        if (organizationId == null || organizationId.isBlank()) {
+            return findAll();
+        }
+        return combine(
+                transactionReader.findByOrganizationId(organizationId)
+        );
+    }
+
+    @Transactional(readOnly = true)
     public PageResult<NetworkTransactionSnapshot> findPage(
             int page,
             int size

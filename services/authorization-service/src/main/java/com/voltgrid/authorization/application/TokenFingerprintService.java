@@ -22,19 +22,17 @@ public class TokenFingerprintService {
 
     @Autowired
     public TokenFingerprintService(
-            @Value("${voltgrid.authorization.token-hmac-key:" + INSECURE_DEFAULT_KEY + "}") String activeKey,
+            @Value("${voltgrid.authorization.token-hmac-key:${AUTHORIZATION_TOKEN_HMAC_KEY:}}") String activeKey,
             @Value("${voltgrid.authorization.active-key-version:v1}") String activeVersion,
             @Value("${voltgrid.authorization.legacy-keys.v1:}") String legacyKeyV1,
-            @Value("${voltgrid.security.require-secure-keys:false}") boolean requireSecureKeys
+            @Value("${voltgrid.security.require-secure-keys:true}") boolean requireSecureKeys
     ) {
         this.activeKeyVersion = (activeVersion != null && !activeVersion.isBlank()) ? activeVersion.trim() : "v1";
 
-        if (requireSecureKeys) {
-            if (activeKey == null || activeKey.isBlank() || INSECURE_DEFAULT_KEY.equals(activeKey)) {
-                throw new IllegalStateException("Production profile requires a non-default, high-entropy HMAC key");
-            }
+        if (activeKey == null || activeKey.isBlank()
+                || (requireSecureKeys && INSECURE_DEFAULT_KEY.equals(activeKey.trim()))) {
+            throw new IllegalStateException("A configured authorization token HMAC key is required");
         }
-
         registerKey(this.activeKeyVersion, activeKey);
 
         if (legacyKeyV1 != null && !legacyKeyV1.isBlank() && !this.activeKeyVersion.equals("v1")) {

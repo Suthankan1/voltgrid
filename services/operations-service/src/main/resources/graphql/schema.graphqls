@@ -1,10 +1,11 @@
 type Query {
-    stationStatus(stationId: ID!): StationStatus
+    stationStatus(stationId: ID!, organizationId: String): StationStatus
 
     stationStatuses(
         first: Int
         after: String
         status: StationOperationalStatus
+        organizationId: String
     ): StationStatusConnection!
 }
 

@@ -2,6 +2,8 @@ import { createServer } from "node:http";
 import { spawn } from "node:child_process";
 import net from "node:net";
 import { expect, test } from "@playwright/test";
+import { signIn } from "./sign-in";
+import { respondToOrganizationAccess } from "./organization-fixture";
 
 const VIEWPORTS = [
   [1440, 900],
@@ -195,6 +197,7 @@ test("registration covers pending protection, confirmed guidance, duplicate, fai
   ]);
 
   const apiServer = createServer((req, res) => {
+    if (respondToOrganizationAccess(req, res)) return;
     const chunks: Buffer[] = [];
     req.on("data", (chunk: Buffer) => chunks.push(chunk));
     req.on("end", async () => {
@@ -315,8 +318,8 @@ test("registration covers pending protection, confirmed guidance, duplicate, fai
   });
 
   const apiPort = await getFreePort();
-  const writableAppPort = await getFreePort();
-  const readOnlyAppPort = await getFreePort();
+  const writableAppPort = 4313;
+  const readOnlyAppPort = 4314;
   await new Promise<void>((resolve) =>
     apiServer.listen(apiPort, "127.0.0.1", resolve),
   );
@@ -335,6 +338,8 @@ test("registration covers pending protection, confirmed guidance, duplicate, fai
       cwd: process.cwd(),
       env: {
         ...process.env,
+        OPERATOR_WEB_ORIGIN: `http://127.0.0.1:${writableAppPort}`,
+        OIDC_LOCAL_HTTP: "true",
         OPERATOR_LOCAL_WRITES: "true",
         STATION_GRAPHQL_URL: `http://127.0.0.1:${apiPort}/graphql`,
         OPERATIONS_GRAPHQL_URL: `http://127.0.0.1:${apiPort}/graphql`,
@@ -357,6 +362,8 @@ test("registration covers pending protection, confirmed guidance, duplicate, fai
       cwd: process.cwd(),
       env: {
         ...process.env,
+        OPERATOR_WEB_ORIGIN: `http://127.0.0.1:${readOnlyAppPort}`,
+        OIDC_LOCAL_HTTP: "true",
         OPERATOR_LOCAL_WRITES: "false",
         STATION_GRAPHQL_URL: `http://127.0.0.1:${apiPort}/graphql`,
         OPERATIONS_GRAPHQL_URL: `http://127.0.0.1:${apiPort}/graphql`,
@@ -380,6 +387,7 @@ test("registration covers pending protection, confirmed guidance, duplicate, fai
       }
     }
 
+    await signIn(page, writableOrigin);
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto(`${writableOrigin}/stations/new`);
 
@@ -527,6 +535,7 @@ test("registration covers pending protection, confirmed guidance, duplicate, fai
 
     // 6. Read-only restricted mode renders no executable form and never calls GraphQL mutation
     const mutationsBeforeReadOnly = mutationCount;
+    await signIn(page, readOnlyOrigin);
     await page.goto(`${readOnlyOrigin}/stations/new`);
     await expect(
       page.getByRole("heading", { name: "Read-only console" }),

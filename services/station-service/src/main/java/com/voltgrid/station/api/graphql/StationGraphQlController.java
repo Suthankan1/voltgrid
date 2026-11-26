@@ -9,6 +9,9 @@ import com.voltgrid.station.application.security.StationCredentialService;
 import com.voltgrid.station.application.security.TenantAuthorizationService;
 import com.voltgrid.station.domain.ChargingStation;
 import com.voltgrid.station.domain.security.Permission;
+import com.voltgrid.station.domain.security.Role;
+import com.voltgrid.station.application.security.TenantAccessDeniedException;
+import org.springframework.transaction.annotation.Transactional;
 import com.voltgrid.station.infrastructure.persistence.jpa.AdministrativeAuditEventEntity;
 import com.voltgrid.station.infrastructure.persistence.jpa.OrganizationEntity;
 import com.voltgrid.station.infrastructure.persistence.jpa.OrganizationJpaRepository;
@@ -23,6 +26,7 @@ import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Controller
@@ -63,37 +67,28 @@ public class StationGraphQlController {
     @QueryMapping
     public List<ChargingStation> stations(@Argument String organizationId) {
         String org = tenantAuthorizationService.resolveAuthorizedOrganizationId(organizationId);
-        if (org == null || org.isBlank()) {
-            org = "org_voltgrid_default";
-        }
         tenantAuthorizationService.assertAuthorized(org, Permission.STATION_READ);
-        var stations = stationQueryService.findByOrganizationId(org);
-        if (stations != null && !stations.isEmpty()) {
-            return stations;
-        }
-        return stationQueryService.findAll();
+        return stationQueryService.findByOrganizationId(org);
     }
 
     @QueryMapping
     public ChargingStation station(@Argument String id, @Argument String organizationId) {
         String org = tenantAuthorizationService.resolveAuthorizedOrganizationId(organizationId);
-        if (org == null || org.isBlank()) {
-            org = "org_voltgrid_default";
-        }
         tenantAuthorizationService.assertAuthorized(org, Permission.STATION_READ);
         return stationQueryService.findByIdAndOrganizationId(id, org)
-                .or(() -> stationQueryService.findById(id))
                 .orElse(null);
     }
 
     @MutationMapping
+    @Transactional
     public ChargingStation registerStation(@Argument @Valid RegisterStationInput input) {
         String org = tenantAuthorizationService.resolveAuthorizedOrganizationId(input.organizationId());
-        if (org == null || org.isBlank()) {
-            org = "org_voltgrid_default";
-        }
         tenantAuthorizationService.assertAuthorized(org, Permission.STATION_REGISTER);
 
+        if (input.siteId() != null && siteRepository.findById(input.siteId())
+                .filter(site -> site.getOrganizationId().equals(org) && "ACTIVE".equals(site.getStatus())).isEmpty()) {
+            throw new TenantAccessDeniedException("Active site access required");
+        }
         var station = stationRegistrationService.register(
                 input.id(),
                 input.name(),
@@ -112,7 +107,7 @@ public class StationGraphQlController {
                 "REGISTER",
                 "SUCCESS",
                 null,
-                "{\"stationId\":\"" + station.id() + "\",\"name\":\"" + station.name() + "\"}"
+                AdministrativeAuditService.metadata(Map.of("stationId", station.id()))
         );
 
         return station;
@@ -120,8 +115,10 @@ public class StationGraphQlController {
 
     @QueryMapping
     public List<StationConnectorView> stationConnectors(@Argument String stationId) {
-        return connectorQueryService
-                .findByStationId(stationId)
+        if (station(stationId, null) == null) {
+            return List.of();
+        }
+        return connectorQueryService.findByStationId(stationId)
                 .stream()
                 .map(StationConnectorView::from)
                 .toList();
@@ -131,7 +128,20 @@ public class StationGraphQlController {
 
     @QueryMapping
     public List<OrganizationEntity> organizations() {
-        return organizationRepository.findAll();
+        var user = SecurityContext.get();
+        if (user == null) {
+            throw new TenantAccessDeniedException("Authentication required");
+        }
+        if (user.roles().contains(Role.PLATFORM_ADMIN.name())) {
+            return organizationRepository.findAll();
+        }
+        var memberships = membershipRepository.findByUserId(user.userId()).stream()
+                .filter(membership -> "ACTIVE".equals(membership.getStatus()))
+                .map(OrganizationMembershipEntity::getOrganizationId)
+                .toList();
+        return organizationRepository.findAllById(memberships).stream()
+                .filter(organization -> "ACTIVE".equals(organization.getStatus()))
+                .toList();
     }
 
     @QueryMapping
@@ -153,10 +163,16 @@ public class StationGraphQlController {
     }
 
     @MutationMapping
+    @Transactional
     public OrganizationEntity createOrganization(@Argument @Valid CreateOrganizationInput input) {
         var user = SecurityContext.get();
-        var org = new OrganizationEntity(input.id(), input.name(), "ACTIVE");
-        organizationRepository.save(org);
+        if (user == null || !user.roles().contains(Role.PLATFORM_ADMIN.name())) {
+            throw new TenantAccessDeniedException("Platform administration permission required");
+        }
+        if (organizationRepository.insertOrganization(input.id(), input.name()) != 1) {
+            throw new IllegalArgumentException("Organization already exists");
+        }
+        var org = organizationRepository.findById(input.id()).orElseThrow();
 
         // Auto-assign creator as ORG_OWNER
         if (user != null) {
@@ -181,17 +197,20 @@ public class StationGraphQlController {
                 "CREATE",
                 "SUCCESS",
                 null,
-                "{\"name\":\"" + org.getName() + "\"}"
+                null
         );
 
         return org;
     }
 
     @MutationMapping
+    @Transactional
     public SiteEntity createSite(@Argument @Valid CreateSiteInput input) {
         tenantAuthorizationService.assertAuthorized(input.organizationId(), Permission.SITE_MANAGE);
-        var site = new SiteEntity(input.id(), input.organizationId(), input.name(), "ACTIVE");
-        siteRepository.save(site);
+        if (siteRepository.insertSite(input.id(), input.organizationId(), input.name()) != 1) {
+            throw new IllegalArgumentException("Site already exists");
+        }
+        var site = siteRepository.findById(input.id()).orElseThrow();
 
         var user = SecurityContext.get();
         auditService.recordEvent(
@@ -204,13 +223,14 @@ public class StationGraphQlController {
                 "CREATE",
                 "SUCCESS",
                 null,
-                "{\"name\":\"" + site.getName() + "\"}"
+                null
         );
 
         return site;
     }
 
     @MutationMapping
+    @Transactional
     public OrganizationMembershipEntity inviteMember(@Argument @Valid InviteMemberInput input) {
         tenantAuthorizationService.assertAuthorized(input.organizationId(), Permission.MEMBER_MANAGE);
 
@@ -219,7 +239,7 @@ public class StationGraphQlController {
                 input.organizationId(),
                 input.userId(),
                 input.userEmail(),
-                input.role(),
+                organizationRole(input.role()).name(),
                 "ACTIVE"
         );
         membershipRepository.save(membership);
@@ -235,13 +255,14 @@ public class StationGraphQlController {
                 "GRANT_ROLE",
                 "SUCCESS",
                 null,
-                "{\"userId\":\"" + input.userId() + "\",\"role\":\"" + input.role() + "\"}"
+                AdministrativeAuditService.metadata(Map.of("userId", input.userId(), "role", input.role()))
         );
 
         return membership;
     }
 
     @MutationMapping
+    @Transactional
     public OrganizationMembershipEntity updateMemberRole(
             @Argument String organizationId,
             @Argument String userId,
@@ -252,7 +273,7 @@ public class StationGraphQlController {
         var membership = membershipRepository.findByOrganizationIdAndUserId(organizationId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Membership not found for user: " + userId));
 
-        membership.setRole(role);
+        membership.setRole(organizationRole(role).name());
         membershipRepository.save(membership);
 
         var user = SecurityContext.get();
@@ -266,13 +287,14 @@ public class StationGraphQlController {
                 "UPDATE_ROLE",
                 "SUCCESS",
                 null,
-                "{\"userId\":\"" + userId + "\",\"newRole\":\"" + role + "\"}"
+                AdministrativeAuditService.metadata(Map.of("userId", userId, "newRole", role))
         );
 
         return membership;
     }
 
     @MutationMapping
+    @Transactional
     public boolean revokeMember(@Argument String organizationId, @Argument String userId) {
         tenantAuthorizationService.assertAuthorized(organizationId, Permission.MEMBER_MANAGE);
 
@@ -293,11 +315,22 @@ public class StationGraphQlController {
                     "REVOKE",
                     "SUCCESS",
                     null,
-                    "{\"userId\":\"" + userId + "\"}"
+                    AdministrativeAuditService.metadata(Map.of("userId", userId))
             );
             return true;
         }
         return false;
+    }
+
+    private static Role organizationRole(String value) {
+        if (value == null) throw new TenantAccessDeniedException("Invalid organization role");
+        try {
+            Role role = Role.valueOf(value);
+            if (role != Role.PLATFORM_ADMIN) return role;
+        } catch (IllegalArgumentException ignored) {
+            // Unknown roles are rejected with the same response.
+        }
+        throw new TenantAccessDeniedException("Invalid organization role");
     }
 
     // --- Station Credential Management ---

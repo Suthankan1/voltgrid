@@ -1,3 +1,5 @@
+import { getAuthHeaders } from "./auth";
+
 export type StationStatus = "ONLINE" | "OFFLINE";
 
 export type Station = {
@@ -52,6 +54,7 @@ export async function getStationSnapshot(): Promise<StationSnapshot> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...await getAuthHeaders(),
       },
       body: JSON.stringify({
         query: STATIONS_QUERY,
@@ -222,6 +225,7 @@ export async function getStationDetail(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...await getAuthHeaders(),
       },
       body: JSON.stringify({
         query: STATION_DETAIL_QUERY,
@@ -296,6 +300,7 @@ export async function getStationPageData(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...await getAuthHeaders(),
       },
       body: JSON.stringify({
         query: STATION_DETAIL_QUERY,
@@ -471,6 +476,7 @@ export async function getNetworkTransactions(): Promise<NetworkTransactionSnapsh
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...await getAuthHeaders(),
       },
       body: JSON.stringify({
         query: NETWORK_TRANSACTIONS_QUERY,
@@ -628,6 +634,7 @@ export async function getNetworkTransactionPage(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...await getAuthHeaders(),
       },
       body: JSON.stringify({
         query: NETWORK_TRANSACTION_PAGE_QUERY,
@@ -893,6 +900,7 @@ export async function getTransactionInspector(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...await getAuthHeaders(),
       },
       body: JSON.stringify({
         query: TRANSACTION_LOOKUP_QUERY,
@@ -934,6 +942,7 @@ export async function getTransactionInspector(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...await getAuthHeaders(),
       },
       body: JSON.stringify({
         query: TRANSACTION_DATA_QUERY,
@@ -1015,6 +1024,7 @@ export async function getSessionPageData(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...await getAuthHeaders(),
       },
       body: JSON.stringify({
         query: TRANSACTION_LOOKUP_QUERY,
@@ -1086,6 +1096,7 @@ export async function getSessionPageData(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...await getAuthHeaders(),
       },
       body: JSON.stringify({
         query: TRANSACTION_DATA_QUERY,

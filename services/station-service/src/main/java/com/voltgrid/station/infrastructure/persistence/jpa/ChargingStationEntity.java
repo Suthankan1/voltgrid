@@ -18,8 +18,8 @@ public class ChargingStationEntity {
     @Column(name = "id", nullable = false, updatable = false)
     private String id;
 
-    @Column(name = "organization_id", nullable = false)
-    private String organizationId = "org_voltgrid_default";
+    @Column(name = "organization_id")
+    private String organizationId;
 
     @Column(name = "site_id")
     private String siteId;
@@ -42,7 +42,7 @@ public class ChargingStationEntity {
             String name,
             StationStatus status
     ) {
-        this(id, name, status, null, "org_voltgrid_default", null);
+        this(id, name, status, null, null, null);
     }
 
     public ChargingStationEntity(
@@ -51,7 +51,7 @@ public class ChargingStationEntity {
             StationStatus status,
             Instant lastSeenAt
     ) {
-        this(id, name, status, lastSeenAt, "org_voltgrid_default", null);
+        this(id, name, status, lastSeenAt, null, null);
     }
 
     public ChargingStationEntity(
@@ -66,7 +66,7 @@ public class ChargingStationEntity {
         this.name = name;
         this.status = status;
         this.lastSeenAt = lastSeenAt;
-        this.organizationId = (organizationId != null && !organizationId.isBlank()) ? organizationId : "org_voltgrid_default";
+        this.organizationId = organizationId;
         this.siteId = siteId;
     }
 

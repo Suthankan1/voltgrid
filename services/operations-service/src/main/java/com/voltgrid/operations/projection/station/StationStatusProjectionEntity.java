@@ -23,10 +23,9 @@ public class StationStatusProjectionEntity {
 
     @Column(
             name = "organization_id",
-            nullable = false,
             length = 64
     )
-    private String organizationId = "org_voltgrid_default";
+    private String organizationId;
 
     @Column(
             name = "current_status",
@@ -64,7 +63,7 @@ public class StationStatusProjectionEntity {
             Instant statusChangedAt,
             Instant updatedAt
     ) {
-        this(stationId, "org_voltgrid_default", currentStatus, lastEventId, statusChangedAt, updatedAt);
+        this(stationId, null, currentStatus, lastEventId, statusChangedAt, updatedAt);
     }
 
     public StationStatusProjectionEntity(
@@ -88,7 +87,7 @@ public class StationStatusProjectionEntity {
         }
 
         this.stationId = stationId;
-        this.organizationId = (organizationId != null && !organizationId.isBlank()) ? organizationId : "org_voltgrid_default";
+        this.organizationId = organizationId;
         this.currentStatus = currentStatus;
         this.lastEventId = Objects.requireNonNull(
                 lastEventId,

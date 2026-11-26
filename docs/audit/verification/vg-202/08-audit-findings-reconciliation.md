@@ -1,5 +1,7 @@
 # VG-202: 08 - Audit Findings Reconciliation
 
+> Historical VG-202 evidence. Current remediation and readiness are tracked in [VG-202R remediation status](remediation-status.md).
+
 ## Reconciled Findings Table
 
 | Finding ID | Historical Baseline Severity | Current Assessed Severity | Disposition | Confidence | Reconciling PR | Verification Evidence |

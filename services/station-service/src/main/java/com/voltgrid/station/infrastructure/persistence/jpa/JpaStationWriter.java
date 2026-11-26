@@ -14,6 +14,12 @@ public class JpaStationWriter implements StationWriter {
     }
 
     @Override
+    public boolean insert(ChargingStation station) {
+        return repository.insertStation(station.id(), station.name(), station.status().name(),
+                station.organizationId(), station.siteId()) == 1;
+    }
+
+    @Override
     public void save(ChargingStation station) {
         repository.save(
                 new ChargingStationEntity(

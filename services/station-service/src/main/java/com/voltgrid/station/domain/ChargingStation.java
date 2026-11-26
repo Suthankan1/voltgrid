@@ -17,7 +17,7 @@ public record ChargingStation(
             StationStatus status,
             Instant lastSeenAt
     ) {
-        this(id, name, status, lastSeenAt, "org_voltgrid_default", null);
+        this(id, name, status, lastSeenAt, null, null);
     }
 
     public ChargingStation(
@@ -25,6 +25,6 @@ public record ChargingStation(
             String name,
             StationStatus status
     ) {
-        this(id, name, status, null, "org_voltgrid_default", null);
+        this(id, name, status, null, null, null);
     }
 }

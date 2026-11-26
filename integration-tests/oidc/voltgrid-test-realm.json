@@ -1,0 +1,99 @@
+{
+  "realm": "voltgrid-test",
+  "enabled": true,
+  "registrationAllowed": false,
+  "sslRequired": "none",
+  "accessTokenLifespan": 120,
+  "clients": [
+    {
+      "clientId": "voltgrid-operator-web",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${VG_TEST_OIDC_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://127.0.0.1:3000/api/auth/callback",
+        "http://127.0.0.1:4310/api/auth/callback",
+        "http://127.0.0.1:4312/api/auth/callback",
+        "http://127.0.0.1:4313/api/auth/callback",
+        "http://127.0.0.1:4314/api/auth/callback"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "VoltGrid API audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "voltgrid-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "Default organization",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "org_id",
+            "claim.name": "org_id",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "65203c33-875b-499b-97d3-5851bc2eec61",
+      "username": "operator-a",
+      "firstName": "Fixture",
+      "lastName": "Operator",
+      "email": "operator-a@example.test",
+      "emailVerified": true,
+      "enabled": true,
+      "attributes": {
+        "org_id": [
+          "org_fixture_a"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${VG_TEST_OIDC_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "53ee9752-d68c-4e7c-9e76-a958720fa482",
+      "username": "operator-b",
+      "firstName": "Fixture",
+      "lastName": "Operator",
+      "email": "operator-b@example.test",
+      "emailVerified": true,
+      "enabled": true,
+      "attributes": {
+        "org_id": [
+          "org_fixture_b"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${VG_TEST_OIDC_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

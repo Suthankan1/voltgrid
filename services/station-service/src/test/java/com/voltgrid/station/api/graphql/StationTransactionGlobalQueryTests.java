@@ -4,6 +4,9 @@ import com.voltgrid.station.application.NetworkTransactionQueryService;
 import com.voltgrid.station.application.NetworkTransactionSnapshot;
 import com.voltgrid.station.application.StationTransactionQueryService;
 import com.voltgrid.station.application.TransactionCompletenessService;
+import com.voltgrid.station.application.security.TenantAccessDeniedException;
+import com.voltgrid.station.application.security.TenantAuthorizationService;
+import com.voltgrid.station.domain.security.Permission;
 import com.voltgrid.station.domain.ChargingTransaction;
 import com.voltgrid.station.domain.TransactionCompleteness;
 import com.voltgrid.station.domain.TransactionDataStatus;
@@ -19,6 +22,9 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -34,6 +40,9 @@ class StationTransactionGlobalQueryTests {
     @Mock
     private NetworkTransactionQueryService networkTransactionQueryService;
 
+    @Mock
+    private TenantAuthorizationService tenantAuthorization;
+
     private StationTransactionGraphQlController controller;
 
     @BeforeEach
@@ -43,6 +52,27 @@ class StationTransactionGlobalQueryTests {
                 completenessService,
                 networkTransactionQueryService
         );
+    }
+
+    @Test
+    void shouldCheckMeasurementAndIntegrityPermissionsBeforeReading() {
+        var scoped = new StationTransactionGraphQlController(
+                queryService, completenessService, networkTransactionQueryService, null, tenantAuthorization);
+        when(tenantAuthorization.resolveAuthorizedOrganizationId("org-a")).thenReturn("org-a");
+        doThrow(new TenantAccessDeniedException("Meter permission denied"))
+                .when(tenantAuthorization).assertAuthorized("org-a", Permission.METER_READ);
+        doThrow(new TenantAccessDeniedException("Integrity permission denied"))
+                .when(tenantAuthorization).assertAuthorized("org-a", Permission.INTEGRITY_READ);
+
+        assertThrows(TenantAccessDeniedException.class,
+                () -> scoped.transactionMeterSamples("station-a", "transaction-a", "org-a"));
+        assertThrows(TenantAccessDeniedException.class,
+                () -> scoped.transactionCompleteness("station-a", "transaction-a", "org-a"));
+        assertThrows(TenantAccessDeniedException.class,
+                () -> scoped.networkTransactions("org-a"));
+        assertThrows(TenantAccessDeniedException.class,
+                () -> scoped.networkTransactionPage(0, 20, null, null, null, "org-a"));
+        verifyNoInteractions(queryService, completenessService, networkTransactionQueryService);
     }
 
     @Test

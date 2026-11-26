@@ -49,7 +49,7 @@ class OcppHandshakeInterceptorAuthTests {
         when(request.getHeaders()).thenReturn(headers);
         when(request.getURI()).thenReturn(URI.create("ws://localhost:8080/ocpp/STATION-003"));
         when(stationReader.findById("STATION-003")).thenReturn(
-                Optional.of(new ChargingStation("STATION-003", "Galle", StationStatus.OFFLINE))
+                Optional.of(new ChargingStation("STATION-003", "Galle", StationStatus.OFFLINE, null, "org-test", null))
         );
         when(response.getHeaders()).thenReturn(new HttpHeaders());
 
@@ -74,12 +74,12 @@ class OcppHandshakeInterceptorAuthTests {
         when(request.getHeaders()).thenReturn(headers);
         when(request.getURI()).thenReturn(URI.create("ws://localhost:8080/ocpp/STATION-003"));
         when(stationReader.findById("STATION-003")).thenReturn(
-                Optional.of(new ChargingStation("STATION-003", "Galle", StationStatus.OFFLINE))
+                Optional.of(new ChargingStation("STATION-003", "Galle", StationStatus.OFFLINE, null, "org-test", null))
         );
 
         var accepted = authInterceptor.beforeHandshake(request, response, wsHandler, new HashMap<>());
 
-        assertThat(accepted).isTrue();
+        assertThat(accepted).isFalse();
     }
 
     @Test
@@ -97,7 +97,7 @@ class OcppHandshakeInterceptorAuthTests {
         when(request.getHeaders()).thenReturn(headers);
         when(request.getURI()).thenReturn(URI.create("ws://localhost:8080/ocpp/STATION-003"));
         when(stationReader.findById("STATION-003")).thenReturn(
-                Optional.of(new ChargingStation("STATION-003", "Galle", StationStatus.OFFLINE))
+                Optional.of(new ChargingStation("STATION-003", "Galle", StationStatus.OFFLINE, null, "org-test", null))
         );
         when(response.getHeaders()).thenReturn(new HttpHeaders());
 

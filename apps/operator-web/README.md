@@ -1,8 +1,8 @@
 # VoltGrid Operator Console
 
-Local operator web console (`Next.js 16.3.5`, `React 19.2.8`, `TypeScript`, `Tailwind CSS 4`) redesigned under the **Orchid & Clay** visual system with the **Voltmark** identity and locally hosted **Manrope** + **IBM Plex Mono** typography (`public/fonts/`).
+Local operator web console (`Next.js 16.4.6`, `React 19.2.8`, `TypeScript`, `Tailwind CSS 4`) redesigned under the **Orchid & Clay** visual system with the **Voltmark** identity and locally hosted **Manrope** + **IBM Plex Mono** typography (`public/fonts/`).
 
-> **Scope notice**: This application is a local operator-console milestone backed by local Docker Compose services. It does **not** include public deployment, user authentication, billing, or remote charger control commands.
+> The console uses OIDC for operator sign-in and requires an active organization membership. The repository includes an isolated local Keycloak fixture.
 
 ## Canonical Navigation & Compatibility Routes
 
@@ -25,7 +25,7 @@ Local operator web console (`Next.js 16.3.5`, `React 19.2.8`, `TypeScript`, `Tai
 
 ## Local Startup
 
-Start the repository Docker Compose backend stack from the repository root, then in `apps/operator-web`:
+Configure the identity provider and seed the isolated station database using the [local OIDC guide](../../integration-tests/oidc/README.md). Start the repository Docker Compose backend stack from the repository root, then in `apps/operator-web`:
 
 ```sh
 pnpm install --frozen-lockfile
@@ -42,7 +42,7 @@ Registration writes require **all** of: `OPERATOR_LOCAL_WRITES=true`, loopback H
 
 ## Verification Commands
 
-Run all commands from `apps/operator-web` (Node 24 / >= 22.18 and `pnpm@12.4.2`):
+Run these commands from `apps/operator-web` with Node 24 or later and `pnpm@12.4.2`. Browser suites also require the local OIDC fixture and the client and password variables in the [fixture guide](../../integration-tests/oidc/README.md).
 
 ```sh
 pnpm install --frozen-lockfile
@@ -57,19 +57,22 @@ pnpm test:e2e:cross-browser      # Chromium + Firefox + WebKit core matrix
 
 ### Real Local-Stack Verification (Disposable Compose)
 
-From the repository root:
+Start the local OIDC fixture and export its settings as described in the [fixture guide](../../integration-tests/oidc/README.md). From the repository root:
 
 ```sh
-docker compose -p voltgrid-ui110-test -f compose.yaml -f compose.operator-test.yaml up -d --build
+docker compose -p voltgrid-vg202r-test -f compose.yaml -f compose.operator-test.yaml up -d --build
+docker compose -p voltgrid-vg202r-test -f compose.yaml -f compose.operator-test.yaml exec -T postgres \
+  psql -v ON_ERROR_STOP=1 -U voltgrid -d voltgrid_station < integration-tests/oidc/organizations.sql
+pnpm --dir apps/operator-web build
 pnpm --dir apps/operator-web test:e2e:live
-docker compose -p voltgrid-ui110-test -f compose.yaml -f compose.operator-test.yaml down -v --remove-orphans
+docker compose -p voltgrid-vg202r-test -f compose.yaml -f compose.operator-test.yaml down -v --remove-orphans
 ```
 
-Exercises real Station registration, OCPP 2.0.1 WebSocket (`BootNotification`, `Authorize`, `StatusNotification` `Available`/`Faulted`, `TransactionEvent Started/Updated/Ended`, intentional `INCOMPLETE` sequence gap, WebSocket disconnect offline transition), gRPC invalid-token check, outbox/Kafka projection, `Needs attention`, `Diagnostics`, `Sessions` measurements/completeness, legacy redirects, `Help`, and navigation links.
+The live suite uses Keycloak, Station and Authorization services, Kafka, Operations and the station simulator built into the test. It checks OCPP authentication, transaction and meter ingestion, the tenant-scoped projection, credential rotation and revocation, administrative audit, and browser logout.
 
 ## Known Technical Limitations
 
-- **Malformed raw percent escapes (e.g., `/stations/%ZZ`)**: Next.js 16.3.5 App Router rejects un-decodable raw `%` escapes in dynamic URL segments with plain-text `HTTP 500 Internal Server Error` (`Content-Length: 21`, no stack trace or path disclosure) before route code executes. Properly encoded literal-percent identifiers (e.g., `/stations/%25ZZ`) decode safely once inside `decodePathIdentifier()` and resolve to HTTP 404/200 as appropriate.
+- **Malformed raw percent escapes (e.g., `/stations/%ZZ`)**: Next.js 16.4.6 App Router rejects un-decodable raw `%` escapes in dynamic URL segments with plain-text `HTTP 500 Internal Server Error` (`Content-Length: 21`, no stack trace or path disclosure) before route code executes. Properly encoded literal-percent identifiers (e.g., `/stations/%25ZZ`) decode safely once inside `decodePathIdentifier()` and resolve to HTTP 404/200 as appropriate.
 - **No public WebSocket gateway hostname exposure**: Connection guidance displays `/ocpp/<stationId>` and `ocpp2.0.1` without fabricating undeclared public hostnames.
 - **No cumulative session energy derivation**: `Energy.Active.Import.Register` reflects persisted meter register samples only; interval totals are never fabricated across missing sequences.
 - **Pending Human Gates**: Owner visual review (G1), manual VoiceOver/NVDA walkthrough (`docs/usability-testing/screen-reader-checklist.md`, G3), and human participant usability evaluation (`docs/usability-testing/`, G7) remain open prior to merge/release sign-off.

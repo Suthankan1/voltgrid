@@ -1,13 +1,35 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { test, expect } from '@playwright/test';
+import { signIn } from '../e2e/sign-in';
 
-test('real OCPP, authorization, Kafka projection and operator transaction journey', async ({ page, request }) => {
+const NodeWebSocket = WebSocket as unknown as new (
+  url: string, options: { protocols: string[]; headers?: Record<string, string> }
+) => WebSocket;
+
+async function connectStation(stationId: string, password?: string) {
+ const headers = password ? { Authorization: `Basic ${Buffer.from(`${stationId}:${password}`).toString('base64')}` } : undefined;
+ const socket = new NodeWebSocket(`ws://127.0.0.1:18080/ocpp/${stationId}`, { protocols: ['ocpp2.0.1'], headers });
+ await new Promise<void>((resolve, reject) => {
+  const timeout = setTimeout(() => { socket.close(); reject(new Error('OCPP connection timeout')); }, 5000);
+  socket.addEventListener('open', () => { clearTimeout(timeout); resolve(); }, { once: true });
+  socket.addEventListener('error', () => { clearTimeout(timeout); reject(new Error('OCPP connection rejected')); }, { once: true });
+ });
+ return socket;
+}
+
+
+test('real OCPP, authorization, Kafka projection and operator transaction journey', async ({ page, request, browser }) => {
+ test.setTimeout(120_000);
+ const origin = 'http://127.0.0.1:4312';
  for (const port of [18080,18081]) {
   await expect.poll(async()=>{
    try { return (await request.get(`http://127.0.0.1:${port}/actuator/health/readiness`,{timeout:2000})).ok(); }
    catch { return false; }
   },{timeout:30000}).toBeTruthy();
  }
+ await page.goto('/');
+ await expect(page).toHaveURL(/\/login$/);
+ await signIn(page, origin);
  const stationId = `OPERATOR-${randomUUID()}`;
  const transactionId = `TX-${randomUUID()}`;
  await page.goto('/stations/new');
@@ -18,13 +40,25 @@ test('real OCPP, authorization, Kafka projection and operator transaction journe
  await expect(page.getByText(`/ocpp/${stationId}`)).toBeVisible();
  await page.getByRole('link',{name:'Inspect station details'}).click();
  await expect(page).toHaveURL(new RegExp(`/stations/${stationId}$`));
- const socket = new WebSocket(`ws://127.0.0.1:18080/ocpp/${stationId}`, 'ocpp2.0.1');
+ await expect(connectStation(stationId)).rejects.toThrow('OCPP connection rejected');
+
+ const password = randomBytes(32).toString('hex');
+ await page.goto('/admin/credentials');
+ await page.getByPlaceholder('STATION-001', { exact: true }).fill(stationId);
+ await page.locator('input[name="password"]').fill(password);
+ await page.getByRole('button', { name: 'Provision Credential', exact: true }).click();
+ await expect.poll(async () => {
+  try {
+   const probe = await connectStation(stationId, password);
+   probe.close();
+   return true;
+  } catch {
+   return false;
+  }
+ }).toBe(true);
+
+ const socket = await connectStation(stationId, password);
  try {
-  await new Promise<void>((resolve,reject) => {
-   const timer=setTimeout(()=>reject(new Error('OCPP connection timeout')),5000);
-   socket.addEventListener('open',()=>{clearTimeout(timer);resolve();},{once:true});
-   socket.addEventListener('error',()=>{clearTimeout(timer);reject(new Error('OCPP connection failed'));},{once:true});
-  });
   async function call(action:string,payload:object) {
    const id=randomUUID();
    return await new Promise<Record<string, unknown>>((resolve,reject)=>{
@@ -40,11 +74,12 @@ test('real OCPP, authorization, Kafka projection and operator transaction journe
    });
   }
   expect((await call('BootNotification',{reason:'PowerUp',chargingStation:{model:'Operator Test',vendorName:'VoltGrid'}})).status).toBe('Accepted');
+  expect((await call('Heartbeat', {})).currentTime).toBeTruthy();
   expect((await call('Authorize',{idToken:{idToken:'UNREGISTERED-E2E',type:'ISO14443'}})).idTokenInfo).toEqual(expect.objectContaining({status:'Invalid'}));
-  await expect.poll(async()=>{
-   const response=await request.post('http://127.0.0.1:18081/graphql',{data:{query:'query Status($id: ID!) { stationStatus(stationId:$id) { currentStatus } }',variables:{id:stationId}}});
-   return (await response.json()).data?.stationStatus?.currentStatus;
-  },{timeout:30000}).toBe('ONLINE');
+  if (process.env.VG_TEST_RFID_TOKEN) {
+   const result = await call('Authorize', { idToken: { idToken: process.env.VG_TEST_RFID_TOKEN, type: 'ISO14443' } });
+   expect(result.idTokenInfo).toEqual(expect.objectContaining({ status: 'Accepted' }));
+  }
   await call('StatusNotification',{timestamp:new Date().toISOString(),connectorStatus:'Available',evseId:1,connectorId:1});
   await call('StatusNotification',{timestamp:new Date().toISOString(),connectorStatus:'Faulted',evseId:1,connectorId:2});
   const startedAt = new Date().toISOString();
@@ -144,21 +179,60 @@ test('real OCPP, authorization, Kafka projection and operator transaction journe
    await expect(nav.getByRole('link',{name:label,exact:true})).toBeVisible();
   }
 
-  // Exercise WebSocket disconnect -> authoritative offline + async Operations projection + Needs attention
+  // Wait for the tenant-scoped projections after the device disconnects.
   socket.close();
-  await expect.poll(async()=>{
-   const response=await request.post('http://127.0.0.1:18080/graphql',{data:{query:'query Station($id: ID!) { station(id:$id) { status } }',variables:{id:stationId}}});
-   return (await response.json()).data?.station?.status;
-  },{timeout:30000}).toBe('OFFLINE');
-  await expect.poll(async()=>{
-   const response=await request.post('http://127.0.0.1:18081/graphql',{data:{query:'query Status($id: ID!) { stationStatus(stationId:$id) { currentStatus } }',variables:{id:stationId}}});
-   return (await response.json()).data?.stationStatus?.currentStatus;
-  },{timeout:30000}).toBe('OFFLINE');
+  await expect.poll(async () => {
+   await page.goto(`/diagnostics?stationId=${stationId}`);
+   return page.getByRole('row').filter({hasText:stationId}).innerText({timeout:1500}).catch(() => '');
+  }, {timeout:30_000}).toContain('Offline');
   await page.goto(`/stations/${stationId}`);
   await expect(page.getByText('Station is currently reported offline').first()).toBeVisible();
-  await page.goto('/attention');
-  await expect(page.getByRole('link',{name:`Inspect offline station Operator E2E Station`}).first()).toBeVisible();
-  await page.goto(`/diagnostics?stationId=${stationId}`);
-  await expect(page.getByRole('row').filter({hasText:stationId})).toContainText('Offline');
+
+  const outside = await browser.newPage();
+  try {
+   await signIn(outside, origin, 'operator-b');
+   await outside.goto(`/stations/${stationId}`);
+   await expect(outside.getByRole('heading', { name: 'This station or transaction could not be found.' })).toBeVisible();
+  } finally {
+   await outside.close();
+  }
+
+  await page.goto('/admin/credentials');
+  const forms = page.locator('form').filter({
+   has: page.locator(`input[name="stationId"][value="${stationId}"]`),
+  });
+  const rotate = forms.filter({ has: page.getByRole('button', { name: 'Rotate', exact: true }) });
+  const revoke = forms.filter({ has: page.getByRole('button', { name: 'Revoke Credential', exact: true }) });
+  const rotatedPassword = randomBytes(32).toString('hex');
+
+  const previous = await connectStation(stationId, password);
+  let previousCloseCode: number | undefined;
+  previous.addEventListener('close', event => { previousCloseCode = event.code; }, { once: true });
+  try {
+   await rotate.locator('input[name="newPassword"]').fill(rotatedPassword);
+   await rotate.getByRole('button', { name: 'Rotate', exact: true }).click();
+   await expect.poll(() => previousCloseCode).toBe(1008);
+   await expect(connectStation(stationId, password)).rejects.toThrow('OCPP connection rejected');
+  } finally {
+   previous.close();
+  }
+
+  const replacement = await connectStation(stationId, rotatedPassword);
+  let replacementCloseCode: number | undefined;
+  replacement.addEventListener('close', event => { replacementCloseCode = event.code; }, { once: true });
+  try {
+   await revoke.getByRole('button', { name: 'Revoke Credential', exact: true }).click();
+   await expect.poll(() => replacementCloseCode).toBe(1008);
+   await expect(connectStation(stationId, rotatedPassword)).rejects.toThrow('OCPP connection rejected');
+  } finally {
+   replacement.close();
+  }
+
+  await page.goto('/admin/audit');
+  await expect(page.getByText('CREDENTIAL_ROTATED', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('CREDENTIAL_REVOKED', { exact: true }).first()).toBeVisible();
+
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page).toHaveURL(/\/login$/);
  } finally { socket.close(); }
 });

@@ -1,0 +1,11 @@
+services:
+  identity-provider:
+    image: quay.io/keycloak/keycloak:26.8.2
+    command: ["start-dev", "--import-realm", "--hostname=http://127.0.0.1:8180"]
+    ports:
+      - "127.0.0.1:8180:8080"
+    environment:
+      VG_TEST_OIDC_CLIENT_SECRET: ${VG_TEST_OIDC_CLIENT_SECRET:?Generate a local OIDC client secret}
+      VG_TEST_OIDC_PASSWORD: ${VG_TEST_OIDC_PASSWORD:?Generate a local OIDC fixture password}
+    volumes:
+      - ./integration-tests/oidc/voltgrid-test-realm.json:/opt/keycloak/data/import/voltgrid-test-realm.json:ro

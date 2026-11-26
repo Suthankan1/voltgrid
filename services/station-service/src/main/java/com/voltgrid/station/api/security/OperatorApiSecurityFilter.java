@@ -16,23 +16,20 @@ import java.io.IOException;
 @Order(1)
 public class OperatorApiSecurityFilter extends OncePerRequestFilter {
 
-    private final String expectedToken;
     private final boolean requireAuth;
     private final JwtTokenValidator tokenValidator;
 
     @Autowired
     public OperatorApiSecurityFilter(
-            @Value("${voltgrid.security.api-token:}") String expectedToken,
-            @Value("${voltgrid.security.require-auth:false}") boolean requireAuth,
+            @Value("${voltgrid.security.require-auth:true}") boolean requireAuth,
             JwtTokenValidator tokenValidator
     ) {
-        this.expectedToken = expectedToken != null ? expectedToken.trim() : "";
         this.requireAuth = requireAuth;
         this.tokenValidator = tokenValidator;
     }
 
-    public OperatorApiSecurityFilter(String expectedToken) {
-        this(expectedToken, false, new JwtTokenValidator("", "voltgrid-api", false));
+    public OperatorApiSecurityFilter(JwtTokenValidator tokenValidator) {
+        this(true, tokenValidator);
     }
 
     @Override
@@ -43,28 +40,25 @@ public class OperatorApiSecurityFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         String path = request.getRequestURI();
 
-        if (path != null && path.startsWith("/graphql")) {
+        if (path != null && (path.startsWith("/graphql") || path.startsWith("/api/"))) {
             String authHeader = request.getHeader("Authorization");
             String requestedOrg = request.getHeader("X-Tenant-Id");
 
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7).trim();
-
-                if (!expectedToken.isEmpty() && expectedToken.equals(token)) {
-                    var user = tokenValidator.validateAndExtract("voltgrid-dev-token", requestedOrg);
-                    user.ifPresent(SecurityContext::set);
-                } else {
-                    var userOpt = tokenValidator.validateAndExtract(token, requestedOrg);
-                    if (userOpt.isPresent()) {
-                        SecurityContext.set(userOpt.get());
-                    } else if (requireAuth || !expectedToken.isEmpty()) {
-                        rejectUnauthorized(response);
-                        return;
-                    }
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                if (requireAuth) {
+                    rejectUnauthorized(response, "MISSING_BEARER_TOKEN", "Authentication required: missing Bearer token");
+                    return;
                 }
-            } else if (requireAuth || !expectedToken.isEmpty()) {
-                rejectUnauthorized(response);
-                return;
+            } else {
+                String token = authHeader.substring(7).trim();
+                var userOpt = tokenValidator.validateAndExtract(token, requestedOrg);
+
+                if (userOpt.isPresent()) {
+                    SecurityContext.set(userOpt.get());
+                } else if (requireAuth) {
+                    rejectUnauthorized(response, "INVALID_BEARER_TOKEN", "Invalid or expired Bearer token");
+                    return;
+                }
             }
         }
 
@@ -75,9 +69,12 @@ public class OperatorApiSecurityFilter extends OncePerRequestFilter {
         }
     }
 
-    private void rejectUnauthorized(HttpServletResponse response) throws IOException {
+    private void rejectUnauthorized(HttpServletResponse response, String code, String message) throws IOException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
-        response.getWriter().write("{\"errors\":[{\"message\":\"Unauthorized\"}]}");
+        response.getWriter().write(String.format(
+                "{\"errors\":[{\"message\":\"%s\",\"extensions\":{\"code\":\"UNAUTHORIZED\",\"reason\":\"%s\"}}]}",
+                message, code
+        ));
     }
 }

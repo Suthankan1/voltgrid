@@ -38,10 +38,10 @@ class ServiceAuthenticationInterceptorTests {
 
     @Test
     void shouldAcceptCallWithValidServiceCredentials() {
-        var interceptor = new ServiceAuthenticationInterceptor(true, "valid-secret-key");
+        var interceptor = new ServiceAuthenticationInterceptor(true, "test-only-service-key-at-least-32-characters");
         var headers = new Metadata();
         headers.put(ServiceAuthenticationInterceptor.SERVICE_ID_HEADER, "station-service");
-        headers.put(ServiceAuthenticationInterceptor.SERVICE_KEY_HEADER, "valid-secret-key");
+        headers.put(ServiceAuthenticationInterceptor.SERVICE_KEY_HEADER, "test-only-service-key-at-least-32-characters");
 
         when(nextHandler.startCall(serverCall, headers)).thenReturn(listener);
 
@@ -54,7 +54,7 @@ class ServiceAuthenticationInterceptorTests {
 
     @Test
     void shouldRejectCallWithMissingServiceCredentials() {
-        var interceptor = new ServiceAuthenticationInterceptor(true, "valid-secret-key");
+        var interceptor = new ServiceAuthenticationInterceptor(true, "test-only-service-key-at-least-32-characters");
         var headers = new Metadata();
 
         interceptor.interceptCall(serverCall, headers, nextHandler);
@@ -67,7 +67,7 @@ class ServiceAuthenticationInterceptorTests {
 
     @Test
     void shouldRejectCallWithInvalidServiceKey() {
-        var interceptor = new ServiceAuthenticationInterceptor(true, "valid-secret-key");
+        var interceptor = new ServiceAuthenticationInterceptor(true, "test-only-service-key-at-least-32-characters");
         var headers = new Metadata();
         headers.put(ServiceAuthenticationInterceptor.SERVICE_ID_HEADER, "station-service");
         headers.put(ServiceAuthenticationInterceptor.SERVICE_KEY_HEADER, "wrong-key");
@@ -82,10 +82,10 @@ class ServiceAuthenticationInterceptorTests {
 
     @Test
     void shouldRejectCallWithUnknownServiceId() {
-        var interceptor = new ServiceAuthenticationInterceptor(true, "valid-secret-key");
+        var interceptor = new ServiceAuthenticationInterceptor(true, "test-only-service-key-at-least-32-characters");
         var headers = new Metadata();
         headers.put(ServiceAuthenticationInterceptor.SERVICE_ID_HEADER, "rogue-service");
-        headers.put(ServiceAuthenticationInterceptor.SERVICE_KEY_HEADER, "valid-secret-key");
+        headers.put(ServiceAuthenticationInterceptor.SERVICE_KEY_HEADER, "test-only-service-key-at-least-32-characters");
 
         interceptor.interceptCall(serverCall, headers, nextHandler);
 

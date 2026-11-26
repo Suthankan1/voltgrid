@@ -1,12 +1,16 @@
 # VG-202: 01 - Executive Summary
 
+> Historical VG-202 evidence. Current remediation and readiness are tracked in [VG-202R remediation status](remediation-status.md).
+
 ## 1. Executive Disposition
 
-Milestone VG-202 (**Commercial Identity, Authentication, Authorization and Multi-Tenant Security Foundation**) has been successfully implemented, verified, and reconciled across all three backend microservices, the operator web frontend, and cross-process integration environments.
+Milestone VG-202 remains open. The [VG-202R remediation record](remediation-status.md) supersedes the completion and readiness statements in the original report.
 
-**Final Determination: READY FOR VG-203 WITH ZERO BLOCKING DEFECTS.**
+**Current determination: VG-203 readiness withheld.**
 
-## 2. In-Scope Product Capabilities Delivered
+## 2. Originally claimed capabilities
+
+The status labels in the remaining sections describe the original report. They are retained as historical evidence.
 
 | Capability ID | Description | Issue | Verified Status |
 |---|---|---|---|

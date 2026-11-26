@@ -1,5 +1,7 @@
 # VG-202: 07 - Test Execution Results
 
+> Historical VG-202 evidence. Current remediation and readiness are tracked in [VG-202R remediation status](remediation-status.md).
+
 ## 1. Complete Test Execution Inventory
 
 All tests were executed directly in the local development environment against isolated Docker Testcontainers (PostgreSQL 18.6, Apache Kafka 4.2.1) and real browser contexts.

@@ -1,5 +1,7 @@
 # VoltGrid Local Demo
 
+> The backend and operator console now require authenticated access. Follow the current [local OIDC guide](../integration-tests/oidc/README.md) and [operator console setup](../apps/operator-web/README.md) before using this walkthrough.
+
 This runbook demonstrates VoltGrid locally through the real service boundaries:
 
 ```text

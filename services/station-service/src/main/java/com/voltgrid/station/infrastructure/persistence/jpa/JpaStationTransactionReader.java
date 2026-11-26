@@ -143,6 +143,17 @@ public class JpaStationTransactionReader
                 );
             }
 
+            if (filter.organizationId() != null) {
+                var stationSubquery = query.subquery(String.class);
+                var stationRoot = stationSubquery.from(ChargingStationEntity.class);
+                stationSubquery.select(stationRoot.get("id"));
+                stationSubquery.where(
+                        criteriaBuilder.equal(stationRoot.get("id"), root.get("id").get("stationId")),
+                        criteriaBuilder.equal(stationRoot.get("organizationId"), filter.organizationId())
+                );
+                predicates.add(criteriaBuilder.exists(stationSubquery));
+            }
+
             if (filter.transactionId() != null) {
                 var pattern =
                         "%"

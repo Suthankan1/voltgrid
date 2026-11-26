@@ -1,5 +1,7 @@
 # VG-202: 02 - Identity & Access Architecture
 
+> Historical VG-202 evidence. Current remediation and readiness are tracked in [VG-202R remediation status](remediation-status.md).
+
 ## 1. Human Operator Identity
 
 In compliance with ADR-0001 and Issue [#12](https://github.com/Suthankan1/voltgrid/issues/12):

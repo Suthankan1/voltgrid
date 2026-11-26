@@ -39,4 +39,19 @@ public interface StationTransactionReader {
     List<ChargingTransaction> findByStationId(
             String stationId
     );
+
+    default List<ChargingTransaction> findByOrganizationId(String organizationId) {
+        return findPage(0, 500, new TransactionPageFilter(null, null, null, organizationId)).content();
+    }
+
+    default List<ChargingTransaction> findByStationIdAndOrganizationId(String stationId, String organizationId) {
+        return findPage(0, 500, new TransactionPageFilter(stationId, null, null, organizationId)).content();
+    }
+
+    default Optional<ChargingTransaction> findByIdAndOrganizationId(String stationId, String transactionId, String organizationId) {
+        return findPage(0, 1, new TransactionPageFilter(stationId, transactionId, null, organizationId))
+                .content()
+                .stream()
+                .findFirst();
+    }
 }
