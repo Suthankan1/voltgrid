@@ -61,3 +61,6 @@ jobs:
             --batch-mode \
             --no-transfer-progress \
             clean test
+
+      - name: Verify signed access tokens with authentication required
+        run: ./mvnw --batch-mode --no-transfer-progress -Dtest=KeycloakAccessTokenPolicyTests test

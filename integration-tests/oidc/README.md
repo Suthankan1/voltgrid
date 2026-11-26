@@ -37,3 +37,11 @@ With the fixture running and Chromium installed through Playwright, run the live
 ```sh
 node integration-tests/oidc/operator-session.mjs
 ```
+
+Station and Operations require an RS256-signed JWT with the configured realm
+issuer, API audience, a nonblank subject, expiration, and the signed Keycloak
+payload claim `typ: Bearer`. Keep the browser client ID distinct from the API
+audience and map the API audience into access tokens only. This policy applies
+to the Keycloak bearer configuration used by the fixture. Review these claims
+before changing providers or enabling a different Keycloak token type.
+[Keycloak 26.8.2 token issuance](https://github.com/keycloak/keycloak/blob/26.8.2/services/src/main/java/org/keycloak/protocol/oidc/TokenManager.java#L1431)
