@@ -17,3 +17,7 @@ Production transport and distributed operation remain separate VG-203 and VG-204
 ## VG-202R.3 partial evidence
 
 - [Authentication boundaries, Keycloak token-purpose policy and Java JWKS verification](03-authentication-and-session-verification.md)
+
+## VG-202R.3B backend acceptance
+
+- [Station and Operations signed JWT HTTP validation](03a-jwt-http-acceptance.md)

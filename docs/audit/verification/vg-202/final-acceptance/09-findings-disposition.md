@@ -27,3 +27,9 @@ rotation, warm-cache outage behavior and recovery at the Station and Operations
 decoders. IAM-001 remains partially resolved pending both HTTP matrices and
 remaining provider evidence. IAM-002 through IAM-004 remain partially resolved.
 [Authentication verification](03-authentication-and-session-verification.md)
+
+VG-202R.3B adds direct HTTP evidence for IAM-001 on both API services. The
+previous IAM-001 HTTP matrix gap is covered by the signed-token suites.
+IAM-001 remains partially resolved pending the remaining provider evidence.
+IAM-002, IAM-003, IAM-004 and SEC-002 retain their dispositions above.
+[Backend JWT HTTP acceptance](03a-jwt-http-acceptance.md)

@@ -105,3 +105,10 @@ lifetime. Logout invalidated the local session, and Chromium remained
 unauthenticated after presenting the old handle. The full refresh race,
 production cookie, provider failure, callback and direct action matrices
 remain open.
+
+## VG-202R.3B signed JWT HTTP evidence
+
+The backend HTTP matrices exercise the actual application filters, production
+RS256 decoder configuration, signed token purpose and authorized GraphQL
+queries. The earlier live Keycloak and browser evidence above covers a
+separate slice. [Backend JWT HTTP acceptance](03a-jwt-http-acceptance.md)
