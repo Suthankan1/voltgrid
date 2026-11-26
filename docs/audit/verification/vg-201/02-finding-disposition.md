@@ -1,9 +1,9 @@
 # 02 — Historical Finding Disposition Matrix
 
-> **Milestone**: VG-201  
-> **Baseline Commit**: `71307b68477505de9f536ed579b6344d2158b80b`  
-> **Verification Branch**: `verification/vg-201-core-hardening`  
-> **Related Issue**: [#3](https://github.com/Suthankan1/voltgrid/issues/3)  
+> **Milestone**: VG-201
+> **Baseline Commit**: `71307b68477505de9f536ed579b6344d2158b80b`
+> **Verification Branch**: `verification/vg-201-core-hardening`
+> **Related Issue**: [#3](https://github.com/Suthankan1/voltgrid/issues/3)
 
 ---
 

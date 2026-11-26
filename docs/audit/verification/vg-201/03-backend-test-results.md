@@ -1,9 +1,9 @@
 # 03 — Backend Test Results
 
-> **Milestone**: VG-201  
-> **Verification Branch**: `verification/vg-201-core-hardening`  
-> **Environment**: macOS Darwin arm64 · Java OpenJDK 25.0.4.1 · Apache Maven 3.15.0 / Surefire 3.5.6 · Docker 29.9.3 (Testcontainers)  
-> **Execution Date**: 2026-11-26  
+> **Milestone**: VG-201
+> **Verification Branch**: `verification/vg-201-core-hardening`
+> **Environment**: macOS Darwin arm64 · Java OpenJDK 25.0.4.1 · Apache Maven 3.15.0 / Surefire 3.5.6 · Docker 29.9.3 (Testcontainers)
+> **Execution Date**: 2026-11-26
 
 ---
 

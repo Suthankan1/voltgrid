@@ -1,8 +1,8 @@
 # 06 — Database and Concurrency Verification Results
 
-> **Milestone**: VG-201  
-> **Databases**: PostgreSQL 18.6 (station, authorization, operations) · Flyway Schema Migrations  
-> **Execution Date**: 2026-11-26  
+> **Milestone**: VG-201
+> **Databases**: PostgreSQL 18.6 (station, authorization, operations) · Flyway Schema Migrations
+> **Execution Date**: 2026-11-26
 
 ---
 
@@ -76,7 +76,7 @@ Historically, `charging_stations.id` was defined as `VARCHAR(255)`, while `outbo
 In `StationTransactionQueryService.java`:
 ```java
 meterSampleRepository.findByStationIdAndTransactionIdOrderBySequenceNumberAsc(
-    stationId, 
+    stationId,
     transactionId
 );
 ```

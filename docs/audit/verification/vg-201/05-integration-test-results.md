@@ -1,9 +1,9 @@
 # 05 — Integration Test Results
 
-> **Milestone**: VG-201  
-> **Environment**: Isolated Docker Compose Stack `voltgrid-vg201-verification`  
-> **Configuration Files**: `compose.yaml`, `compose.operator-test.yaml`, `infrastructure/local/postgres/compose.yaml`  
-> **Execution Date**: 2026-11-26  
+> **Milestone**: VG-201
+> **Environment**: Isolated Docker Compose Stack `voltgrid-vg201-verification`
+> **Configuration Files**: `compose.yaml`, `compose.operator-test.yaml`, `infrastructure/local/postgres/compose.yaml`
+> **Execution Date**: 2026-11-26
 
 ---
 

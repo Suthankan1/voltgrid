@@ -1,8 +1,8 @@
 # 07 — Security Verification
 
-> **Milestone**: VG-201  
-> **Scope**: Core Hardening Security Verification, Port Bindings, Secrets Exposure, and Dependency Audit  
-> **Execution Date**: 2026-11-26  
+> **Milestone**: VG-201
+> **Scope**: Core Hardening Security Verification, Port Bindings, Secrets Exposure, and Dependency Audit
+> **Execution Date**: 2026-11-26
 
 ---
 

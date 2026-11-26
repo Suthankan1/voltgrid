@@ -1,12 +1,12 @@
 # VoltGrid — VG-201 Core Hardening Verification Deliverables
 
-> **Milestone**: VG-201 (Core Hardening Verification, Regression Testing and Audit Reconciliation)  
-> **Baseline Planning Commit**: `71307b68477505de9f536ed579b6344d2158b80b`  
-> **Historical Hardening Commits**: `e1db18a1d50717f297b17b98b222323447b83b5e`, `18d4ddc` (merged in `d353778`, `1fbd6cd`)  
-> **Verification Branch**: `verification/vg-201-core-hardening`  
-> **Primary Tracking Issue**: [#3](https://github.com/Suthankan1/voltgrid/issues/3)  
-> **Master Development Tracking Issue**: [#64](https://github.com/Suthankan1/voltgrid/issues/64)  
-> **Verification Date**: 2026-11-26  
+> **Milestone**: VG-201 (Core Hardening Verification, Regression Testing and Audit Reconciliation)
+> **Baseline Planning Commit**: `71307b68477505de9f536ed579b6344d2158b80b`
+> **Historical Hardening Commits**: `e1db18a1d50717f297b17b98b222323447b83b5e`, `18d4ddc` (merged in `d353778`, `1fbd6cd`)
+> **Verification Branch**: `verification/vg-201-core-hardening`
+> **Primary Tracking Issue**: [#3](https://github.com/Suthankan1/voltgrid/issues/3)
+> **Master Development Tracking Issue**: [#64](https://github.com/Suthankan1/voltgrid/issues/64)
+> **Verification Date**: 2026-11-26
 
 ---
 
