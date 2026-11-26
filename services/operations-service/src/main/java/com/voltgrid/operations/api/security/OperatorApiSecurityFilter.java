@@ -1,0 +1,48 @@
+package com.voltgrid.operations.api.security;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.annotation.Order;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+
+@Component
+@Order(1)
+public class OperatorApiSecurityFilter extends OncePerRequestFilter {
+
+    private final String expectedToken;
+
+    public OperatorApiSecurityFilter(
+            @Value("${voltgrid.security.api-token:}") String expectedToken
+    ) {
+        this.expectedToken = expectedToken != null ? expectedToken.trim() : "";
+    }
+
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
+        String path = request.getRequestURI();
+
+        if (!expectedToken.isEmpty() && path != null && path.contains("/graphql")) {
+            String authHeader = request.getHeader("Authorization");
+
+            if (authHeader == null || !authHeader.startsWith("Bearer ")
+                    || !expectedToken.equals(authHeader.substring(7).trim())) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"errors\":[{\"message\":\"Unauthorized\"}]}");
+                return;
+            }
+        }
+
+        filterChain.doFilter(request, response);
+    }
+}

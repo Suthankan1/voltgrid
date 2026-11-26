@@ -21,6 +21,13 @@ on:
       - "contracts/authorization/**"
       - ".github/workflows/authorization-flow-e2e.yml"
 
+permissions:
+  contents: read
+
+concurrency:
+  group: authorization-flow-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   authorization-flow-e2e:
     name: Authorization Flow E2E

@@ -42,6 +42,19 @@ variable "authorization_image_tag" {
   default = "bd698ad89cb3e92c81b4308f296af1662eab08a9"
 }
 
+variable "authorization_token_hmac_key" {
+  description = "HMAC secret key for authorization token hashing."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "acm_certificate_arn" {
+  description = "Optional ACM certificate ARN for HTTPS listener on ALB."
+  type        = string
+  default     = ""
+}
+
 variable "station_image_tag" {
   description = "Immutable ECR image tag deployed by the Station Service task definition."
   type        = string

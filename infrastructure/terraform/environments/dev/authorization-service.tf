@@ -25,7 +25,7 @@ resource "aws_ecs_service" "authorization" {
 
   network_configuration {
     subnets = [
-      for subnet in aws_subnet.public :
+      for subnet in aws_subnet.private :
       subnet.id
     ]
 
@@ -33,7 +33,7 @@ resource "aws_ecs_service" "authorization" {
       aws_security_group.authorization.id
     ]
 
-    assign_public_ip = true
+    assign_public_ip = false
   }
 
   service_registries {

@@ -71,6 +71,22 @@ public class OutboxEventEntity {
     )
     private String traceContext;
 
+    @Column(
+            name = "retry_count",
+            nullable = false
+    )
+    private int retryCount = 0;
+
+    @Column(
+            name = "last_error"
+    )
+    private String lastError;
+
+    @Column(
+            name = "last_attempted_at"
+    )
+    private Instant lastAttemptedAt;
+
     protected OutboxEventEntity() {
     }
 
@@ -197,6 +213,27 @@ public class OutboxEventEntity {
                         publishedAt,
                         "publishedAt must not be null"
                 );
+    }
+
+    public void recordFailure(
+            String error,
+            Instant attemptedAt
+    ) {
+        this.retryCount++;
+        this.lastError = error;
+        this.lastAttemptedAt = attemptedAt;
+    }
+
+    public int getRetryCount() {
+        return retryCount;
+    }
+
+    public String getLastError() {
+        return lastError;
+    }
+
+    public Instant getLastAttemptedAt() {
+        return lastAttemptedAt;
     }
 
     private static String requireText(
