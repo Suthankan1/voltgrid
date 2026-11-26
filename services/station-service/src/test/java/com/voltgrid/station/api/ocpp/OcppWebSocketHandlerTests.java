@@ -93,4 +93,52 @@ class OcppWebSocketHandlerTests {
         handler.afterConnectionClosed(session2, CloseStatus.NORMAL);
         verify(connectivityService).markOffline("STATION-001");
     }
+
+    @Test
+    void shouldHandleRapidReconnectLoopsAcrossMultipleSessions() throws Exception {
+        Map<String, Object> attrs1 = new HashMap<>();
+        attrs1.put(OcppHandshakeInterceptor.STATION_ID_ATTRIBUTE, "STATION-RECONNECT");
+        Map<String, Object> attrs2 = new HashMap<>();
+        attrs2.put(OcppHandshakeInterceptor.STATION_ID_ATTRIBUTE, "STATION-RECONNECT");
+        Map<String, Object> attrs3 = new HashMap<>();
+        attrs3.put(OcppHandshakeInterceptor.STATION_ID_ATTRIBUTE, "STATION-RECONNECT");
+
+        when(session1.getAttributes()).thenReturn(attrs1);
+        when(session1.getId()).thenReturn("sess-A");
+        when(session2.getAttributes()).thenReturn(attrs2);
+        when(session2.getId()).thenReturn("sess-B");
+
+        var session3 = org.mockito.Mockito.mock(WebSocketSession.class);
+        when(session3.getAttributes()).thenReturn(attrs3);
+        when(session3.getId()).thenReturn("sess-C");
+
+        when(shutdownState.isShuttingDown()).thenReturn(false);
+
+        // Sequence: connect 1, connect 2, close 1, connect 3, close 2, close 3
+        handler.afterConnectionEstablished(session1);
+        handler.afterConnectionEstablished(session2);
+        handler.afterConnectionClosed(session1, CloseStatus.NORMAL);
+
+        verify(connectivityService, never()).markOffline("STATION-RECONNECT");
+
+        handler.afterConnectionEstablished(session3);
+        handler.afterConnectionClosed(session2, CloseStatus.NORMAL);
+
+        verify(connectivityService, never()).markOffline("STATION-RECONNECT");
+
+        // Finally session 3 closes
+        handler.afterConnectionClosed(session3, CloseStatus.NORMAL);
+        verify(connectivityService).markOffline("STATION-RECONNECT");
+    }
+
+    @Test
+    void shouldIgnoreClosedSessionWithoutStationId() {
+        var unauthenticatedSession = org.mockito.Mockito.mock(WebSocketSession.class);
+        when(unauthenticatedSession.getAttributes()).thenReturn(new HashMap<>());
+        when(shutdownState.isShuttingDown()).thenReturn(false);
+
+        handler.afterConnectionClosed(unauthenticatedSession, CloseStatus.NORMAL);
+
+        verify(connectivityService, never()).markOffline(org.mockito.ArgumentMatchers.anyString());
+    }
 }

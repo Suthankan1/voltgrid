@@ -65,6 +65,7 @@ Full security, architecture, reliability, bug, data, infrastructure, observabili
 | 16 | [Implementation Roadmap](16-implementation-roadmap.md) | VG-201 through VG-209 |
 | 17 | [Release Readiness](17-release-readiness.md) | Environment-specific assessments |
 | — | [findings.csv](findings.csv) | Consolidated finding register |
+| **VG-201** | [Core Hardening Verification](verification/vg-201/README.md) | Independent verification results, finding dispositions, regression test suites, and VG-202 readiness |
 
 ## Finding summary
 

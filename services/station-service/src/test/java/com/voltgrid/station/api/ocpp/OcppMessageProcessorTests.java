@@ -1526,4 +1526,131 @@ class OcppMessageProcessorTests {
         assertThat(json.get(0).intValue()).isEqualTo(3);
         assertThat(json.get(1).stringValue()).isEqualTo("status-tz");
     }
+
+    @Test
+    void shouldRejectTransactionEventWithNegativeSeqNo() {
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "tx-neg-seq",
+                  "TransactionEvent",
+                  {
+                    "eventType": "Started",
+                    "timestamp": "2026-09-08T10:30:00Z",
+                    "triggerReason": "CablePluggedIn",
+                    "seqNo": -1,
+                    "transactionInfo": {
+                      "transactionId": "TX-001"
+                    },
+                    "evse": {
+                      "id": 1,
+                      "connectorId": 1
+                    }
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+        assertThat(json.get(0).intValue()).isEqualTo(4);
+        assertThat(json.get(1).stringValue()).isEqualTo("tx-neg-seq");
+        assertThat(json.get(2).stringValue()).isEqualTo("FormatViolation");
+    }
+
+    @Test
+    void shouldAcceptTransactionEventWithMaxAllowedSeqNo() {
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "tx-max-seq",
+                  "TransactionEvent",
+                  {
+                    "eventType": "Started",
+                    "timestamp": "2026-09-08T10:30:00Z",
+                    "triggerReason": "CablePluggedIn",
+                    "seqNo": 1000000,
+                    "transactionInfo": {
+                      "transactionId": "TX-001"
+                    },
+                    "evse": {
+                      "id": 1,
+                      "connectorId": 1
+                    }
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+        assertThat(json.get(0).intValue()).isEqualTo(3);
+        assertThat(json.get(1).stringValue()).isEqualTo("tx-max-seq");
+    }
+
+    @Test
+    void shouldRejectTransactionEventWithSeqNoExceedingLimit() {
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "tx-over-seq",
+                  "TransactionEvent",
+                  {
+                    "eventType": "Started",
+                    "timestamp": "2026-09-08T10:30:00Z",
+                    "triggerReason": "CablePluggedIn",
+                    "seqNo": 1000001,
+                    "transactionInfo": {
+                      "transactionId": "TX-001"
+                    },
+                    "evse": {
+                      "id": 1,
+                      "connectorId": 1
+                    }
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+        assertThat(json.get(0).intValue()).isEqualTo(4);
+        assertThat(json.get(1).stringValue()).isEqualTo("tx-over-seq");
+        assertThat(json.get(2).stringValue()).isEqualTo("FormatViolation");
+    }
+
+    @Test
+    void shouldRejectTransactionEventWithMaxIntegerSeqNo() {
+        var response = processor.process(
+                "STATION-003",
+                """
+                [
+                  2,
+                  "tx-max-int",
+                  "TransactionEvent",
+                  {
+                    "eventType": "Started",
+                    "timestamp": "2026-09-08T10:30:00Z",
+                    "triggerReason": "CablePluggedIn",
+                    "seqNo": 2147483647,
+                    "transactionInfo": {
+                      "transactionId": "TX-001"
+                    },
+                    "evse": {
+                      "id": 1,
+                      "connectorId": 1
+                    }
+                  }
+                ]
+                """
+        );
+
+        var json = jsonMapper.readTree(response);
+        assertThat(json.get(0).intValue()).isEqualTo(4);
+        assertThat(json.get(1).stringValue()).isEqualTo("tx-max-int");
+        assertThat(json.get(2).stringValue()).isEqualTo("FormatViolation");
+    }
 }

@@ -82,4 +82,38 @@ class StationStatusProjectionEntityTests {
         assertThat(applied).isFalse();
         assertThat(entity.getCurrentStatus()).isEqualTo("ONLINE");
     }
+
+    @Test
+    void shouldDemonstrateEqualTimestampArrivalOrderSensitivity() {
+        // Documents BUG-010 distributed limitation:
+        // When two events have equal timestamps (same millisecond), the projection state
+        // depends entirely on delivery order (last-write-wins) rather than causal event order.
+        var equalTimestamp = Instant.parse("2026-09-13T17:00:00Z");
+        var eventIdA = UUID.randomUUID();
+        var eventIdB = UUID.randomUUID();
+
+        // Scenario 1: Event A (ONLINE) then Event B (OFFLINE)
+        var entityScenario1 = new StationStatusProjectionEntity(
+                "STATION-001",
+                "ONLINE",
+                eventIdA,
+                equalTimestamp,
+                equalTimestamp
+        );
+        entityScenario1.apply(eventIdB, "OFFLINE", equalTimestamp, equalTimestamp.plusMillis(1));
+        assertThat(entityScenario1.getCurrentStatus()).isEqualTo("OFFLINE");
+
+        // Scenario 2: Reversed delivery order: Event B (OFFLINE) then Event A (ONLINE)
+        var entityScenario2 = new StationStatusProjectionEntity(
+                "STATION-001",
+                "OFFLINE",
+                eventIdB,
+                equalTimestamp,
+                equalTimestamp
+        );
+        entityScenario2.apply(eventIdA, "ONLINE", equalTimestamp, equalTimestamp.plusMillis(1));
+        assertThat(entityScenario2.getCurrentStatus()).isEqualTo("ONLINE");
+
+        // Confirms that equal timestamps cannot guarantee causal determinism without aggregate versioning (VG-204)
+    }
 }

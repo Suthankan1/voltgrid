@@ -93,4 +93,73 @@ class StationConnectorStatusServiceTests {
 
         verify(connectorWriter, never()).save(any());
     }
+
+    @Test
+    void shouldAllowConnectorStatusUpdateWhenTimestampIsEqualToExisting() {
+        var exactTimestamp = Instant.parse("2026-09-08T05:30:00Z");
+
+        var existingConnector = new StationConnector(
+                "STATION-003",
+                1,
+                1,
+                ConnectorStatus.AVAILABLE,
+                exactTimestamp
+        );
+
+        when(connectorReader.findByStationId("STATION-003"))
+                .thenReturn(List.of(existingConnector));
+
+        service.updateStatus(
+                "STATION-003",
+                1,
+                1,
+                ConnectorStatus.OCCUPIED,
+                exactTimestamp
+        );
+
+        verify(connectorWriter).save(
+                new StationConnector(
+                        "STATION-003",
+                        1,
+                        1,
+                        ConnectorStatus.OCCUPIED,
+                        exactTimestamp
+                )
+        );
+    }
+
+    @Test
+    void shouldIsolateStatusUpdatesAcrossDistinctConnectors() {
+        var timestamp = Instant.parse("2026-09-08T05:30:00Z");
+
+        var connector1 = new StationConnector(
+                "STATION-003",
+                1,
+                1,
+                ConnectorStatus.OCCUPIED,
+                timestamp
+        );
+
+        when(connectorReader.findByStationId("STATION-003"))
+                .thenReturn(List.of(connector1));
+
+        // Update connector 2 (not yet recorded in DB)
+        service.updateStatus(
+                "STATION-003",
+                1,
+                2,
+                ConnectorStatus.AVAILABLE,
+                timestamp.minusSeconds(100) // Older than connector 1, but connector 2 doesn't exist yet
+        );
+
+        verify(connectorWriter).save(
+                new StationConnector(
+                        "STATION-003",
+                        1,
+                        2,
+                        ConnectorStatus.AVAILABLE,
+                        timestamp.minusSeconds(100)
+                )
+        );
+    }
 }
