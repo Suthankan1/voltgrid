@@ -65,3 +65,8 @@ Documentation should evolve together with the implementation.
 The project should avoid creating documentation for technologies or architectural decisions that have not yet been introduced.
 
 When a new concept is implemented, the relevant learning notes or ADRs can be added as part of the same development phase.
+
+
+## Commercial product planning
+
+See [product/](product/README.md) for the research-derived Sri Lankan competitive landscape, 52-feature catalogue, integrated delivery roadmap, architecture/release gates and commercial readiness checklist. These are proposed future requirements, not implemented technology or completed ADRs. They complement the [VG-200 audit](audit/README.md) and [operator redesign](redesign/README.md).
