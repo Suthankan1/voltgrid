@@ -36,87 +36,30 @@ function loadTs(relPath) {
   return mod.exports;
 }
 
-const {
-  PRESET_PERSONAS,
-  createBearerToken,
-  encodeSession,
-  decodeSession,
-  getSession,
-  getAuthHeaders,
-} = loadTs("auth.ts");
-
+const { createAuthStore } = loadTs("auth-store.ts");
 const { ADMIN_NAV_ITEMS, resolveRouteMeta } = loadTs("routes.ts");
 
-test("PRESET_PERSONAS defines all five commercial roles with expected properties", () => {
-  const expectedRoles = [
-    "PLATFORM_ADMIN",
-    "ORG_OWNER",
-    "STATION_OPERATOR",
-    "BILLING_ANALYST",
-    "READ_ONLY",
-  ];
+test("opaque session handles resolve only while their record is active", () => {
+  const sessions = createAuthStore(3);
+  const record = { expiresAt: Date.now() + 60_000, token: "server-side-token" };
+  const id = sessions.create(record);
 
-  for (const [key, persona] of Object.entries(PRESET_PERSONAS)) {
-    assert.ok(persona.userId.startsWith("usr_"), `${key} userId must start with usr_`);
-    assert.ok(persona.email.includes("@"), `${key} email must be valid`);
-    assert.ok(persona.roles.length > 0, `${key} must have at least one role`);
-    assert.ok(persona.activeOrganizationId, `${key} must have activeOrganizationId`);
-    assert.ok(Array.isArray(persona.availableOrganizations), `${key} must list availableOrganizations`);
-  }
+  assert.match(id, /^[A-Za-z0-9_-]{43}$/);
+  assert.notEqual(sessions.create(record), id);
+  assert.equal(sessions.get(id), record);
+  assert.equal(sessions.get("unknown"), undefined);
 
-  const configuredRoles = Object.values(PRESET_PERSONAS).flatMap(p => p.roles);
-  for (const role of expectedRoles) {
-    assert.ok(configuredRoles.includes(role), `Missing role in preset personas: ${role}`);
-  }
+  sessions.delete(id);
+  assert.equal(sessions.get(id), undefined);
 });
 
-test("createBearerToken produces valid three-part JWT token with claims", () => {
-  const user = PRESET_PERSONAS.platform_admin;
-  const token = createBearerToken(user);
-  const parts = token.split(".");
+test("expired records are rejected and their storage can be reclaimed", () => {
+  const sessions = createAuthStore(1);
+  const id = sessions.create({ expiresAt: Date.now() - 1 });
+  const active = sessions.create({ expiresAt: Date.now() + 60_000 });
 
-  assert.equal(parts.length, 3, "JWT must contain header, payload, and signature");
-
-  const header = JSON.parse(Buffer.from(parts[0], "base64url").toString());
-  assert.equal(header.alg, "HS256");
-  assert.equal(header.typ, "JWT");
-
-  const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString());
-  assert.equal(payload.sub, user.userId);
-  assert.equal(payload.email, user.email);
-  assert.deepEqual(payload.roles, user.roles);
-  assert.equal(payload.tenantId, user.activeOrganizationId);
-  assert.ok(payload.exp > payload.iat, "exp must be after iat");
-});
-
-test("encodeSession and decodeSession round-trip correctly", () => {
-  const user = PRESET_PERSONAS.station_operator;
-  const token = createBearerToken(user);
-
-  const encoded = encodeSession(user, token);
-  assert.ok(typeof encoded === "string" && encoded.length > 20);
-
-  const decoded = decodeSession(encoded);
-  assert.ok(decoded !== null);
-  assert.equal(decoded.user.userId, user.userId);
-  assert.equal(decoded.user.email, user.email);
-  assert.equal(decoded.token, token);
-
-  assert.equal(decodeSession("not-valid-base64-json"), null);
-});
-
-test("getSession returns fallback developer session in standalone environment", async () => {
-  const session = await getSession();
-  assert.ok(session.isAuthenticated);
-  assert.ok(session.user);
-  assert.ok(session.token);
-  assert.equal(session.user.activeOrganizationId, "org_voltgrid_default");
-});
-
-test("getAuthHeaders includes Bearer token and X-Tenant-Id header", async () => {
-  const headers = await getAuthHeaders();
-  assert.ok(headers["Authorization"]?.startsWith("Bearer "));
-  assert.equal(headers["X-Tenant-Id"], "org_voltgrid_default");
+  assert.equal(sessions.get(id), undefined);
+  assert.ok(sessions.get(active));
 });
 
 test("ADMIN_NAV_ITEMS defines all four administrative areas", () => {

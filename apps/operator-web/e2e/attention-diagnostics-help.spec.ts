@@ -4,6 +4,8 @@ import { spawn } from "node:child_process";
 import net from "node:net";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
+import { signIn } from "./sign-in";
+import { respondToOrganizationAccess } from "./organization-fixture";
 
 const VIEWPORTS = [
   [320, 568],
@@ -132,10 +134,11 @@ test("Needs attention, Diagnostics, Help, and all six navigation destinations sa
   ];
 
   const apiPort = await getFreePort();
-  const appPort = await getFreePort();
+  const appPort = 4313;
   const origin = `http://127.0.0.1:${appPort}`;
 
   const apiServer = createServer(async (req, res) => {
+    if (respondToOrganizationAccess(req, res)) return;
     let body = "";
     for await (const chunk of req) body += chunk;
     const { query, variables = {} } = JSON.parse(body || "{}") as {
@@ -350,6 +353,8 @@ test("Needs attention, Diagnostics, Help, and all six navigation destinations sa
       cwd: process.cwd(),
       env: {
         ...process.env,
+        OPERATOR_WEB_ORIGIN: `http://127.0.0.1:${appPort}`,
+        OIDC_LOCAL_HTTP: "true",
         STATION_GRAPHQL_URL: `http://127.0.0.1:${apiPort}/graphql`,
         OPERATIONS_GRAPHQL_URL: `http://127.0.0.1:${apiPort}/graphql`,
       },
@@ -376,6 +381,7 @@ test("Needs attention, Diagnostics, Help, and all six navigation destinations sa
 
   try {
     await waitForHttpOk(`${origin}/help`);
+    await signIn(page, origin);
 
     // 1. Check all 7 viewports across /attention, /diagnostics, and /help with zero horizontal overflow
     for (const [width, height] of VIEWPORTS) {

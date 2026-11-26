@@ -4,6 +4,8 @@ import { spawn } from "node:child_process";
 import net from "node:net";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
+import { signIn } from "./sign-in";
+import { respondToOrganizationAccess } from "./organization-fixture";
 
 const CHARGER_CAPTURE_DIR = process.env.UI110_CHARGER_CAPTURE_DIR ?? "";
 
@@ -162,10 +164,11 @@ test("integrated UI-110 journeys, legacy routes, failure recovery, and mandatory
   ];
 
   const apiPort = await getFreePort();
-  const rwAppPort = await getFreePort();
-  const roAppPort = await getFreePort();
+  const rwAppPort = 4313;
+  const roAppPort = 4314;
 
   const apiServer = createServer(async (req, res) => {
+    if (respondToOrganizationAccess(req, res)) return;
     let body = "";
     for await (const chunk of req) body += chunk;
     const { query, variables = {} } = JSON.parse(body || "{}") as {
@@ -315,6 +318,8 @@ test("integrated UI-110 journeys, legacy routes, failure recovery, and mandatory
     {
       env: {
         ...process.env,
+        OPERATOR_WEB_ORIGIN: `http://127.0.0.1:${rwAppPort}`,
+        OIDC_LOCAL_HTTP: "true",
         OPERATOR_LOCAL_WRITES: "true",
         STATION_GRAPHQL_URL: `http://127.0.0.1:${apiPort}/graphql`,
         OPERATIONS_GRAPHQL_URL: `http://127.0.0.1:${apiPort}/graphql`,
@@ -336,6 +341,8 @@ test("integrated UI-110 journeys, legacy routes, failure recovery, and mandatory
     {
       env: {
         ...process.env,
+        OPERATOR_WEB_ORIGIN: `http://127.0.0.1:${roAppPort}`,
+        OIDC_LOCAL_HTTP: "true",
         OPERATOR_LOCAL_WRITES: "false",
         STATION_GRAPHQL_URL: `http://127.0.0.1:${apiPort}/graphql`,
         OPERATIONS_GRAPHQL_URL: `http://127.0.0.1:${apiPort}/graphql`,
@@ -348,6 +355,7 @@ test("integrated UI-110 journeys, legacy routes, failure recovery, and mandatory
     const base = `http://127.0.0.1:${rwAppPort}`;
     const roBase = `http://127.0.0.1:${roAppPort}`;
     await Promise.all([waitForHttpOk(base), waitForHttpOk(roBase)]);
+    await signIn(page, base);
 
     if (CHARGER_CAPTURE_DIR) {
       mkdirSync(CHARGER_CAPTURE_DIR, { recursive: true });
@@ -490,6 +498,7 @@ test("integrated UI-110 journeys, legacy routes, failure recovery, and mandatory
     await expect(page.getByRole("link", { name: "Kandy Transit Depot" })).toBeVisible();
 
     // 14. Read-only registration enforcement
+    await signIn(page, roBase);
     await page.goto(`${roBase}/stations/new`);
     await expect(page.getByRole("heading", { name: "Read-only console" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Register station" })).toHaveCount(0);

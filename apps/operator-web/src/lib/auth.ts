@@ -1,15 +1,6 @@
-export type UserRole =
-  | "PLATFORM_ADMIN"
-  | "ORG_OWNER"
-  | "STATION_OPERATOR"
-  | "BILLING_ANALYST"
-  | "READ_ONLY";
-
-export interface OrganizationMembershipInfo {
-  id: string;
-  name: string;
-  role: UserRole;
-}
+import { cache } from "react";
+import { createAuthStore } from "./auth-store";
+import { appOrigin, getProvider, oidc } from "./oidc";
 
 export interface AuthUser {
   userId: string;
@@ -17,183 +8,146 @@ export interface AuthUser {
   name: string;
   roles: string[];
   activeOrganizationId: string;
-  availableOrganizations: OrganizationMembershipInfo[];
 }
 
 export interface AuthSession {
-  user: AuthUser;
-  token: string;
+  user: AuthUser | null;
+  token: string | null;
   isAuthenticated: boolean;
 }
 
-export const SESSION_COOKIE_NAME = "voltgrid_session";
-
-export const PRESET_PERSONAS: Record<string, AuthUser> = {
-  platform_admin: {
-    userId: "usr_platform_admin_001",
-    email: "admin@voltgrid.lk",
-    name: "Kasun Silva (Platform Admin)",
-    roles: ["PLATFORM_ADMIN", "ORG_OWNER"],
-    activeOrganizationId: "org_voltgrid_default",
-    availableOrganizations: [
-      { id: "org_voltgrid_default", name: "VoltGrid Default Operations", role: "PLATFORM_ADMIN" },
-      { id: "org_ceb_pilot", name: "CEB National Grid Pilot", role: "PLATFORM_ADMIN" },
-    ],
-  },
-  org_owner: {
-    userId: "usr_org_owner_001",
-    email: "owner@voltgrid.lk",
-    name: "Dilshan Perera (Org Owner)",
-    roles: ["ORG_OWNER"],
-    activeOrganizationId: "org_voltgrid_default",
-    availableOrganizations: [
-      { id: "org_voltgrid_default", name: "VoltGrid Default Operations", role: "ORG_OWNER" },
-    ],
-  },
-  station_operator: {
-    userId: "usr_operator_001",
-    email: "operator@voltgrid.lk",
-    name: "Nimal Fernando (Station Operator)",
-    roles: ["STATION_OPERATOR"],
-    activeOrganizationId: "org_voltgrid_default",
-    availableOrganizations: [
-      { id: "org_voltgrid_default", name: "VoltGrid Default Operations", role: "STATION_OPERATOR" },
-    ],
-  },
-  billing_analyst: {
-    userId: "usr_billing_001",
-    email: "billing@voltgrid.lk",
-    name: "Anoma Jayasinghe (Billing Analyst)",
-    roles: ["BILLING_ANALYST"],
-    activeOrganizationId: "org_voltgrid_default",
-    availableOrganizations: [
-      { id: "org_voltgrid_default", name: "VoltGrid Default Operations", role: "BILLING_ANALYST" },
-    ],
-  },
-  read_only: {
-    userId: "usr_auditor_001",
-    email: "auditor@voltgrid.lk",
-    name: "Rohan De Silva (Compliance Auditor)",
-    roles: ["READ_ONLY"],
-    activeOrganizationId: "org_voltgrid_default",
-    availableOrganizations: [
-      { id: "org_voltgrid_default", name: "VoltGrid Default Operations", role: "READ_ONLY" },
-    ],
-  },
+type Login = { expiresAt: number; verifier: string; state: string; nonce: string };
+type Session = {
+  expiresAt: number;
+  tokenExpiresAt: number;
+  user: AuthUser;
+  token: string;
+  refreshToken?: string;
+  refreshing?: Promise<void>;
 };
 
-/**
- * Creates a signed/encoded JWT test token matching the backend JwtTokenValidator claims.
- */
-export function createBearerToken(user: AuthUser): string {
-  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
-  const now = Math.floor(Date.now() / 1000);
-  const payload = Buffer.from(
-    JSON.stringify({
-      sub: user.userId,
-      email: user.email,
-      name: user.name,
-      roles: user.roles,
-      tenantId: user.activeOrganizationId,
-      iat: now,
-      exp: now + 86400, // 24 hours
-    })
-  ).toString("base64url");
+const stores = globalThis as typeof globalThis & {
+  voltgridLogins?: ReturnType<typeof createAuthStore<Login>>;
+  voltgridSessions?: ReturnType<typeof createAuthStore<Session>>;
+};
 
-  return `${header}.${payload}.signature_${user.userId.substring(0, 8)}`;
-}
+export const logins = stores.voltgridLogins ??= createAuthStore<Login>(1000);
+export const sessions = stores.voltgridSessions ??= createAuthStore<Session>(10000);
+export const SESSION_COOKIE_NAME = "voltgrid_session";
+export const LOGIN_COOKIE_NAME = "voltgrid_oidc";
+export const SESSION_MAX_AGE = 8 * 60 * 60;
+export const LOGIN_MAX_AGE = 5 * 60;
+export const PRIVATE_HEADERS = { "Cache-Control": "private, no-store" };
 
-/**
- * Encodes session into cookie value
- */
-export function encodeSession(user: AuthUser, token: string): string {
-  const sessionData = { user, token };
-  return Buffer.from(JSON.stringify(sessionData)).toString("base64url");
-}
-
-/**
- * Decodes session from cookie value
- */
-export function decodeSession(cookieValue: string): { user: AuthUser; token: string } | null {
-  try {
-    const raw = Buffer.from(cookieValue, "base64url").toString("utf-8");
-    const parsed = JSON.parse(raw);
-    if (parsed && parsed.user && parsed.user.userId && parsed.token) {
-      return parsed;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Dynamically resolves next/headers cookie store when in Next.js server runtime.
- */
-async function getCookieStore() {
-  try {
-    const nextHeaders = await import("next/headers");
-    if (typeof nextHeaders.cookies === "function") {
-      return await nextHeaders.cookies();
-    }
-  } catch {
-    // Standalone node environment or static generation
-  }
-  return null;
-}
-
-/**
- * Retrieves current session.
- */
-export async function getSession(): Promise<AuthSession> {
-  try {
-    const cookieStore = await getCookieStore();
-    if (cookieStore) {
-      const cookie = cookieStore.get(SESSION_COOKIE_NAME);
-      if (cookie?.value) {
-        const decoded = decodeSession(cookie.value);
-        if (decoded) {
-          return {
-            user: decoded.user,
-            token: decoded.token,
-            isAuthenticated: true,
-          };
-        }
-      }
-    }
-  } catch {
-    // Ignore cookie resolution failures
-  }
-
-  // Fallback dev persona
-  const defaultUser = PRESET_PERSONAS.platform_admin;
+export function cookieOptions(maxAge: number) {
   return {
-    user: defaultUser,
-    token: createBearerToken(defaultUser),
-    isAuthenticated: true,
+    httpOnly: true,
+    secure: new URL(appOrigin()).protocol === "https:",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge,
   };
 }
 
-/**
- * Returns auth headers to attach to upstream backend GraphQL and REST calls.
- */
-export async function getAuthHeaders(): Promise<Record<string, string>> {
+export function sameOrigin(request: Request) {
   try {
-    const session = await getSession();
-    const headers: Record<string, string> = {};
-
-    if (session.token) {
-      headers["Authorization"] = `Bearer ${session.token}`;
-    }
-
-    if (session.user?.activeOrganizationId) {
-      headers["X-Tenant-Id"] = session.user.activeOrganizationId;
-    }
-
-    return headers;
+    return request.headers.get("origin") === appOrigin();
   } catch {
-    return {
-      "X-Tenant-Id": "org_voltgrid_default",
-    };
+    return false;
   }
+}
+
+export async function organizationAccess(token: string, organizationId: string, switching = false) {
+  const endpoint = new URL("/api/operator/organization-access", process.env.STATION_GRAPHQL_URL);
+  endpoint.searchParams.set("organizationId", organizationId);
+  const response = await fetch(endpoint, {
+    method: switching ? "POST" : "GET",
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+    redirect: "error",
+    signal: AbortSignal.timeout(3000),
+  });
+
+  if (response.status === 403) return null;
+  if (!response.ok) throw new Error("Organization access check failed");
+  const access = await response.json();
+  if (access.organizationId !== organizationId || typeof access.role !== "string") {
+    throw new Error("Invalid organization access response");
+  }
+  return { organizationId, role: access.role as string };
+}
+
+export async function verifiedSession(
+  subject: string,
+  token: string,
+  refreshToken: string | undefined,
+  expiresAt: number,
+  selectedOrganization?: string,
+): Promise<Session> {
+  const { verify } = await getProvider();
+  const { payload } = await verify(token, subject);
+  const organization = payload.org_id ?? payload.tenant_id;
+  if (typeof organization !== "string" || !organization.trim() || !payload.exp) {
+    throw new Error("OIDC identity has no organization");
+  }
+  const access = await organizationAccess(token, selectedOrganization ?? organization);
+  if (!access) throw new Error("OIDC identity has no active membership");
+  return {
+    expiresAt,
+    tokenExpiresAt: payload.exp * 1000,
+    token,
+    refreshToken,
+    user: {
+      userId: subject,
+      email: typeof payload.email === "string" ? payload.email : "",
+      name: typeof payload.name === "string" ? payload.name : subject,
+      roles: [access.role],
+      activeOrganizationId: access.organizationId,
+    },
+  };
+}
+
+async function refresh(session: Session) {
+  if (!session.refreshToken) throw new Error("OIDC session requires sign-in");
+  const { client } = await getProvider();
+  const tokens = await oidc.refreshTokenGrant(client, session.refreshToken);
+  const updated = await verifiedSession(
+    session.user.userId,
+    tokens.access_token,
+    tokens.refresh_token ?? session.refreshToken,
+    session.expiresAt,
+    session.user.activeOrganizationId,
+  );
+  Object.assign(session, updated);
+}
+
+export const getSession = cache(async (): Promise<AuthSession> => {
+  const { cookies } = await import("next/headers");
+  const id = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
+  const session = id && sessions.get(id);
+  if (id && session) {
+    try {
+      if (session.tokenExpiresAt <= Date.now() + 15_000) {
+        session.refreshing ??= refresh(session).finally(() => {
+          session.refreshing = undefined;
+        });
+        await session.refreshing;
+      }
+      if (sessions.get(id) === session && session.tokenExpiresAt > Date.now()) {
+        return { user: session.user, token: session.token, isAuthenticated: true };
+      }
+    } catch {
+      sessions.delete(id);
+    }
+  }
+  return { user: null, token: null, isAuthenticated: false };
+});
+
+export async function getAuthHeaders(): Promise<Record<string, string>> {
+  const session = await getSession();
+  if (!session.token || !session.user) return {};
+  return {
+    Authorization: `Bearer ${session.token}`,
+    "X-Tenant-Id": session.user.activeOrganizationId,
+  };
 }

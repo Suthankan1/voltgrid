@@ -166,7 +166,7 @@ test("route pages do not render duplicate nested main landmarks", () => {
     return entries;
   }
 
-  const appFiles = walk(path.join(srcDir, "app"));
+  const appFiles = walk(path.join(srcDir, "app", "(operator)"));
   for (const file of appFiles) {
     const content = readFileSync(file, "utf8");
     assert.doesNotMatch(content, /<main\b/, `${path.relative(srcDir, file)} should not define nested <main>`);

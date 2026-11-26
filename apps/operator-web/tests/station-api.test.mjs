@@ -1,6 +1,15 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import {
+import { registerHooks } from 'node:module';
+
+const authStub = registerHooks({ resolve(specifier, context, nextResolve) {
+  if (specifier === './auth') {
+    return { url: 'data:text/javascript,export const getAuthHeaders = async () => ({})', shortCircuit: true };
+  }
+  return nextResolve(specifier, context);
+}});
+
+const {
   getStationSnapshot,
   getStationDetail,
   getStationPageData,
@@ -8,7 +17,8 @@ import {
   getNetworkTransactionPage,
   getTransactionInspector,
   getSessionPageData,
-} from '../src/lib/station-api.ts';
+} = await import('../src/lib/station-api.ts');
+authStub.deregister();
 const originalFetch = globalThis.fetch;
 const originalEndpoint = process.env.STATION_GRAPHQL_URL;
 afterEach(() => {globalThis.fetch=originalFetch;if(originalEndpoint===undefined) delete process.env.STATION_GRAPHQL_URL;else process.env.STATION_GRAPHQL_URL=originalEndpoint;});

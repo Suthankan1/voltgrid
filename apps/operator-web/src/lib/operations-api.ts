@@ -1,3 +1,5 @@
+import { getAuthHeaders } from "./auth";
+
 export type OperationalStatus = "ONLINE" | "OFFLINE" | "UNAVAILABLE";
 export type ProjectedStation = {
   stationId: string;
@@ -99,7 +101,7 @@ export async function getOperationsSnapshot(after?: string, status?: Operational
   try {
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...await getAuthHeaders() },
       body: JSON.stringify({ query: QUERY, variables: { after: after ?? null, status: status ?? null } }),
       cache: "no-store",
       signal: AbortSignal.timeout(5000),
@@ -139,7 +141,7 @@ export async function getDiagnosticsPage(
   try {
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...await getAuthHeaders() },
       body: JSON.stringify({
         query: DIAGNOSTICS_PAGE_QUERY,
         variables: { after, status },
@@ -227,7 +229,7 @@ export async function getStationOperationalStatus(
   try {
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...await getAuthHeaders() },
       body: JSON.stringify({
         query: STATION_OPERATIONAL_STATUS_QUERY,
         variables: { stationId },

@@ -3,6 +3,8 @@ import { createServer } from "node:http";
 import { spawn } from "node:child_process";
 import net from "node:net";
 import { expect, test, type Page } from "@playwright/test";
+import { signIn } from "./sign-in";
+import { respondToOrganizationAccess } from "./organization-fixture";
 
 async function getFreePort(): Promise<number> {
   return await new Promise((resolve, reject) => {
@@ -153,10 +155,12 @@ test("automated WCAG 2.2 AA audit across all canonical screens, dialogs, and fai
   ];
 
   const apiPort = await getFreePort();
-  const rwAppPort = await getFreePort();
-  const roAppPort = await getFreePort();
+  const rwAppPort = 4313;
+  const roAppPort = 4314;
 
   const apiServer = createServer(async (req, res) => {
+    if (respondToOrganizationAccess(req, res)) return;
+
     let body = "";
     for await (const chunk of req) body += chunk;
     const { query, variables = {} } = JSON.parse(body || "{}") as {
@@ -173,7 +177,9 @@ test("automated WCAG 2.2 AA audit across all canonical screens, dialogs, and fai
     let data: Record<string, unknown> = {};
     let errors: Array<{ message: string; path?: string[] }> | undefined;
 
-    if (query.includes("OperatorRegister")) {
+    if (query.includes("GetOrganizations")) {
+      data = { organizations: [] };
+    } else if (query.includes("OperatorRegister")) {
       if (mode === "register-timeout") {
         res.writeHead(504);
         res.end("Gateway Timeout");
@@ -362,6 +368,8 @@ test("automated WCAG 2.2 AA audit across all canonical screens, dialogs, and fai
       env: {
         ...process.env,
         OPERATOR_LOCAL_WRITES: "true",
+        OPERATOR_WEB_ORIGIN: `http://127.0.0.1:${rwAppPort}`,
+        OIDC_LOCAL_HTTP: "true",
         STATION_GRAPHQL_URL: `http://127.0.0.1:${apiPort}/graphql`,
         OPERATIONS_GRAPHQL_URL: `http://127.0.0.1:${apiPort}/graphql`,
       },
@@ -383,6 +391,8 @@ test("automated WCAG 2.2 AA audit across all canonical screens, dialogs, and fai
       env: {
         ...process.env,
         OPERATOR_LOCAL_WRITES: "false",
+        OPERATOR_WEB_ORIGIN: `http://127.0.0.1:${roAppPort}`,
+        OIDC_LOCAL_HTTP: "true",
         STATION_GRAPHQL_URL: `http://127.0.0.1:${apiPort}/graphql`,
         OPERATIONS_GRAPHQL_URL: `http://127.0.0.1:${apiPort}/graphql`,
       },
@@ -395,6 +405,7 @@ test("automated WCAG 2.2 AA audit across all canonical screens, dialogs, and fai
     const roBase = `http://127.0.0.1:${roAppPort}`;
     await Promise.all([waitForHttpOk(base), waitForHttpOk(roBase)]);
 
+    await signIn(page, base);
     await page.setViewportSize({ width: 1440, height: 900 });
 
     const populatedRoutes: Array<[string, string]> = [
@@ -422,8 +433,15 @@ test("automated WCAG 2.2 AA audit across all canonical screens, dialogs, and fai
     ];
 
     for (const [label, url] of populatedRoutes) {
-      await page.goto(url);
-      await expectNoAxeViolations(page, label);
+      if (url.startsWith(roBase)) {
+        await signIn(page, roBase);
+        await page.goto(url);
+        await expectNoAxeViolations(page, label);
+        await signIn(page, base);
+      } else {
+        await page.goto(url);
+        await expectNoAxeViolations(page, label);
+      }
     }
 
     // Check Help with expanded disclosure and copy feedback on Connection details
@@ -450,6 +468,7 @@ test("automated WCAG 2.2 AA audit across all canonical screens, dialogs, and fai
     await expectNoAxeViolations(page, "Registration (confirmed success)");
 
     await page.getByRole("button", { name: "Register another station" }).click();
+    await page.waitForLoadState("networkidle");
     await page.getByLabel("Station name", { exact: true }).fill("Duplicate A11y");
     await page.getByLabel("Station identifier", { exact: true }).fill("CP-A11Y-1");
     await page.getByRole("button", { name: "Register station", exact: true }).click();

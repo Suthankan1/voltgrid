@@ -4,12 +4,24 @@ const station = {id:'CP-1',name:'Colombo Central',status:'ONLINE'};
 const transaction = {stationId:'CP-1',transactionId:'TX-1',evseId:1,connectorId:1,status:'ENDED',startedAt:'2026-10-08T08:00:00Z',endedAt:'2026-10-08T09:00:00Z',lastSequenceNumber:2};
 const completeness = {status:'COMPLETE',firstSequenceNumber:0,lastSequenceNumber:2,missingSequenceNumbers:[]};
 createServer(async (req,res) => {
+ const url = new URL(req.url, "http://127.0.0.1");
+ if (url.pathname === "/api/operator/organization-access") {
+  const organizationId = url.searchParams.get("organizationId");
+  if (organizationId !== "org_fixture_a" || !req.headers.authorization?.startsWith("Bearer ")) {
+   res.writeHead(403).end();
+   return;
+  }
+  res.setHeader("Content-Type", "application/json");
+  res.end(JSON.stringify({organizationId, role:"ORG_OWNER"}));
+  return;
+ }
  if(req.url === '/health') {res.end('ok');return;}
  if(req.url === '/__reset' && req.method === 'POST') {registered.clear();res.end('ok');return;}
  let body='';for await(const chunk of req) body+=chunk;
  const {query,variables={}}=JSON.parse(body);
  let data;
- if(query.includes('OperatorRegister')) {
+ if(query.includes('GetOrganizations')) data={organizations:[{id:'org_fixture_a',name:'Test Operations',status:'ACTIVE'}]};
+ else if(query.includes('OperatorRegister')) {
   const input=variables.input;
   if(registered.has(input.id)) {res.setHeader('Content-Type','application/json');res.end(JSON.stringify({errors:[{message:`Station already exists: ${input.id}`}]}));return;}
   const created={...input,status:'OFFLINE'};registered.set(input.id,created);data={registerStation:created};

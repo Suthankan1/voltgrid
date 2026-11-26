@@ -1,6 +1,8 @@
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
 import { test, expect } from "@playwright/test";
+import { signIn } from "./sign-in";
+import { respondToOrganizationAccess } from "./organization-fixture";
 
 function getFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -125,6 +127,7 @@ test("stations directory covers search, filtering, context return, overview link
   ];
 
   const apiServer = createServer((req, res) => {
+    if (respondToOrganizationAccess(req, res)) return;
     if (req.url === "/health") {
       res.end("ok");
       return;
@@ -179,7 +182,7 @@ test("stations directory covers search, filtering, context return, overview link
   });
 
   const apiPort = await getFreePort();
-  const appPort = await getFreePort();
+  const appPort = 4313;
   await new Promise<void>(resolve => apiServer.listen(apiPort, "127.0.0.1", resolve));
 
   const nextProc = spawn(
@@ -189,6 +192,8 @@ test("stations directory covers search, filtering, context return, overview link
       cwd: process.cwd(),
       env: {
         ...process.env,
+        OPERATOR_WEB_ORIGIN: `http://127.0.0.1:${appPort}`,
+        OIDC_LOCAL_HTTP: "true",
         OPERATOR_LOCAL_WRITES: "false",
         STATION_GRAPHQL_URL: `http://127.0.0.1:${apiPort}/graphql`,
         OPERATIONS_GRAPHQL_URL: `http://127.0.0.1:${apiPort}/graphql`,
@@ -211,6 +216,7 @@ test("stations directory covers search, filtering, context return, overview link
 
     // 1. Overview links to directory + legacy overview redirects
     await page.setViewportSize({ width: 1280, height: 800 });
+    await signIn(page, origin);
     await page.goto(`${origin}/`);
     await expect(page.getByText("Showing 6 of 8 stations").first()).toBeVisible();
     await page.getByRole("link", { name: "Inspect offline stations" }).first().click();

@@ -2,6 +2,8 @@ import { createServer } from "node:http";
 import { spawn } from "node:child_process";
 import net from "node:net";
 import { expect, test } from "@playwright/test";
+import { signIn } from "./sign-in";
+import { respondToOrganizationAccess } from "./organization-fixture";
 
 const VIEWPORTS = [
   [320, 568],
@@ -217,6 +219,7 @@ test("sessions directory covers pagination, exact filters, composite IDs, legacy
   ];
 
   const apiServer = createServer((req, res) => {
+    if (respondToOrganizationAccess(req, res)) return;
     const chunks: Buffer[] = [];
     req.on("data", (chunk: Buffer) => chunks.push(chunk));
     req.on("end", () => {
@@ -400,7 +403,7 @@ test("sessions directory covers pagination, exact filters, composite IDs, legacy
   });
 
   const apiPort = await getFreePort();
-  const appPort = await getFreePort();
+  const appPort = 4313;
   await new Promise<void>((resolve) =>
     apiServer.listen(apiPort, "127.0.0.1", resolve),
   );
@@ -419,6 +422,8 @@ test("sessions directory covers pagination, exact filters, composite IDs, legacy
       cwd: process.cwd(),
       env: {
         ...process.env,
+        OPERATOR_WEB_ORIGIN: `http://127.0.0.1:${appPort}`,
+        OIDC_LOCAL_HTTP: "true",
         STATION_GRAPHQL_URL: `http://127.0.0.1:${apiPort}/graphql`,
         OPERATIONS_GRAPHQL_URL: `http://127.0.0.1:${apiPort}/graphql`,
       },
@@ -438,6 +443,7 @@ test("sessions directory covers pagination, exact filters, composite IDs, legacy
       await new Promise((r) => setTimeout(r, 250));
     }
 
+    await signIn(page, origin);
     await page.setViewportSize({ width: 1280, height: 800 });
 
     const paginationNav = page.getByRole("navigation", {

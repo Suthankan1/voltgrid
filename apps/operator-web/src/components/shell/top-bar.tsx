@@ -95,7 +95,7 @@ export function TopBar() {
           </ol>
         </nav>
 
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        <div className="ml-auto flex max-w-full flex-wrap items-center gap-2">
           <Link
             href="/admin"
             className="hidden items-center gap-1.5 rounded-[var(--vg-radius-md)] border border-[color:var(--vg-border)] bg-[color:var(--vg-surface-subtle)] px-2.5 py-1.5 font-sans text-xs font-semibold text-[color:var(--vg-text-secondary)] transition-colors hover:border-[color:var(--vg-brand)] hover:text-[color:var(--vg-brand)] sm:inline-flex"
@@ -108,13 +108,14 @@ export function TopBar() {
             <span>Admin</span>
           </Link>
 
-          <Link
-            href="/login"
-            className="hidden items-center gap-1.5 rounded-[var(--vg-radius-md)] border border-[color:var(--vg-border)] px-2.5 py-1.5 font-sans text-xs font-medium text-[color:var(--vg-text-secondary)] transition-colors hover:text-[color:var(--vg-text-primary)] md:inline-flex"
-            title="Switch operator persona or sign in"
-          >
-            <span>Portal</span>
-          </Link>
+          <form method="post" action="/api/auth/logout">
+            <button
+              type="submit"
+              className="rounded-[var(--vg-radius-md)] border border-[color:var(--vg-border)] px-2.5 py-1.5 font-sans text-xs font-medium text-[color:var(--vg-text-secondary)]"
+            >
+              Sign out
+            </button>
+          </form>
 
           <Button
             variant="secondary"

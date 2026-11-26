@@ -1,6 +1,8 @@
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
 import { test, expect } from "@playwright/test";
+import { signIn } from "./sign-in";
+import { respondToOrganizationAccess } from "./organization-fixture";
 
 test("overview fits all responsive viewports, 200% text scaling, reduced motion, and accessible semantics", async ({ page }) => {
   const consoleErrors: string[] = [];
@@ -76,6 +78,7 @@ test("overview handles empty network, read-only registration, unavailable API re
   ];
 
   const apiServer = createServer(async (req, res) => {
+    if (respondToOrganizationAccess(req, res)) return;
     if (req.url === "/health") {
       res.end("ok");
       return;
@@ -111,11 +114,13 @@ test("overview handles empty network, read-only registration, unavailable API re
 
   const nextProc = spawn(
     "node",
-    ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "--port", "4323"],
+    ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "--port", "4313"],
     {
       cwd: process.cwd(),
       env: {
         ...process.env,
+        OPERATOR_WEB_ORIGIN: `http://127.0.0.1:4313`,
+        OIDC_LOCAL_HTTP: "true",
         OPERATOR_LOCAL_WRITES: "false",
         STATION_GRAPHQL_URL: "http://127.0.0.1:4322/graphql",
         OPERATIONS_GRAPHQL_URL: "http://127.0.0.1:4322/graphql",
@@ -127,16 +132,17 @@ test("overview handles empty network, read-only registration, unavailable API re
   try {
     for (let i = 0; i < 40; i++) {
       try {
-        if ((await fetch("http://127.0.0.1:4323/")).ok) break;
+        if ((await fetch("http://127.0.0.1:4313/")).ok) break;
       } catch {
         // wait
       }
       await new Promise(r => setTimeout(r, 250));
     }
 
+    await signIn(page, "http://127.0.0.1:4313");
     // 1. Valid empty network + read-only mode
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto("http://127.0.0.1:4323/");
+    await page.goto("http://127.0.0.1:4313/");
     await expect(page.getByText("Read-only console")).toBeVisible();
     await expect(page.getByRole("link", { name: "Add station" })).toHaveCount(0);
     await expect(page.getByText("N/A", { exact: true })).toBeVisible();
@@ -145,7 +151,7 @@ test("overview handles empty network, read-only registration, unavailable API re
     // 2. Unavailable modes (503, GraphQL error, malformed payload) -> Unknown + ErrorState, then retry recovery
     for (const failMode of ["unavailable-503", "unavailable-gql", "unavailable-malformed"] as const) {
       mode = failMode;
-      await page.goto("http://127.0.0.1:4323/");
+      await page.goto("http://127.0.0.1:4313/");
       await expect(page.getByRole("alert").filter({ hasText: "Unable to load network overview" })).toBeVisible();
       await expect(page.getByText("Unknown", { exact: true })).toHaveCount(4);
       await expect(page.getByText("Status unknown", { exact: true })).toBeVisible();
@@ -165,8 +171,8 @@ test("overview handles empty network, read-only registration, unavailable API re
     await expect(page.getByRole("link", { name: "Negombo Hub", exact: true })).toBeVisible();
 
     // Legacy overview filter query redirects safely to canonical /stations directory
-    await page.goto("http://127.0.0.1:4323/?q=Anuradhapura&status=OFFLINE&next=https://evil.example");
-    await expect(page).toHaveURL("http://127.0.0.1:4323/stations?q=Anuradhapura&status=OFFLINE");
+    await page.goto("http://127.0.0.1:4313/?q=Anuradhapura&status=OFFLINE&next=https://evil.example");
+    await expect(page).toHaveURL("http://127.0.0.1:4313/stations?q=Anuradhapura&status=OFFLINE");
     await expect(page.getByText("Showing 1 of 1 matching (8 total)")).toBeVisible();
 
     await page.setViewportSize({ width: 390, height: 844 });

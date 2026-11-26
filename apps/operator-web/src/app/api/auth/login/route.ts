@@ -1,63 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  PRESET_PERSONAS,
-  createBearerToken,
-  encodeSession,
-  SESSION_COOKIE_NAME,
-  AuthUser,
-} from "@/lib/auth";
+import { cookieOptions, LOGIN_COOKIE_NAME, LOGIN_MAX_AGE, logins, PRIVATE_HEADERS } from "@/lib/auth";
+import { appOrigin, getProvider, oidc } from "@/lib/oidc";
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const body = await request.json().catch(() => ({}));
-    const personaKey = body.persona as string;
-
-    let user: AuthUser | undefined;
-
-    if (personaKey && PRESET_PERSONAS[personaKey]) {
-      user = PRESET_PERSONAS[personaKey];
-    } else if (body.email) {
-      // Find matching preset or create standard operator
-      const found = Object.values(PRESET_PERSONAS).find(p => p.email === body.email);
-      if (found) {
-        user = found;
-      } else {
-        user = {
-          userId: "usr_" + Buffer.from(body.email).toString("hex").substring(0, 12),
-          email: body.email,
-          name: body.email.split("@")[0],
-          roles: ["STATION_OPERATOR"],
-          activeOrganizationId: "org_voltgrid_default",
-          availableOrganizations: [
-            { id: "org_voltgrid_default", name: "VoltGrid Default Operations", role: "STATION_OPERATOR" },
-          ],
-        };
-      }
-    } else {
-      user = PRESET_PERSONAS.platform_admin;
-    }
-
-    const token = createBearerToken(user);
-    const cookieValue = encodeSession(user, token);
-
-    const returnTo = body.returnTo || "/";
-    const response = NextResponse.json({ success: true, user, redirectUrl: returnTo });
-
-    response.cookies.set({
-      name: SESSION_COOKIE_NAME,
-      value: cookieValue,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 86400, // 1 day
+    const { client } = await getProvider();
+    const verifier = oidc.randomPKCECodeVerifier();
+    const state = oidc.randomState();
+    const nonce = oidc.randomNonce();
+    const url = oidc.buildAuthorizationUrl(client, {
+      redirect_uri: new URL("/api/auth/callback", appOrigin()).href,
+      scope: "openid profile email",
+      code_challenge: await oidc.calculatePKCECodeChallenge(verifier),
+      code_challenge_method: "S256",
+      state,
+      nonce,
     });
-
+    const previous = request.cookies.get(LOGIN_COOKIE_NAME)?.value;
+    if (previous) logins.delete(previous);
+    const id = logins.create({ verifier, state, nonce, expiresAt: Date.now() + LOGIN_MAX_AGE * 1000 });
+    const response = NextResponse.redirect(url, { headers: PRIVATE_HEADERS });
+    response.cookies.set(LOGIN_COOKIE_NAME, id, cookieOptions(LOGIN_MAX_AGE));
     return response;
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Authentication failed", details: String(error) },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ error: "Sign-in is unavailable" }, { status: 503, headers: PRIVATE_HEADERS });
   }
 }

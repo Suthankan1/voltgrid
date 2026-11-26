@@ -1,3 +1,5 @@
+import { getAuthHeaders } from "./auth";
+
 import type { Station, StationStatus } from "./station-api";
 import { buildStationDetailOcppPath } from "./station-detail-model";
 import {
@@ -158,6 +160,7 @@ export async function submitStationRegistration(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...await getAuthHeaders(),
       },
       cache: "no-store",
       signal: AbortSignal.timeout(5000),

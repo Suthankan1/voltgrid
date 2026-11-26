@@ -1,50 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  getSession,
-  createBearerToken,
-  encodeSession,
-  SESSION_COOKIE_NAME,
-} from "@/lib/auth";
+import { getSession, organizationAccess, PRIVATE_HEADERS, sameOrigin, SESSION_COOKIE_NAME, sessions } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
+  if (!sameOrigin(request)) return new NextResponse(null, { status: 403, headers: PRIVATE_HEADERS });
+  const { token } = await getSession();
+  const id = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+  const session = id && sessions.get(id);
+  if (!token || !session) return new NextResponse(null, { status: 401, headers: PRIVATE_HEADERS });
+
+  const body = await request.json().catch(() => null);
+  if (typeof body?.organizationId !== "string" || !body.organizationId.trim()) {
+    return new NextResponse(null, { status: 400, headers: PRIVATE_HEADERS });
+  }
+
   try {
-    const body = await request.json().catch(() => ({}));
-    const newOrgId = body.organizationId as string;
+    const access = await organizationAccess(token, body.organizationId, true);
+    if (!access) return new NextResponse(null, { status: 403, headers: PRIVATE_HEADERS });
 
-    if (!newOrgId) {
-      return NextResponse.json({ error: "Missing organizationId" }, { status: 400 });
-    }
-
-    const session = await getSession();
-    if (!session.isAuthenticated || !session.user) {
-      return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
-    }
-
-    const updatedUser = {
-      ...session.user,
-      activeOrganizationId: newOrgId,
-    };
-
-    const token = createBearerToken(updatedUser);
-    const cookieValue = encodeSession(updatedUser, token);
-
-    const response = NextResponse.json({ success: true, activeOrganizationId: newOrgId });
-
-    response.cookies.set({
-      name: SESSION_COOKIE_NAME,
-      value: cookieValue,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 86400,
-    });
-
-    return response;
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to switch organization", details: String(error) },
-      { status: 500 }
-    );
+    session.user = { ...session.user, activeOrganizationId: access.organizationId, roles: [access.role] };
+    return NextResponse.json({ activeOrganizationId: access.organizationId }, { headers: PRIVATE_HEADERS });
+  } catch {
+    return new NextResponse(null, { status: 503, headers: PRIVATE_HEADERS });
   }
 }
