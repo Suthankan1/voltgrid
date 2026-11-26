@@ -17,9 +17,16 @@ public class StationStatusProjectionEntity {
     @Column(
             name = "station_id",
             nullable = false,
-            length = 128
+            length = 255
     )
     private String stationId;
+
+    @Column(
+            name = "organization_id",
+            nullable = false,
+            length = 64
+    )
+    private String organizationId = "org_voltgrid_default";
 
     @Column(
             name = "current_status",
@@ -57,6 +64,17 @@ public class StationStatusProjectionEntity {
             Instant statusChangedAt,
             Instant updatedAt
     ) {
+        this(stationId, "org_voltgrid_default", currentStatus, lastEventId, statusChangedAt, updatedAt);
+    }
+
+    public StationStatusProjectionEntity(
+            String stationId,
+            String organizationId,
+            String currentStatus,
+            UUID lastEventId,
+            Instant statusChangedAt,
+            Instant updatedAt
+    ) {
         if (stationId == null || stationId.isBlank()) {
             throw new IllegalArgumentException(
                     "stationId must not be blank"
@@ -70,6 +88,7 @@ public class StationStatusProjectionEntity {
         }
 
         this.stationId = stationId;
+        this.organizationId = (organizationId != null && !organizationId.isBlank()) ? organizationId : "org_voltgrid_default";
         this.currentStatus = currentStatus;
         this.lastEventId = Objects.requireNonNull(
                 lastEventId,
@@ -130,6 +149,14 @@ public class StationStatusProjectionEntity {
 
     public String getStationId() {
         return stationId;
+    }
+
+    public String getOrganizationId() {
+        return organizationId;
+    }
+
+    public void setOrganizationId(String organizationId) {
+        this.organizationId = organizationId;
     }
 
     public String getCurrentStatus() {

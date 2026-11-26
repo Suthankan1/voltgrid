@@ -22,4 +22,12 @@ public class StationQueryService {
     public List<ChargingStation> findAll() {
         return stationReader.findAll();
     }
+
+    public List<ChargingStation> findByOrganizationId(String organizationId) {
+        return stationReader.findByOrganizationId(organizationId);
+    }
+
+    public Optional<ChargingStation> findByIdAndOrganizationId(String id, String organizationId) {
+        return stationReader.findByIdAndOrganizationId(id, organizationId);
+    }
 }

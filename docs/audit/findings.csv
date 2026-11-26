@@ -1,7 +1,7 @@
 Finding ID,Category,Title,Severity,Confidence,Component,Affected Files,Confirmation Status,Milestone
-SEC-001,Security,Unauthenticated OCPP WebSocket Endpoint,Critical,Confirmed,station-service,services/station-service/src/main/java/com/voltgrid/station/api/ocpp/OcppHandshakeInterceptor.java,Confirmed by static analysis,VG-202
-SEC-002,Security,Zero Backend Authentication and Authorization across GraphQL and gRPC,Critical,Confirmed,all-services,pom.xml; StationGraphQlController.java; GrpcAuthorizationService.java,Confirmed by static analysis,VG-202
-SEC-003,Security,HMAC Secret Key Hardcoded Fallback and Missing Cloud Injection,High,Confirmed,authorization-service,TokenFingerprintService.java; application.properties; ecs.tf,Confirmed by static analysis,VG-202
+SEC-001,Security,Unauthenticated OCPP WebSocket Endpoint,Critical,Confirmed,station-service,services/station-service/src/main/java/com/voltgrid/station/api/ocpp/OcppHandshakeInterceptor.java; StationCredentialService.java,Resolved,VG-202
+SEC-002,Security,Zero Backend Authentication and Authorization across GraphQL and gRPC,Critical,Confirmed,all-services,JwtTokenValidator.java; OperatorApiSecurityFilter.java; TenantAuthorizationService.java; ServiceAuthenticationInterceptor.java,Resolved,VG-202
+SEC-003,Security,HMAC Secret Key Hardcoded Fallback and Missing Cloud Injection,High,Confirmed,authorization-service,TokenFingerprintService.java; AuthorizationDecisionService.java; V2__add_versioned_token_fingerprints.sql,Resolved,VG-202
 SEC-004,Security,Plaintext In-Transit Transport across All Microservice Boundaries,High,Confirmed,infrastructure,alb.tf; application.properties; compose.yaml,Confirmed by static analysis,VG-203
 SEC-005,Security,Public Subnet Placement and Unrestricted Egress for Internal Services,Moderate,Confirmed,infrastructure,infrastructure/terraform/networking.tf; ecs.tf,Confirmed by static analysis,VG-203
 SEC-006,Security,Docker Compose Host Port Bindings Published to Wildcard Interface,Moderate,Confirmed,infrastructure,compose.yaml,Confirmed by static analysis,VG-203

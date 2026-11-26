@@ -1,5 +1,6 @@
 package com.voltgrid.authorization.application;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -7,79 +8,105 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
-import java.util.HexFormat;
+import java.util.*;
 
 @Service
 public class TokenFingerprintService {
 
-    private static final String ALGORITHM =
-            "HmacSHA256";
+    private static final String ALGORITHM = "HmacSHA256";
+    private static final int MINIMUM_KEY_BYTES = 32;
+    public static final String INSECURE_DEFAULT_KEY = "voltgrid-local-development-hmac-key-change-me";
 
-    private static final int MINIMUM_KEY_BYTES =
-            32;
+    private final String activeKeyVersion;
+    private final Map<String, SecretKeySpec> keysByVersion = new LinkedHashMap<>();
 
-    private final SecretKeySpec secretKey;
-
+    @Autowired
     public TokenFingerprintService(
-            @Value(
-                    "${voltgrid.authorization.token-hmac-key}"
-            )
-            String hmacKey
+            @Value("${voltgrid.authorization.token-hmac-key:" + INSECURE_DEFAULT_KEY + "}") String activeKey,
+            @Value("${voltgrid.authorization.active-key-version:v1}") String activeVersion,
+            @Value("${voltgrid.authorization.legacy-keys.v1:}") String legacyKeyV1,
+            @Value("${voltgrid.security.require-secure-keys:false}") boolean requireSecureKeys
     ) {
-        var keyBytes =
-                hmacKey.getBytes(
-                        StandardCharsets.UTF_8
-                );
+        this.activeKeyVersion = (activeVersion != null && !activeVersion.isBlank()) ? activeVersion.trim() : "v1";
 
-        if (keyBytes.length < MINIMUM_KEY_BYTES) {
-            throw new IllegalArgumentException(
-                    "Authorization token HMAC key must be at least 32 bytes"
-            );
+        if (requireSecureKeys) {
+            if (activeKey == null || activeKey.isBlank() || INSECURE_DEFAULT_KEY.equals(activeKey)) {
+                throw new IllegalStateException("Production profile requires a non-default, high-entropy HMAC key");
+            }
         }
 
-        this.secretKey =
-                new SecretKeySpec(
-                        keyBytes,
-                        ALGORITHM
-                );
+        registerKey(this.activeKeyVersion, activeKey);
+
+        if (legacyKeyV1 != null && !legacyKeyV1.isBlank() && !this.activeKeyVersion.equals("v1")) {
+            registerKey("v1", legacyKeyV1);
+        }
     }
 
-    public String fingerprint(
-            String rawToken
-    ) {
-        if (rawToken == null
-                || rawToken.isBlank()) {
+    public TokenFingerprintService(String activeKey) {
+        this(activeKey, "v1", null, false);
+    }
 
+    public TokenFingerprintService(String activeKey, String activeVersion, Map<String, String> legacyKeys) {
+        this.activeKeyVersion = activeVersion != null ? activeVersion : "v1";
+        registerKey(this.activeKeyVersion, activeKey);
+        if (legacyKeys != null) {
+            legacyKeys.forEach(this::registerKey);
+        }
+    }
+
+    private void registerKey(String version, String keyMaterial) {
+        if (keyMaterial == null || keyMaterial.isBlank()) {
+            return;
+        }
+        var keyBytes = keyMaterial.getBytes(StandardCharsets.UTF_8);
+        if (keyBytes.length < MINIMUM_KEY_BYTES) {
             throw new IllegalArgumentException(
-                    "Authorization token must not be blank"
+                    "Authorization token HMAC key for version " + version + " must be at least 32 bytes"
             );
         }
+        keysByVersion.put(version, new SecretKeySpec(keyBytes, ALGORITHM));
+    }
 
+    public String fingerprint(String rawToken) {
+        return fingerprint(rawToken, activeKeyVersion);
+    }
+
+    public String fingerprint(String rawToken, String keyVersion) {
+        if (rawToken == null || rawToken.isBlank()) {
+            throw new IllegalArgumentException("Authorization token must not be blank");
+        }
+        var key = keysByVersion.get(keyVersion);
+        if (key == null) {
+            throw new IllegalArgumentException("Unknown HMAC key version: " + keyVersion);
+        }
         try {
-            var mac =
-                    Mac.getInstance(
-                            ALGORITHM
-                    );
-
-            mac.init(secretKey);
-
-            var fingerprint =
-                    mac.doFinal(
-                            rawToken.getBytes(
-                                    StandardCharsets.UTF_8
-                            )
-                    );
-
-            return HexFormat.of()
-                    .formatHex(
-                            fingerprint
-                    );
-
-        } catch (GeneralSecurityException exception) {
-            throw new IllegalStateException(
-                    "Could not fingerprint authorization token",
-                    exception
-            );
+            var mac = Mac.getInstance(ALGORITHM);
+            mac.init(key);
+            var bytes = mac.doFinal(rawToken.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(bytes);
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("Failed to calculate HMAC fingerprint", e);
         }
+    }
+
+    public Map<String, String> candidateFingerprints(String rawToken) {
+        Map<String, String> candidates = new LinkedHashMap<>();
+        for (String version : keysByVersion.keySet()) {
+            candidates.put(version, fingerprint(rawToken, version));
+        }
+        return candidates;
+    }
+
+    public String getActiveKeyVersion() {
+        return activeKeyVersion;
+    }
+
+    public Set<String> getConfiguredKeyVersions() {
+        return Collections.unmodifiableSet(keysByVersion.keySet());
+    }
+
+    @Override
+    public String toString() {
+        return "TokenFingerprintService[activeKeyVersion=" + activeKeyVersion + ", versions=" + keysByVersion.keySet() + "]";
     }
 }

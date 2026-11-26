@@ -20,7 +20,9 @@ public class JpaStationWriter implements StationWriter {
                         station.id(),
                         station.name(),
                         station.status(),
-                        station.lastSeenAt()
+                        station.lastSeenAt(),
+                        station.organizationId(),
+                        station.siteId()
                 )
         );
     }

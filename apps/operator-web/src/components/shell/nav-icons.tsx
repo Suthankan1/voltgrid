@@ -59,6 +59,13 @@ export function NavDestinationIcon({
           <circle cx="10" cy="14.25" r="0.85" fill="currentColor" />
         </svg>
       );
+    case "admin":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 20 20" width="20" height="20" fill="none" className={classes}>
+          <path d="M10 2.5 4 5v5c0 4.5 3 7.5 6 8.5 3-1 6-4 6-8.5V5l-6-2.5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+          <path d="m8 10 1.5 1.5 3-3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
   }
 }
 

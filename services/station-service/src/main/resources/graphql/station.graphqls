@@ -1,6 +1,6 @@
 type Query {
-    stations: [ChargingStation!]!
-    station(id: ID!): ChargingStation
+    stations(organizationId: ID): [ChargingStation!]!
+    station(id: ID!, organizationId: ID): ChargingStation
     stationConnectors(stationId: ID!): [StationConnector!]!
 
     transactions: [ChargingTransaction!]!
@@ -31,18 +31,99 @@ type Query {
         stationId: ID!
         transactionId: ID!
     ): TransactionCompleteness!
+
+    # Multi-Tenant & Administrative Queries
+    organizations: [Organization!]!
+    organization(id: ID!): Organization
+    sites(organizationId: ID!): [Site!]!
+    organizationMembers(organizationId: ID!): [OrganizationMembership!]!
+    administrativeAuditEvents(
+        organizationId: ID!
+        page: Int
+        size: Int
+    ): AuditEventPage!
 }
 
 type Mutation {
     registerStation(
         input: RegisterStationInput!
     ): ChargingStation!
+
+    createOrganization(input: CreateOrganizationInput!): Organization!
+    createSite(input: CreateSiteInput!): Site!
+    inviteMember(input: InviteMemberInput!): OrganizationMembership!
+    updateMemberRole(organizationId: ID!, userId: String!, role: String!): OrganizationMembership!
+    revokeMember(organizationId: ID!, userId: String!): Boolean!
+
+    provisionStationCredential(input: ProvisionCredentialInput!): StationCredentialPayload!
+    rotateStationCredential(input: RotateCredentialInput!): StationCredentialPayload!
+    revokeStationCredential(stationId: ID!): Boolean!
 }
 
 type ChargingStation {
     id: ID!
     name: String!
     status: StationStatus!
+    organizationId: String
+    siteId: String
+}
+
+type Organization {
+    id: ID!
+    name: String!
+    status: String!
+    createdAt: String!
+    updatedAt: String!
+}
+
+type Site {
+    id: ID!
+    organizationId: ID!
+    name: String!
+    status: String!
+    createdAt: String!
+}
+
+type OrganizationMembership {
+    id: ID!
+    organizationId: ID!
+    userId: String!
+    userEmail: String!
+    role: String!
+    status: String!
+    createdAt: String!
+    updatedAt: String!
+}
+
+type StationCredentialPayload {
+    credentialId: ID!
+    stationId: ID!
+    credentialType: String!
+    status: String!
+    createdAt: String!
+}
+
+type AdministrativeAuditEvent {
+    id: ID!
+    organizationId: ID
+    eventType: String!
+    actorId: String!
+    actorType: String!
+    resourceType: String!
+    resourceId: String!
+    action: String!
+    outcome: String!
+    correlationId: String
+    metadata: String
+    createdAt: String!
+}
+
+type AuditEventPage {
+    content: [AdministrativeAuditEvent!]!
+    totalElements: Int!
+    totalPages: Int!
+    number: Int!
+    size: Int!
 }
 
 type StationConnector {
@@ -99,6 +180,36 @@ type TransactionCompleteness {
 input RegisterStationInput {
     id: ID!
     name: String!
+    organizationId: ID
+    siteId: ID
+}
+
+input CreateOrganizationInput {
+    id: ID!
+    name: String!
+}
+
+input CreateSiteInput {
+    id: ID!
+    organizationId: ID!
+    name: String!
+}
+
+input InviteMemberInput {
+    organizationId: ID!
+    userId: String!
+    userEmail: String!
+    role: String!
+}
+
+input ProvisionCredentialInput {
+    stationId: ID!
+    password: String!
+}
+
+input RotateCredentialInput {
+    stationId: ID!
+    newPassword: String!
 }
 
 enum StationStatus {

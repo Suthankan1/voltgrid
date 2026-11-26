@@ -7,6 +7,7 @@ export type NavDestinationId =
   | "stations"
   | "sessions"
   | "attention"
+  | "admin"
   | "diagnostics"
   | "help";
 
@@ -85,6 +86,40 @@ export const NAV_GROUPS: ReadonlyArray<{
     items: NAV_ITEMS.filter(item => item.group === "support"),
   },
 ];
+
+export interface AdminNavItem {
+  id: string;
+  label: string;
+  href: string;
+  description: string;
+}
+
+export const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = [
+  {
+    id: "organizations",
+    label: "Organizations & Sites",
+    href: "/admin/organizations",
+    description: "Multi-tenant hierarchy, organization registry, and physical charging sites.",
+  },
+  {
+    id: "members",
+    label: "Members & Access Roles",
+    href: "/admin/members",
+    description: "Organization team members, role assignments, and permission boundaries.",
+  },
+  {
+    id: "credentials",
+    label: "Station Device Credentials",
+    href: "/admin/credentials",
+    description: "PBKDF2-salted station passwords, secure provisioning, and credential rotation.",
+  },
+  {
+    id: "audit",
+    label: "Administrative Audit Trail",
+    href: "/admin/audit",
+    description: "Immutable chronological record of administrative actions and tenant security events.",
+  },
+] as const;
 
 export interface BreadcrumbItem {
   label: string;
@@ -322,6 +357,47 @@ export function resolveRouteMeta(pathname: string): RouteMeta {
         { label: "Overview", href: "/" },
         { label: "Help", current: true },
       ],
+    };
+  }
+
+  if (cleanPath === "/login") {
+    return {
+      activeNav: null,
+      contextNav: null,
+      breadcrumbs: [
+        { label: "Overview", href: "/" },
+        { label: "Sign in", current: true },
+      ],
+    };
+  }
+
+  if (cleanPath === "/admin" || cleanPath.startsWith("/admin/")) {
+    const isRoot = cleanPath === "/admin";
+    const sub = cleanPath.split("/")[2];
+    const subLabel =
+      sub === "organizations"
+        ? "Organizations & Sites"
+        : sub === "members"
+        ? "Members & Roles"
+        : sub === "credentials"
+        ? "Station Credentials"
+        : sub === "audit"
+        ? "Audit Trail"
+        : "Administration";
+
+    return {
+      activeNav: "admin",
+      contextNav: null,
+      breadcrumbs: isRoot
+        ? [
+            { label: "Overview", href: "/" },
+            { label: "Administration", current: true },
+          ]
+        : [
+            { label: "Overview", href: "/" },
+            { label: "Administration", href: "/admin" },
+            { label: subLabel, current: true },
+          ],
     };
   }
 

@@ -21,6 +21,11 @@ public class StationRegistrationService {
 
     @Transactional
     public ChargingStation register(String id, String name) {
+        return register(id, name, "org_voltgrid_default", null);
+    }
+
+    @Transactional
+    public ChargingStation register(String id, String name, String organizationId, String siteId) {
         if (stationReader.findById(id).isPresent()) {
             throw new StationAlreadyExistsException(id);
         }
@@ -28,7 +33,10 @@ public class StationRegistrationService {
         var station = new ChargingStation(
                 id,
                 name,
-                StationStatus.OFFLINE
+                StationStatus.OFFLINE,
+                null,
+                organizationId != null ? organizationId : "org_voltgrid_default",
+                siteId
         );
 
         stationWriter.save(station);

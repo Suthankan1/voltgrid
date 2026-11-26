@@ -11,6 +11,12 @@ public record RegisterStationInput(
 
         @NotBlank(message = "station name must not be blank")
         @Size(max = 255, message = "station name must not exceed 255 characters")
-        String name
+        String name,
+
+        String organizationId,
+        String siteId
 ) {
+    public RegisterStationInput(String id, String name) {
+        this(id, name, null, null);
+    }
 }
