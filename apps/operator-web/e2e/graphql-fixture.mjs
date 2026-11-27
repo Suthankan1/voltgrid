@@ -1,18 +1,33 @@
 import { createServer } from 'node:http';
 const registered = new Map();
+let membership = "ORG_OWNER";
 const station = {id:'CP-1',name:'Colombo Central',status:'ONLINE'};
 const transaction = {stationId:'CP-1',transactionId:'TX-1',evseId:1,connectorId:1,status:'ENDED',startedAt:'2026-10-08T08:00:00Z',endedAt:'2026-10-08T09:00:00Z',lastSequenceNumber:2};
 const completeness = {status:'COMPLETE',firstSequenceNumber:0,lastSequenceNumber:2,missingSequenceNumbers:[]};
 createServer(async (req,res) => {
  const url = new URL(req.url, "http://127.0.0.1");
+ if (url.pathname === "/__membership" && req.method === "POST") {
+  const state = url.searchParams.get("state");
+  if (!["ORG_OWNER", "SUPPORT", "REVOKED", "UNAVAILABLE"].includes(state)) {
+   res.writeHead(400).end();
+   return;
+  }
+  membership = state;
+  res.writeHead(204).end();
+  return;
+ }
  if (url.pathname === "/api/operator/organization-access") {
   const organizationId = url.searchParams.get("organizationId");
   if (organizationId !== "org_fixture_a" || !req.headers.authorization?.startsWith("Bearer ")) {
    res.writeHead(403).end();
    return;
   }
+  if (membership === "REVOKED" || membership === "UNAVAILABLE") {
+   res.writeHead(membership === "REVOKED" ? 403 : 503).end();
+   return;
+  }
   res.setHeader("Content-Type", "application/json");
-  res.end(JSON.stringify({organizationId, role:"ORG_OWNER"}));
+  res.end(JSON.stringify({organizationId, role: membership}));
   return;
  }
  if(req.url === '/health') {res.end('ok');return;}
