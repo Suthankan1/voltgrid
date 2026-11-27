@@ -39,6 +39,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.net.InetSocketAddress;
@@ -51,6 +52,7 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -172,6 +174,109 @@ class StationJwtHttpAcceptanceTests {
         assertAuthorized(signed(claims().notBeforeTime(Date.from(Instant.now().plusSeconds(15))).build()));
     }
 
+    @Test
+    void signedTokensScopeAliasedReadsAndHonorMembershipChangesOnTheNextRequest(
+            @Autowired OrganizationJpaRepository organizations,
+            @Autowired OrganizationMembershipJpaRepository memberships,
+            @Autowired ChargingStationJpaRepository stations
+    ) throws Exception {
+        String orgA = "membership-org-a";
+        String orgB = "membership-org-b";
+        String owner = "membership-owner";
+        String operator = "membership-admin";
+        organizations.save(new OrganizationEntity(orgA, "Organization A", "ACTIVE"));
+        organizations.save(new OrganizationEntity(orgB, "Organization B", "ACTIVE"));
+        memberships.save(new OrganizationMembershipEntity(
+                "membership-a-owner", orgA, owner, "owner@example.test", "ORG_OWNER", "ACTIVE"));
+        memberships.save(new OrganizationMembershipEntity(
+                "membership-a-admin", orgA, operator, "admin@example.test", "ORG_ADMIN", "ACTIVE"));
+        memberships.save(new OrganizationMembershipEntity(
+                "membership-b-owner", orgB, operator, "admin@example.test", "ORG_OWNER", "ACTIVE"));
+        stations.save(new ChargingStationEntity("membership-station-a", "Station A",
+                StationStatus.ONLINE, null, orgA, null));
+        stations.save(new ChargingStationEntity("membership-station-b", "Station B",
+                StationStatus.ONLINE, null, orgB, null));
+
+        String ownerToken = signed(claims().subject(owner).claim("org_id", orgA).build());
+        String operatorToken = signed(claims().subject(operator).claim("org_id", orgA).build());
+        String readA = """
+                {
+                    own: station(id: "membership-station-a", organizationId: "membership-org-a") { id }
+                    foreign: station(id: "membership-station-b", organizationId: "membership-org-a") { id }
+                }
+                """;
+        var scoped = graphQl(operatorToken, readA);
+        assertThat(scoped.has("errors")).isFalse();
+        assertThat(scoped.at("/data/own/id").asString()).isEqualTo("membership-station-a");
+        assertThat(scoped.at("/data/foreign").isNull()).isTrue();
+        var deniedForeignOrg = graphQl(ownerToken, """
+                { station(id: "membership-station-b", organizationId: "membership-org-b") { id } }
+                """);
+        assertThat(deniedForeignOrg.has("errors")).isTrue();
+        assertThat(deniedForeignOrg.at("/data/station").isNull()).isTrue();
+
+        var allowedWrite = graphQl(operatorToken, """
+                mutation {
+                    createSite(input: {id: "membership-site-a", organizationId: "membership-org-a", name: "Site A"}) { id }
+                }
+                """);
+        assertThat(allowedWrite.at("/data/createSite/id").asString()).isEqualTo("membership-site-a");
+
+        var downgrade = graphQl(ownerToken, """
+                mutation {
+                    updateMemberRole(organizationId: "membership-org-a", userId: "membership-admin", role: "SUPPORT") { role }
+                }
+                """);
+        assertThat(downgrade.at("/data/updateMemberRole/role").asString()).isEqualTo("SUPPORT");
+        var deniedWrite = graphQl(operatorToken, """
+                mutation {
+                    createSite(input: {id: "membership-site-denied", organizationId: "membership-org-a", name: "Denied"}) { id }
+                }
+                """);
+        assertThat(deniedWrite.has("errors")).isTrue();
+        var stillReadable = graphQl(operatorToken, readA);
+        assertThat(stillReadable.at("/data/own/id").asString()).isEqualTo("membership-station-a");
+
+        var selfEscalation = graphQl(operatorToken, """
+                mutation {
+                    updateMemberRole(organizationId: "membership-org-a", userId: "membership-admin", role: "ORG_OWNER") { role }
+                }
+                """);
+        assertThat(selfEscalation.has("errors")).isTrue();
+        var revoked = graphQl(ownerToken, """
+                mutation {
+                    revokeMember(organizationId: "membership-org-a", userId: "membership-admin")
+                }
+                """);
+        assertThat(revoked.at("/data/revokeMember").asBoolean()).isTrue();
+        var deniedRead = graphQl(operatorToken, readA);
+        assertThat(deniedRead.has("errors")).isTrue();
+        assertThat(deniedRead.at("/data/own").isNull()).isTrue();
+
+        var stillAllowedInB = graphQl(operatorToken, """
+                { station(id: "membership-station-b", organizationId: "membership-org-b") { id } }
+                """);
+        assertThat(stillAllowedInB.at("/data/station/id").asString()).isEqualTo("membership-station-b");
+
+        var sites = graphQl(ownerToken, "{ sites(organizationId: \"membership-org-a\") { id } }");
+        assertThat(sites.at("/data/sites").size()).isEqualTo(1);
+        assertThat(sites.at("/data/sites/0/id").asString()).isEqualTo("membership-site-a");
+        var audit = graphQl(ownerToken, """
+                { administrativeAuditEvents(organizationId: "membership-org-a") { content { eventType actorId } } }
+                """);
+        assertThat(audit.has("errors")).isFalse();
+        assertThat(audit.at("/data/administrativeAuditEvents/content").valueStream()
+                .filter(event -> event.path("actorId").asString().equals(owner))
+                .map(event -> event.path("eventType").asString()))
+                .containsExactlyInAnyOrder("MEMBERSHIP_ROLE_UPDATED", "MEMBERSHIP_REVOKED");
+    }
+
+    private JsonNode graphQl(String token, String query) throws Exception {
+        var response = request("Bearer " + token, JSON.writeValueAsString(Map.of("query", query)));
+        assertThat(response.statusCode()).isEqualTo(200);
+        return JSON.readTree(response.body());
+    }
+
     private void assertAuthorized(String token) throws Exception {
         int downstreamBefore = downstreamRequests.get();
         var response = request("Bearer " + token);
@@ -199,10 +304,14 @@ class StationJwtHttpAcceptanceTests {
     }
 
     private HttpResponse<String> request(String authorization) throws Exception {
+        return request(authorization, QUERY);
+    }
+
+    private HttpResponse<String> request(String authorization, String body) throws Exception {
         var builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/graphql"))
                 .timeout(Duration.ofSeconds(10))
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(QUERY));
+                .POST(HttpRequest.BodyPublishers.ofString(body));
         if (authorization != null) {
             builder.header("Authorization", authorization);
         }
