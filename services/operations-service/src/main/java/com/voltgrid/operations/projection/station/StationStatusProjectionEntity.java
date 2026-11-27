@@ -163,20 +163,12 @@ public class StationStatusProjectionEntity {
             return false;
         }
 
-        // Causal sequence ordering check
-        if (sequenceNumber > 0 && this.sequenceNumber > 0) {
-            if (sequenceNumber <= this.sequenceNumber) {
-                return false;
-            }
-        } else if (sequenceNumber == 0 && this.sequenceNumber > 0) {
-            if (!statusChangedAt.isAfter(this.statusChangedAt)) {
-                return false;
-            }
-        } else {
-            // Unversioned fallback
-            if (statusChangedAt.isBefore(this.statusChangedAt)) {
-                return false;
-            }
+        // Once a sequenced event is seen, only a higher sequence can replace it.
+        if (this.sequenceNumber > 0 && sequenceNumber <= this.sequenceNumber) {
+            return false;
+        }
+        if (sequenceNumber <= 0 && statusChangedAt.isBefore(this.statusChangedAt)) {
+            return false;
         }
 
         this.currentStatus = currentStatus;

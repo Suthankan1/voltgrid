@@ -8,7 +8,7 @@ On 2026-11-27, the distributed reliability, causal ordering, and multi-instance 
 | --- | --- | --- |
 | **Aggregate Partition Key** | Outbox events are partitioned on Kafka by aggregate ID (`stationId`). | Prevents out-of-order delivery across different Kafka partitions for the same charger. |
 | **Causal Sequence Ordering** | Monotonic `status_sequence_number` per station aggregate attached to `StationStatusChangedEvent`. | Reordered events or network replays with older sequence numbers are discarded by `StationStatusProjectionEntity`. |
-| **Unversioned Legacy Fallback** | For unversioned events (`sequenceNumber == 0`), evaluates `statusChangedAt.isBefore(...)` to preserve backward compatibility with legacy snapshots. | Prevents regressions with legacy unversioned event delivery. |
+| **Unversioned Legacy Fallback** | Uses timestamps while a projection has only legacy events. The first positive sequence establishes authority regardless of the legacy timestamp. | Subsequent legacy deliveries retain their deduplication receipts and leave the sequenced projection intact. |
 | **Multi-Instance Generation Fencing** | Monotonic `connection_generation` stored on `charging_stations` and attached to active WebSocket sessions. | Prevents split-brain: stale disconnects on an old node do not mark a station offline after it reconnects to another node. |
 | **Stale Socket Termination** | Frames received on a session with a superseded generation are terminated with `CloseStatus.POLICY_VIOLATION`. | Prevents stale instances from accepting or processing outdated commands. |
 | **Outbox Exponential Backoff** | `findNextUnpublishedForUpdate` enforces exponential backoff: `last_attempted_at + (power(2, retry_count - 1) * interval '500 millisecond') <= NOW()`. | Prevents spin-locking and relay resource exhaustion during transient broker or database outages. |
@@ -74,3 +74,8 @@ On 2026-11-27, the distributed reliability, causal ordering, and multi-instance 
      ```
 2. **Replay**:
    - Once underlying broker partition or network issues are resolved, invoke `OutboxRelayService.requeueQuarantinedEvents()` to reset retry counts and resume processing.
+
+
+## Mixed legacy and sequenced replay regression
+
+The PostgreSQL integration regression sends a clock-ahead legacy event and a sequenced event in both delivery orders, then replays the legacy event. It checks station status, the accepted event ID and sequence, and durable receipts for both events. Before the correction the new case failed with expected ONLINE and actual OFFLINE. After the correction, all 13 targeted ordering, handler, entity, and concurrency tests passed. Existing rows retain their schema and legacy-only projections continue using timestamps.
