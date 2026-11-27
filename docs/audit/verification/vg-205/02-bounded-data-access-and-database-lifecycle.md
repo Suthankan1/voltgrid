@@ -49,3 +49,16 @@ The Operations API retains the depth limit of 15 and now caps each request docum
 The HTTP regressions reproduced acceptance of excess aliases and combined maximum-size pages on the baseline. The corrected service rejects both and still accepts a maximum-size page with ordinary aliases. Local offline Maven verification passed 83 Operations tests with the CI fixture configuration. The separate authenticated run passed 35 JWT and token-policy tests.
 
 The current outbox and receipt purge methods have no production caller in the repository. Retention activation requires an agreed replay window and evidence that deduplication receipts cover that window, including restored snapshots and delayed broker deliveries. The representative query-plan and backup/restore evidence remains open in #7.
+
+## Local Operations query-plan and restore drill
+
+PostgreSQL 18.6 ran in a disposable container with networking disabled. A fresh database received the Operations SQL migrations V1–V7, followed by 250,000 synthetic projections across 100 tenants and 250,000 corresponding processed-event receipts. The historical Flyway integration tests also ran in the Maven suite above.
+
+After `ANALYZE`, `EXPLAIN (ANALYZE, BUFFERS)` for a tenant-scoped keyset query ordered by station ID with a 101-row limit used `idx_station_status_org`. The measured execution times were 0.062 ms without a status filter and 0.051 ms with the ONLINE filter. Both scans returned 101 rows. The filtered query removed 51 rows and hit 55 shared buffers. These measurements use synthetic local data and a warm cache.
+
+`pg_dump -Fc` created a 12,908,972-byte archive in under one second at the timer resolution. `pg_restore --exit-on-error` loaded it into a fresh database in one second. Ordered exports matched byte-for-byte for both tables, with 250,000 rows each and these SHA-256 digests.
+
+- Projections `1fb9e23bf670f03e1946c22d6a08ec6c06646b913b8be862cad3b63a752e6162`
+- Processed-event receipts `25d0ed2db26e5c5dc8df902c167aa0e91cba460b9469683b0db0da9952448408`
+
+Station and Authorization restore drills, application-level replay after restore, wider plan sampling, and an authorized retention policy remain open.
