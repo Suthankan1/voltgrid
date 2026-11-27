@@ -66,7 +66,7 @@ class HistoricalStationMigrationTests {
     void freshInstallValidates() {
         flyway("latest").migrate();
         flyway("latest").validate();
-        assertThat(flyway("latest").info().current().getVersion().getVersion()).isEqualTo("19");
+        assertThat(flyway("latest").info().current().getVersion().getVersion()).isEqualTo("20");
     }
 
     @Test

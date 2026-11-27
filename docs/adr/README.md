@@ -23,3 +23,4 @@ An ADR documents an important architectural decision, including:
 - [0010: Migration and Compatibility Strategy](0010-migration-and-compatibility-strategy.md)
 - [0011: Transport Encryption, Network Boundaries, and Certificate Lifecycle](0011-transport-encryption-and-network-boundaries.md)
 - [0012: Distributed Reliability, Causal Ordering, and Multi-Instance Fencing](0012-distributed-reliability-ordering-and-fencing.md)
+- [0013: Bounded Data Access, GraphQL Pagination, and Database Lifecycle](0013-bounded-data-access-and-database-lifecycle.md)

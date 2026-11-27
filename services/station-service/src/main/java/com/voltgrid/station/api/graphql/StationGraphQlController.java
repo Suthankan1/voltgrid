@@ -65,11 +65,36 @@ public class StationGraphQlController {
         this.auditService = auditService;
     }
 
+    private static final int MAX_UNPAGINATED_LIMIT = 500;
+    private static final int MAX_PAGE_SIZE = 100;
+
     @QueryMapping
-    public List<ChargingStation> stations(@Argument String organizationId) {
+    public List<ChargingStation> stations(
+            @Argument String organizationId,
+            @Argument Integer page,
+            @Argument Integer size
+    ) {
         String org = tenantAuthorizationService.resolveAuthorizedOrganizationId(organizationId);
         tenantAuthorizationService.assertAuthorized(org, Permission.STATION_READ);
-        return stationQueryService.findByOrganizationId(org);
+        var stations = stationQueryService.findByOrganizationId(org);
+
+        if (page != null && size != null) {
+            int boundedPage = Math.max(0, page);
+            int boundedSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
+            int fromIndex = boundedPage * boundedSize;
+            if (fromIndex >= stations.size()) {
+                return List.of();
+            }
+            return stations.subList(fromIndex, Math.min(fromIndex + boundedSize, stations.size()));
+        }
+
+        return stations.stream()
+                .limit(MAX_UNPAGINATED_LIMIT)
+                .toList();
+    }
+
+    public List<ChargingStation> stations(String organizationId) {
+        return stations(organizationId, null, null);
     }
 
     @QueryMapping

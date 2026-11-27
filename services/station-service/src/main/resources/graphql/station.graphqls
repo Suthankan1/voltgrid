@@ -1,9 +1,9 @@
 type Query {
-    stations(organizationId: ID): [ChargingStation!]!
+    stations(organizationId: ID, page: Int, size: Int): [ChargingStation!]!
     station(id: ID!, organizationId: ID): ChargingStation
     stationConnectors(stationId: ID!): [StationConnector!]!
 
-    transactions(organizationId: ID): [ChargingTransaction!]!
+    transactions(organizationId: ID, page: Int, size: Int): [ChargingTransaction!]!
 
     networkTransactions(organizationId: ID): [NetworkTransaction!]!
 
@@ -19,6 +19,8 @@ type Query {
     stationTransactions(
         stationId: ID!
         organizationId: ID
+        page: Int
+        size: Int
     ): [ChargingTransaction!]!
 
     transaction(
@@ -31,6 +33,8 @@ type Query {
         stationId: ID!
         transactionId: ID!
         organizationId: ID
+        page: Int
+        size: Int
     ): [TransactionMeterSample!]!
 
     transactionCompleteness(

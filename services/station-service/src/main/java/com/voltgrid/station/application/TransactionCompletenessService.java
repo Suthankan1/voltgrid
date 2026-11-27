@@ -110,6 +110,8 @@ public class TransactionCompletenessService {
                 .toList();
     }
 
+    private static final int MAX_ENUMERATED_MISSING = 10_000;
+
     private TransactionCompleteness calculate(
             ChargingTransaction transaction,
             List<TransactionEventReceipt> receipts
@@ -146,6 +148,8 @@ public class TransactionCompletenessService {
         var status =
                 determineStatus(
                         transaction,
+                        firstSequenceNumber,
+                        receipts.size(),
                         missingSequenceNumbers
                 );
 
@@ -168,13 +172,8 @@ public class TransactionCompletenessService {
             return List.of();
         }
 
-        // Guard against massive sequence ranges that would exhaust memory
-        if ((long) lastSequenceNumber - firstSequenceNumber > 100_000) {
-            return List.of();
-        }
-
         var receivedNumbers =
-                new HashSet<Integer>();
+                new HashSet<Integer>(receipts.size());
 
         for (var receipt : receipts) {
             receivedNumbers.add(
@@ -198,6 +197,9 @@ public class TransactionCompletenessService {
                 missing.add(
                         sequenceNumber
                 );
+                if (missing.size() >= MAX_ENUMERATED_MISSING) {
+                    break;
+                }
             }
             if (sequenceNumber == Integer.MAX_VALUE) {
                 break;
@@ -209,12 +211,19 @@ public class TransactionCompletenessService {
 
     private TransactionDataStatus determineStatus(
             ChargingTransaction transaction,
+            int firstSequenceNumber,
+            int receiptsCount,
             List<Integer> missingSequenceNumbers
     ) {
         if (transaction.status()
                 == TransactionStatus.ACTIVE) {
 
             return TransactionDataStatus.IN_PROGRESS;
+        }
+
+        long expectedCount = (long) transaction.lastSequenceNumber() - firstSequenceNumber + 1;
+        if (expectedCount > 0 && receiptsCount < expectedCount) {
+            return TransactionDataStatus.INCOMPLETE;
         }
 
         if (missingSequenceNumbers.isEmpty()) {
