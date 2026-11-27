@@ -180,6 +180,31 @@ class TransactionIntegrityViewIntegrationTests {
         );
     }
 
+    @Test
+    void shouldDetectIncompleteWhenSequenceJumpsBeyondTenThousand() {
+        insertStation();
+
+        // Transaction ended at sequence 25000
+        insertTransaction(
+                "TX-MASSIVE-GAP",
+                "ENDED",
+                25000
+        );
+
+        // Receipts present only for 0 (STARTED), 1, 2, and 25000 (ENDED)
+        insertReceipt("TX-MASSIVE-GAP", 0, "STARTED");
+        insertReceipt("TX-MASSIVE-GAP", 1, "UPDATED");
+        insertReceipt("TX-MASSIVE-GAP", 2, "UPDATED");
+        insertReceipt("TX-MASSIVE-GAP", 25000, "ENDED");
+
+        // The old V14 view with generate_series capped at 10000 evaluated 0..10000 and falsely returned COMPLETE
+        // The V20 count/max boundary check accurately detects missing receipts 3..24999
+        assertIntegrity(
+                "TX-MASSIVE-GAP",
+                "INCOMPLETE"
+        );
+    }
+
     private void insertStation() {
         jdbcTemplate.update(
                 """
