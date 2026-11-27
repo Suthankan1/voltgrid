@@ -10,4 +10,4 @@ On 2026-11-27, this slice was verified from main `2e6c1fd6dff2e41e64427b20c7c8bd
 
 Dedicated `mvn -B -ntp -Dtest=OperationsJwtHttpAcceptanceTests,KeycloakAccessTokenPolicyTests test` passed 28 HTTP cases and seven decoder cases. Full `mvn -B -ntp verify` with the existing `VOLTGRID_SECURITY_REQUIRE_AUTH=false` test environment passed 69 tests. Both runs had zero failures, errors, or skips. The dedicated HTTP class explicitly requires authentication.
 
-The combined real Station, Operations and browser journey, full role/tenant field matrix, CI and owner merge remain pending. This test-only slice adds no migration, runtime settings, or rollback requirement.
+The integrated real Station, Operations and browser journey is documented in [04d-integrated-membership-lifecycle.md](04d-integrated-membership-lifecycle.md). Full role/tenant field matrix and external gates remain pending. This test-only slice adds no migration, runtime settings, or rollback requirement.

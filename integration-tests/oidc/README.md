@@ -56,3 +56,12 @@ check refresh after the original token expires.
 ```sh
 node integration-tests/oidc/authentication-acceptance.mjs
 ```
+
+For the integrated membership lifecycle journey (verifying role downgrade,
+member revocation, browser session invalidation and Operations bearer-token
+denial propagation across services):
+
+```sh
+node integration-tests/oidc/membership-lifecycle.mjs
+```
+
