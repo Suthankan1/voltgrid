@@ -1,6 +1,8 @@
 package com.voltgrid.station.infrastructure.persistence.jpa;
 
 import com.voltgrid.station.domain.CommandStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -19,9 +21,25 @@ public interface StationCommandJpaRepository extends JpaRepository<StationComman
 
     List<StationCommandEntity> findByStationIdOrderByRequestedAtDesc(String stationId);
 
+    Page<StationCommandEntity> findByStationId(String stationId, Pageable pageable);
+
     Optional<StationCommandEntity> findTopByStationIdAndActionAndStatusOrderByRequestedAtDesc(
             String stationId,
             String action,
+            CommandStatus status
+    );
+
+    Optional<StationCommandEntity> findByStationIdAndActionAndRemoteStartIdAndStatus(
+            String stationId,
+            String action,
+            Integer remoteStartId,
+            CommandStatus status
+    );
+
+    Optional<StationCommandEntity> findByStationIdAndActionAndTransactionIdAndStatus(
+            String stationId,
+            String action,
+            String transactionId,
             CommandStatus status
     );
 }

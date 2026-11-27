@@ -37,6 +37,12 @@ public class StationCommandEntity {
     @Column(name = "transaction_id")
     private String transactionId;
 
+    @Column(name = "remote_start_id")
+    private Integer remoteStartId;
+
+    @Column(name = "evse_id")
+    private Integer evseId;
+
     @Column(name = "requested_at", nullable = false)
     private Instant requestedAt;
 
@@ -109,6 +115,10 @@ public class StationCommandEntity {
         return payload;
     }
 
+    public void setPayload(String payload) {
+        this.payload = payload;
+    }
+
     public String getResponsePayload() {
         return responsePayload;
     }
@@ -123,6 +133,22 @@ public class StationCommandEntity {
 
     public void setTransactionId(String transactionId) {
         this.transactionId = transactionId;
+    }
+
+    public Integer getRemoteStartId() {
+        return remoteStartId;
+    }
+
+    public void setRemoteStartId(Integer remoteStartId) {
+        this.remoteStartId = remoteStartId;
+    }
+
+    public Integer getEvseId() {
+        return evseId;
+    }
+
+    public void setEvseId(Integer evseId) {
+        this.evseId = evseId;
     }
 
     public Instant getRequestedAt() {

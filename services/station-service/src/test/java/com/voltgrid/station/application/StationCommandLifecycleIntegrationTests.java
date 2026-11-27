@@ -2,17 +2,23 @@ package com.voltgrid.station.application;
 
 import com.voltgrid.station.api.ocpp.OcppMessageProcessor;
 import com.voltgrid.station.domain.CommandStatus;
+import com.voltgrid.station.infrastructure.persistence.jpa.ChargingStationEntity;
+import com.voltgrid.station.infrastructure.persistence.jpa.ChargingStationJpaRepository;
+import com.voltgrid.station.infrastructure.persistence.jpa.StationCommandJpaRepository;
 import com.voltgrid.station.support.PostgresTestConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @Import(PostgresTestConfiguration.class)
@@ -25,19 +31,25 @@ class StationCommandLifecycleIntegrationTests {
     private OcppMessageProcessor messageProcessor;
 
     @Autowired
-    private com.voltgrid.station.infrastructure.persistence.jpa.ChargingStationJpaRepository stationRepository;
+    private ChargingStationJpaRepository stationRepository;
+
+    @Autowired
+    private StationCommandJpaRepository commandRepository;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     private final ConcurrentHashMap<String, String> outboundCalls = new ConcurrentHashMap<>();
 
     @BeforeEach
     void setupCommandSender() {
-        stationRepository.save(new com.voltgrid.station.infrastructure.persistence.jpa.ChargingStationEntity(
+        stationRepository.save(new ChargingStationEntity(
                 "STATION-CMD-01", "CMD Station 1", com.voltgrid.station.domain.StationStatus.ONLINE
         ));
-        stationRepository.save(new com.voltgrid.station.infrastructure.persistence.jpa.ChargingStationEntity(
+        stationRepository.save(new ChargingStationEntity(
                 "STATION-CMD-02", "CMD Station 2", com.voltgrid.station.domain.StationStatus.ONLINE
         ));
-        stationRepository.save(new com.voltgrid.station.infrastructure.persistence.jpa.ChargingStationEntity(
+        stationRepository.save(new ChargingStationEntity(
                 "STATION-CMD-03", "CMD Station 3", com.voltgrid.station.domain.StationStatus.ONLINE
         ));
 
@@ -92,15 +104,13 @@ class StationCommandLifecycleIntegrationTests {
                 """.formatted(command.messageId());
 
         String resultResponse = messageProcessor.process(stationId, callResultJson);
-        // Server does not reply to a station CALL_RESULT
         assertThat(resultResponse).isNull();
 
         var acceptedCommand = commandService.getCommand(command.id()).orElseThrow();
         assertThat(acceptedCommand.status()).isEqualTo(CommandStatus.ACCEPTED);
-        // Safety gate: Accepted CALL_RESULT does NOT imply actual charging yet
         assertThat(acceptedCommand.observedAt()).isNull();
 
-        // 4. Station subsequently sends TransactionEvent(eventType: Started)
+        // 4. Station subsequently sends TransactionEvent(eventType: Started) with remoteStartId
         String txId = "tx-cmd-started-" + UUID.randomUUID();
         String txStartedCall = """
                 [2, "msg-tx-start-001", "TransactionEvent", {
@@ -108,7 +118,7 @@ class StationCommandLifecycleIntegrationTests {
                     "timestamp": "2026-11-27T17:40:00Z",
                     "triggerReason": "Authorized",
                     "seqNo": 0,
-                    "transactionInfo": { "transactionId": "%s" },
+                    "transactionInfo": { "transactionId": "%s", "remoteStartId": 1001 },
                     "evse": { "id": 1, "connectorId": 1 }
                 }]
                 """.formatted(txId);
@@ -116,7 +126,7 @@ class StationCommandLifecycleIntegrationTests {
         String txResponse = messageProcessor.process(stationId, txStartedCall);
         assertThat(txResponse).contains("3", "msg-tx-start-001");
 
-        // Command lifecycle transitions to OBSERVED once actual TransactionEvent is confirmed
+        // Command transitions to OBSERVED matching exact remoteStartId
         var observedCommand = commandService.getCommand(command.id()).orElseThrow();
         assertThat(observedCommand.status()).isEqualTo(CommandStatus.OBSERVED);
         assertThat(observedCommand.observedAt()).isNotNull();
@@ -124,12 +134,121 @@ class StationCommandLifecycleIntegrationTests {
     }
 
     @Test
+    void shouldRedactIdTokenInPersistedPayloadAndSendRawTokenOnWire() {
+        String stationId = "STATION-CMD-01";
+        String secretToken = "SECRET-RFID-TOKEN-777";
+        var command = commandService.requestStartTransaction(
+                stationId,
+                1,
+                secretToken,
+                "2001",
+                "idemp-redact-" + UUID.randomUUID()
+        );
+
+        // Database entity MUST redact the idToken
+        var entity = commandRepository.findById(command.id()).orElseThrow();
+        assertThat(entity.getPayload()).doesNotContain(secretToken);
+        assertThat(entity.getPayload()).contains("[REDACTED]");
+
+        // Outbound wire message MUST contain the actual idToken for the physical charger
+        String sentWireCall = outboundCalls.get(command.messageId());
+        assertThat(sentWireCall).isNotNull();
+        assertThat(sentWireCall).contains(secretToken);
+    }
+
+    @Test
+    void shouldRejectInvalidRemoteStartId() {
+        String stationId = "STATION-CMD-01";
+
+        assertThatThrownBy(() -> commandService.requestStartTransaction(
+                stationId, 1, "TAG-1", "not-a-number", "idemp-" + UUID.randomUUID()
+        )).isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("Invalid remoteStartId");
+
+        assertThatThrownBy(() -> commandService.requestStartTransaction(
+                stationId, 1, "TAG-1", "-5", "idemp-" + UUID.randomUUID()
+        )).isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("remoteStartId must be positive");
+
+        assertThatThrownBy(() -> commandService.requestStartTransaction(
+                stationId, 1, "TAG-1", "0", "idemp-" + UUID.randomUUID()
+        )).isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("remoteStartId must be positive");
+    }
+
+    @Test
+    void shouldCorrelateMultipleSimultaneousStartCommandsCorrectlyByRemoteStartId() {
+        String stationId = "STATION-CMD-01";
+
+        var cmd1 = commandService.requestStartTransaction(stationId, 1, "TAG-1", "3001", "idemp-sim-1");
+        var cmd2 = commandService.requestStartTransaction(stationId, 2, "TAG-2", "3002", "idemp-sim-2");
+
+        // Station accepts both
+        messageProcessor.process(stationId, """
+                [3, "%s", {"status": "Accepted"}]
+                """.formatted(cmd1.messageId()));
+        messageProcessor.process(stationId, """
+                [3, "%s", {"status": "Accepted"}]
+                """.formatted(cmd2.messageId()));
+
+        assertThat(commandService.getCommand(cmd1.id()).orElseThrow().status()).isEqualTo(CommandStatus.ACCEPTED);
+        assertThat(commandService.getCommand(cmd2.id()).orElseThrow().status()).isEqualTo(CommandStatus.ACCEPTED);
+
+        // TransactionEvent Started arrives for cmd2 (remoteStartId = 3002)
+        String txId2 = "tx-cmd2-" + UUID.randomUUID();
+        messageProcessor.process(stationId, """
+                [2, "msg-sim-start-2", "TransactionEvent", {
+                    "eventType": "Started",
+                    "timestamp": "2026-11-27T17:41:00Z",
+                    "triggerReason": "Authorized",
+                    "seqNo": 0,
+                    "transactionInfo": { "transactionId": "%s", "remoteStartId": 3002 },
+                    "evse": { "id": 2, "connectorId": 1 }
+                }]
+                """.formatted(txId2));
+
+        // cmd2 MUST transition to OBSERVED; cmd1 MUST remain ACCEPTED
+        assertThat(commandService.getCommand(cmd2.id()).orElseThrow().status()).isEqualTo(CommandStatus.OBSERVED);
+        assertThat(commandService.getCommand(cmd2.id()).orElseThrow().transactionId()).isEqualTo(txId2);
+
+        assertThat(commandService.getCommand(cmd1.id()).orElseThrow().status()).isEqualTo(CommandStatus.ACCEPTED);
+        assertThat(commandService.getCommand(cmd1.id()).orElseThrow().observedAt()).isNull();
+    }
+
+    @Test
+    void shouldNotCorrelateUnrelatedTransactionEventWithStartCommand() {
+        String stationId = "STATION-CMD-01";
+        var cmd = commandService.requestStartTransaction(stationId, 1, "TAG-1", "4001", "idemp-unrelated");
+
+        messageProcessor.process(stationId, """
+                [3, "%s", {"status": "Accepted"}]
+                """.formatted(cmd.messageId()));
+
+        // An unrelated local transaction event starts (no remoteStartId)
+        messageProcessor.process(stationId, """
+                [2, "msg-unrelated-tx", "TransactionEvent", {
+                    "eventType": "Started",
+                    "timestamp": "2026-11-27T17:42:00Z",
+                    "triggerReason": "Authorized",
+                    "seqNo": 0,
+                    "transactionInfo": { "transactionId": "tx-local-card-tap" },
+                    "evse": { "id": 1, "connectorId": 1 }
+                }]
+                """);
+
+        // The remote start command MUST NOT correlate with the local tap!
+        var cmdAfter = commandService.getCommand(cmd.id()).orElseThrow();
+        assertThat(cmdAfter.status()).isEqualTo(CommandStatus.ACCEPTED);
+        assertThat(cmdAfter.observedAt()).isNull();
+    }
+
+    @Test
     void shouldExecuteFullCommandLifecycleForRequestStopTransaction() {
         String stationId = "STATION-CMD-02";
         String txId = "tx-cmd-stop-" + UUID.randomUUID();
 
-        // 1. First start transaction so transaction service knows about it
-        String txStartedCall = """
+        // 1. First start transaction
+        messageProcessor.process(stationId, """
                 [2, "msg-tx-start-002", "TransactionEvent", {
                     "eventType": "Started",
                     "timestamp": "2026-11-27T17:40:00Z",
@@ -138,8 +257,7 @@ class StationCommandLifecycleIntegrationTests {
                     "transactionInfo": { "transactionId": "%s" },
                     "evse": { "id": 1, "connectorId": 1 }
                 }]
-                """.formatted(txId);
-        messageProcessor.process(stationId, txStartedCall);
+                """.formatted(txId));
 
         // 2. Request stop transaction
         var stopCommand = commandService.requestStopTransaction(
@@ -150,16 +268,15 @@ class StationCommandLifecycleIntegrationTests {
         assertThat(stopCommand.status()).isEqualTo(CommandStatus.PENDING);
 
         // 3. Station responds Accepted
-        String callResultJson = """
+        messageProcessor.process(stationId, """
                 [3, "%s", {"status": "Accepted"}]
-                """.formatted(stopCommand.messageId());
-        messageProcessor.process(stationId, callResultJson);
+                """.formatted(stopCommand.messageId()));
 
         var acceptedStop = commandService.getCommand(stopCommand.id()).orElseThrow();
         assertThat(acceptedStop.status()).isEqualTo(CommandStatus.ACCEPTED);
 
         // 4. Station sends TransactionEvent(eventType: Ended)
-        String txEndedCall = """
+        messageProcessor.process(stationId, """
                 [2, "msg-tx-end-002", "TransactionEvent", {
                     "eventType": "Ended",
                     "timestamp": "2026-11-27T17:45:00Z",
@@ -167,12 +284,195 @@ class StationCommandLifecycleIntegrationTests {
                     "seqNo": 1,
                     "transactionInfo": { "transactionId": "%s" }
                 }]
-                """.formatted(txId);
-        messageProcessor.process(stationId, txEndedCall);
+                """.formatted(txId));
 
         var observedStop = commandService.getCommand(stopCommand.id()).orElseThrow();
         assertThat(observedStop.status()).isEqualTo(CommandStatus.OBSERVED);
         assertThat(observedStop.observedAt()).isNotNull();
+    }
+
+    @Test
+    void shouldCorrelateStopCommandStrictlyByTransactionId() {
+        String stationId = "STATION-CMD-02";
+        String txA = "tx-A-" + UUID.randomUUID();
+        String txB = "tx-B-" + UUID.randomUUID();
+
+        // Start both transactions so transaction service tracks them
+        messageProcessor.process(stationId, """
+                [2, "msg-tx-start-a", "TransactionEvent", {
+                    "eventType": "Started",
+                    "timestamp": "2026-11-27T17:40:00Z",
+                    "triggerReason": "Authorized",
+                    "seqNo": 0,
+                    "transactionInfo": { "transactionId": "%s" },
+                    "evse": { "id": 1, "connectorId": 1 }
+                }]
+                """.formatted(txA));
+
+        messageProcessor.process(stationId, """
+                [2, "msg-tx-start-b", "TransactionEvent", {
+                    "eventType": "Started",
+                    "timestamp": "2026-11-27T17:41:00Z",
+                    "triggerReason": "Authorized",
+                    "seqNo": 0,
+                    "transactionInfo": { "transactionId": "%s" },
+                    "evse": { "id": 2, "connectorId": 1 }
+                }]
+                """.formatted(txB));
+
+        var stopA = commandService.requestStopTransaction(stationId, txA, "idemp-stop-A");
+        var stopB = commandService.requestStopTransaction(stationId, txB, "idemp-stop-B");
+
+        messageProcessor.process(stationId, """
+                [3, "%s", {"status": "Accepted"}]
+                """.formatted(stopA.messageId()));
+        messageProcessor.process(stationId, """
+                [3, "%s", {"status": "Accepted"}]
+                """.formatted(stopB.messageId()));
+
+        // Ended event arrives for txB only
+        messageProcessor.process(stationId, """
+                [2, "msg-tx-end-b", "TransactionEvent", {
+                    "eventType": "Ended",
+                    "timestamp": "2026-11-27T17:46:00Z",
+                    "triggerReason": "RemoteStop",
+                    "seqNo": 1,
+                    "transactionInfo": { "transactionId": "%s" }
+                }]
+                """.formatted(txB));
+
+        assertThat(commandService.getCommand(stopB.id()).orElseThrow().status()).isEqualTo(CommandStatus.OBSERVED);
+        assertThat(commandService.getCommand(stopA.id()).orElseThrow().status()).isEqualTo(CommandStatus.ACCEPTED);
+    }
+
+    @Test
+    void shouldNotOverwriteTerminalOrObservedStatesOnLateResponseOrError() {
+        String stationId = "STATION-CMD-01";
+        var cmd = commandService.requestStartTransaction(stationId, 1, "TAG-1", "5001", "idemp-terminal");
+
+        // Accept command
+        messageProcessor.process(stationId, """
+                [3, "%s", {"status": "Accepted"}]
+                """.formatted(cmd.messageId()));
+
+        // Observe command via TransactionEvent
+        messageProcessor.process(stationId, """
+                [2, "msg-terminal-observed", "TransactionEvent", {
+                    "eventType": "Started",
+                    "timestamp": "2026-11-27T17:47:00Z",
+                    "triggerReason": "Authorized",
+                    "seqNo": 0,
+                    "transactionInfo": { "transactionId": "tx-term", "remoteStartId": 5001 },
+                    "evse": { "id": 1, "connectorId": 1 }
+                }]
+                """);
+
+        assertThat(commandService.getCommand(cmd.id()).orElseThrow().status()).isEqualTo(CommandStatus.OBSERVED);
+
+        // A late CALL_ERROR arrives for this command: MUST NOT overwrite OBSERVED
+        messageProcessor.process(stationId, """
+                [4, "%s", "InternalError", "Late error after start", {}]
+                """.formatted(cmd.messageId()));
+
+        assertThat(commandService.getCommand(cmd.id()).orElseThrow().status()).isEqualTo(CommandStatus.OBSERVED);
+
+        // A late CALL_RESULT arrives: MUST NOT overwrite OBSERVED
+        messageProcessor.process(stationId, """
+                [3, "%s", {"status": "Rejected"}]
+                """.formatted(cmd.messageId()));
+
+        assertThat(commandService.getCommand(cmd.id()).orElseThrow().status()).isEqualTo(CommandStatus.OBSERVED);
+    }
+
+    @Test
+    void shouldHandleDuplicateResponsesIdempotently() {
+        String stationId = "STATION-CMD-01";
+        var cmd = commandService.requestStartTransaction(stationId, 1, "TAG-1", "6001", "idemp-dup-resp");
+
+        messageProcessor.process(stationId, """
+                [3, "%s", {"status": "Accepted"}]
+                """.formatted(cmd.messageId()));
+        assertThat(commandService.getCommand(cmd.id()).orElseThrow().status()).isEqualTo(CommandStatus.ACCEPTED);
+
+        // Duplicate response arrives
+        messageProcessor.process(stationId, """
+                [3, "%s", {"status": "Accepted"}]
+                """.formatted(cmd.messageId()));
+        assertThat(commandService.getCommand(cmd.id()).orElseThrow().status()).isEqualTo(CommandStatus.ACCEPTED);
+    }
+
+    @Test
+    void shouldTransitionPendingCommandsToUncertainOnStationDisconnect() {
+        String stationId = "STATION-CMD-03";
+        var cmd = commandService.requestStartTransaction(stationId, 1, "TAG-1", "7001", "idemp-disc-trans");
+        assertThat(cmd.status()).isEqualTo(CommandStatus.PENDING);
+
+        // Station abruptly disconnects before replying
+        commandService.handleStationDisconnect(stationId);
+
+        var updated = commandService.getCommand(cmd.id()).orElseThrow();
+        assertThat(updated.status()).isEqualTo(CommandStatus.UNCERTAIN);
+        assertThat(updated.responsePayload()).contains("Uncertain");
+
+        // A late response after disconnect MUST NOT overwrite UNCERTAIN
+        messageProcessor.process(stationId, """
+                [3, "%s", {"status": "Accepted"}]
+                """.formatted(cmd.messageId()));
+        assertThat(commandService.getCommand(cmd.id()).orElseThrow().status()).isEqualTo(CommandStatus.UNCERTAIN);
+    }
+
+    @Test
+    void shouldDetectConflictingIdempotencyKeyPayloads() {
+        String stationId = "STATION-CMD-01";
+        String key = "idemp-conflict-" + UUID.randomUUID();
+
+        commandService.requestStartTransaction(stationId, 1, "TAG-1", "8001", key);
+
+        // Conflicting evseId
+        assertThatThrownBy(() -> commandService.requestStartTransaction(stationId, 2, "TAG-1", "8001", key))
+                .isInstanceOf(ConflictingCommandException.class)
+                .hasMessageContaining("Conflicting evseId");
+
+        // Conflicting remoteStartId
+        assertThatThrownBy(() -> commandService.requestStartTransaction(stationId, 1, "TAG-1", "8002", key))
+                .isInstanceOf(ConflictingCommandException.class)
+                .hasMessageContaining("Conflicting remoteStartId");
+
+        String stopKey = "idemp-stop-conflict-" + UUID.randomUUID();
+        commandService.requestStopTransaction(stationId, "tx-999", stopKey);
+
+        // Conflicting transactionId
+        assertThatThrownBy(() -> commandService.requestStopTransaction(stationId, "tx-888", stopKey))
+                .isInstanceOf(ConflictingCommandException.class)
+                .hasMessageContaining("Conflicting transactionId");
+    }
+
+    @Test
+    void shouldNotDispatchWebSocketCallOnTransactionRollback() {
+        String stationId = "STATION-CMD-01";
+        TransactionTemplate template = new TransactionTemplate(transactionManager);
+
+        String idempKey = "rollback-idemp-" + UUID.randomUUID();
+
+        try {
+            template.execute(status -> {
+                commandService.requestStartTransaction(stationId, 1, "TAG-RB", "9001", idempKey);
+                // Deliberately roll back transaction
+                throw new RuntimeException("Simulated transaction rollback");
+            });
+        } catch (RuntimeException ignored) {
+        }
+
+        // Verify that NO message was dispatched to the charger over WebSocket!
+        var matchingDispatched = outboundCalls.values().stream()
+                .filter(call -> call.contains("9001") && call.contains("TAG-RB"))
+                .findFirst();
+
+        assertThat(matchingDispatched).isEmpty();
+
+        // Verify entity was rolled back and does not exist in DB
+        var existing = commandRepository.findByStationIdAndIdempotencyKey(stationId, idempKey);
+        assertThat(existing).isEmpty();
     }
 
     @Test
@@ -202,12 +502,9 @@ class StationCommandLifecycleIntegrationTests {
 
         assertThat(command.status()).isEqualTo(CommandStatus.PENDING);
 
-        // Station responds with CALL_ERROR [4, "<messageId>", "NotSupported", "Feature disabled", {}]
-        String callErrorJson = """
+        messageProcessor.process(stationId, """
                 [4, "%s", "NotSupported", "Feature disabled", {}]
-                """.formatted(command.messageId());
-
-        messageProcessor.process(stationId, callErrorJson);
+                """.formatted(command.messageId()));
 
         var updatedCommand = commandService.getCommand(command.id()).orElseThrow();
         assertThat(updatedCommand.status()).isEqualTo(CommandStatus.REJECTED);
