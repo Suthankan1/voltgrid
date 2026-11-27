@@ -114,6 +114,50 @@ public class StationGraphQlController {
         return station;
     }
 
+    @MutationMapping
+    @Transactional
+    public ChargingStation mapStation(@Argument @Valid MapStationInput input) {
+        String org = tenantAuthorizationService.resolveAuthorizedOrganizationId(input.organizationId());
+        tenantAuthorizationService.assertAuthorized(org, Permission.STATION_REGISTER);
+
+        var existing = stationQueryService.findById(input.stationId())
+                .orElseThrow(() -> new IllegalArgumentException("Station not found: " + input.stationId()));
+
+        if (input.siteId() != null && siteRepository.findById(input.siteId())
+                .filter(site -> site.getOrganizationId().equals(org) && "ACTIVE".equals(site.getStatus())).isEmpty()) {
+            throw new TenantAccessDeniedException("Active site access required in organization " + org);
+        }
+
+        if (existing.organizationId() != null && !existing.organizationId().equals(org)) {
+            var user = SecurityContext.get();
+            if (user == null || !user.roles().contains(Role.PLATFORM_ADMIN.name())) {
+                throw new TenantAccessDeniedException("Reassigning station from another organization requires platform admin");
+            }
+        }
+
+        var mappedStation = stationRegistrationService.mapStation(input.stationId(), org, input.siteId());
+
+        var user = SecurityContext.get();
+        auditService.recordEvent(
+                "STATION_MAPPED",
+                user != null ? user.userId() : "SYSTEM",
+                "USER",
+                org,
+                "STATION",
+                mappedStation.id(),
+                "MAP",
+                "SUCCESS",
+                null,
+                AdministrativeAuditService.metadata(Map.of(
+                        "stationId", mappedStation.id(),
+                        "previousOrganizationId", existing.organizationId() != null ? existing.organizationId() : "NONE",
+                        "siteId", input.siteId() != null ? input.siteId() : "NONE"
+                ))
+        );
+
+        return mappedStation;
+    }
+
     @QueryMapping
     public List<StationConnectorView> stationConnectors(@Argument String stationId) {
         if (station(stationId, null) == null) {

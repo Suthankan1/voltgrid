@@ -73,4 +73,66 @@ class AdministrativeAuditServiceTests {
         assertThat(paged.getContent()).hasSize(1);
         assertThat(paged.getContent().get(0).getId()).isEqualTo("audit-1");
     }
+
+    @Test
+    void shouldRecordDeniedAuditEventWithReason() {
+        when(auditRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var event = auditService.recordDeniedEvent(
+                "STATION_MAPPED",
+                "attacker-1",
+                "USER",
+                "org-ceylon",
+                "STATION",
+                "STA-QUARANTINE-1",
+                "MAP",
+                "Active site access required",
+                "corr-deny-1"
+        );
+
+        assertThat(event.getId()).startsWith("audit_");
+        assertThat(event.getOutcome()).isEqualTo("DENIED");
+        assertThat(event.getMetadata()).contains("Active site access required");
+        assertThat(event.getCorrelationId()).isEqualTo("corr-deny-1");
+    }
+
+    @Test
+    void shouldAllowlistApprovedMetadataFieldsAndRedactUnknownFields() {
+        String metadata = "{\"stationId\":\"STA-1\",\"previousOrganizationId\":\"NONE\",\"siteId\":\"site-1\",\"password\":\"secret\"}";
+        when(auditRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var event = auditService.recordEvent(
+                "STATION_MAPPED", "admin-1", "USER", "org-ceylon", "STATION", "STA-1", "MAP", "SUCCESS", null, metadata
+        );
+
+        assertThat(event.getMetadata()).contains("\"stationId\":\"STA-1\"");
+        assertThat(event.getMetadata()).contains("\"previousOrganizationId\":\"NONE\"");
+        assertThat(event.getMetadata()).contains("\"siteId\":\"site-1\"");
+        assertThat(event.getMetadata()).doesNotContain("secret");
+        assertThat(event.getMetadata()).contains("[REDACTED]");
+    }
+
+    @Test
+    void shouldBoundPageSizeToMaximum100AndNegativePageTo0() {
+        var captor = ArgumentCaptor.forClass(PageRequest.class);
+        when(auditRepository.findByOrganizationIdOrderByCreatedAtDesc(eq("org-ceylon"), captor.capture()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        auditService.findEvents("org-ceylon", -5, 500);
+
+        var pageRequest = captor.getValue();
+        assertThat(pageRequest.getPageNumber()).isEqualTo(0);
+        assertThat(pageRequest.getPageSize()).isEqualTo(100);
+    }
+
+    @Test
+    void shouldGracefullyHandleMalformedJsonMetadata() {
+        when(auditRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var event = auditService.recordEvent(
+                "STATION_REGISTERED", "admin-1", "USER", "org-ceylon", "STATION", "STA-1", "REGISTER", "SUCCESS", null, "not-valid-json{"
+        );
+
+        assertThat(event.getMetadata()).isEqualTo("{}");
+    }
 }

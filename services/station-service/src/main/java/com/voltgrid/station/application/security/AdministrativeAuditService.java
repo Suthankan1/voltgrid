@@ -19,7 +19,9 @@ import java.util.UUID;
 public class AdministrativeAuditService {
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
-    private static final Set<String> METADATA_FIELDS = Set.of("stationId", "userId", "role", "newRole");
+    private static final Set<String> METADATA_FIELDS = Set.of(
+            "stationId", "userId", "role", "newRole", "previousOrganizationId", "siteId", "action", "reason"
+    );
 
     private final AdministrativeAuditEventJpaRepository auditRepository;
 
@@ -57,6 +59,35 @@ public class AdministrativeAuditService {
                 sanitizedMetadata
         );
 
+        return auditRepository.save(event);
+    }
+
+    @Transactional
+    public AdministrativeAuditEventEntity recordDeniedEvent(
+            String eventType,
+            String actorId,
+            String actorType,
+            String organizationId,
+            String resourceType,
+            String resourceId,
+            String action,
+            String reason,
+            String correlationId
+    ) {
+        String eventId = "audit_" + UUID.randomUUID().toString().replace("-", "");
+        var event = new AdministrativeAuditEventEntity(
+                eventId,
+                organizationId,
+                eventType,
+                actorId != null ? actorId : "SYSTEM",
+                actorType != null ? actorType : "USER",
+                resourceType,
+                resourceId,
+                action,
+                "DENIED",
+                correlationId,
+                metadata(Map.of("reason", reason != null ? reason : "Access Denied"))
+        );
         return auditRepository.save(event);
     }
 
