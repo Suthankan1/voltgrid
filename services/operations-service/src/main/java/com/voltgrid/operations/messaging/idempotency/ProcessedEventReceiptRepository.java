@@ -36,4 +36,8 @@ public interface ProcessedEventReceiptRepository
             @Param("eventType") String eventType,
             @Param("processedAt") Instant processedAt
     );
+
+    @Modifying
+    @Query("DELETE FROM ProcessedEventReceiptEntity r WHERE r.processedAt < :cutoff")
+    int deleteByProcessedAtBefore(@Param("cutoff") Instant cutoff);
 }

@@ -52,7 +52,11 @@ public class StationTransactionGraphQlController {
     private static final int MAX_PAGE_SIZE = 100;
 
     @QueryMapping
-    public List<ChargingTransactionView> transactions(@Argument String organizationId) {
+    public List<ChargingTransactionView> transactions(
+            @Argument String organizationId,
+            @Argument Integer page,
+            @Argument Integer size
+    ) {
         String org = organizationId;
         if (tenantAuthorizationService != null) {
             org = tenantAuthorizationService.resolveAuthorizedOrganizationId(organizationId);
@@ -63,6 +67,19 @@ public class StationTransactionGraphQlController {
                 ? queryService.findByOrganizationId(org)
                 : queryService.findAll();
 
+        if (page != null && size != null) {
+            int boundedPage = Math.max(0, page);
+            int boundedSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
+            int fromIndex = boundedPage * boundedSize;
+            if (fromIndex >= list.size()) {
+                return List.of();
+            }
+            return list.subList(fromIndex, Math.min(fromIndex + boundedSize, list.size()))
+                    .stream()
+                    .map(ChargingTransactionView::from)
+                    .toList();
+        }
+
         return list.stream()
                 .limit(MAX_UNPAGINATED_LIMIT)
                 .map(ChargingTransactionView::from)
@@ -70,7 +87,7 @@ public class StationTransactionGraphQlController {
     }
 
     public List<ChargingTransactionView> transactions() {
-        return transactions(null);
+        return transactions(null, null, null);
     }
 
     @QueryMapping
@@ -139,7 +156,9 @@ public class StationTransactionGraphQlController {
     @QueryMapping
     public List<ChargingTransactionView> stationTransactions(
             @Argument String stationId,
-            @Argument String organizationId
+            @Argument String organizationId,
+            @Argument Integer page,
+            @Argument Integer size
     ) {
         String org = organizationId;
         if (tenantAuthorizationService != null) {
@@ -151,10 +170,30 @@ public class StationTransactionGraphQlController {
                 ? queryService.findByStationIdAndOrganizationId(stationId, org)
                 : queryService.findByStationId(stationId);
 
+        if (page != null && size != null) {
+            int boundedPage = Math.max(0, page);
+            int boundedSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
+            int fromIndex = boundedPage * boundedSize;
+            if (fromIndex >= list.size()) {
+                return List.of();
+            }
+            return list.subList(fromIndex, Math.min(fromIndex + boundedSize, list.size()))
+                    .stream()
+                    .map(ChargingTransactionView::from)
+                    .toList();
+        }
+
         return list.stream()
                 .limit(MAX_UNPAGINATED_LIMIT)
                 .map(ChargingTransactionView::from)
                 .toList();
+    }
+
+    public List<ChargingTransactionView> stationTransactions(
+            String stationId,
+            String organizationId
+    ) {
+        return stationTransactions(stationId, organizationId, null, null);
     }
 
     @QueryMapping
@@ -187,7 +226,9 @@ public class StationTransactionGraphQlController {
     public List<TransactionMeterSampleView> transactionMeterSamples(
             @Argument String stationId,
             @Argument String transactionId,
-            @Argument String organizationId
+            @Argument String organizationId,
+            @Argument Integer page,
+            @Argument Integer size
     ) {
         String org = organizationId;
         if (tenantAuthorizationService != null) {
@@ -206,10 +247,31 @@ public class StationTransactionGraphQlController {
                 ? queryService.findMeterSamplesAndOrganizationId(stationId, transactionId, org)
                 : queryService.findMeterSamples(stationId, transactionId);
 
+        if (page != null && size != null) {
+            int boundedPage = Math.max(0, page);
+            int boundedSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
+            int fromIndex = boundedPage * boundedSize;
+            if (fromIndex >= list.size()) {
+                return List.of();
+            }
+            return list.subList(fromIndex, Math.min(fromIndex + boundedSize, list.size()))
+                    .stream()
+                    .map(TransactionMeterSampleView::from)
+                    .toList();
+        }
+
         return list.stream()
                 .limit(MAX_UNPAGINATED_LIMIT)
                 .map(TransactionMeterSampleView::from)
                 .toList();
+    }
+
+    public List<TransactionMeterSampleView> transactionMeterSamples(
+            String stationId,
+            String transactionId,
+            String organizationId
+    ) {
+        return transactionMeterSamples(stationId, transactionId, organizationId, null, null);
     }
 
     @QueryMapping

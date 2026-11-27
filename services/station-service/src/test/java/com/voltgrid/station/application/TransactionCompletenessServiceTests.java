@@ -482,9 +482,9 @@ class TransactionCompletenessServiceTests {
     }
 
     @Test
-    void shouldReturnEmptyMissingSequencesWhenRangeExceedsSafeLimit() {
-        // Exposing BUG-001 boundary condition: when range > 100_000, findMissingSequenceNumbers returns empty
-        // which causes determineStatus to mark an ended transaction as COMPLETE despite missing data.
+    void shouldBoundMissingSequencesAndStrictlyMarkIncompleteWhenRangeExceedsSafeLimit() {
+        // Exposing BUG-001 boundary condition: when range > 100_000 and data is missing,
+        // determineStatus must strictly report INCOMPLETE rather than defaulting to COMPLETE.
         var transaction = endedTransaction(150_000);
 
         when(transactionReader.findById("STATION-003", "TX-001"))
@@ -498,10 +498,10 @@ class TransactionCompletenessServiceTests {
 
         var result = service.calculate("STATION-003", "TX-001");
 
-        // Documents current guard behavior: returns empty missing list to prevent memory exhaustion,
-        // which defaults status to COMPLETE. Tracked under VG-205 for pagination / bounded representation.
-        assertThat(result.missingSequenceNumbers()).isEmpty();
-        assertThat(result.status()).isEqualTo(TransactionDataStatus.COMPLETE);
+        // Bounds missing list to MAX_ENUMERATED_MISSING (10,000) to protect memory,
+        // and strictly reports INCOMPLETE because 149,999 receipts are missing.
+        assertThat(result.missingSequenceNumbers()).hasSize(10_000);
+        assertThat(result.status()).isEqualTo(TransactionDataStatus.INCOMPLETE);
     }
 
     private ChargingTransaction endedTransaction(

@@ -3,7 +3,9 @@ package com.voltgrid.station.messaging.outbox;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -48,4 +50,12 @@ public interface OutboxEventRepository
             nativeQuery = true
     )
     int resetQuarantinedEvents();
+
+    @Modifying
+    @Query("""
+            DELETE FROM OutboxEventEntity e
+            WHERE e.publishedAt IS NOT NULL
+              AND e.publishedAt < :cutoff
+            """)
+    int deleteByPublishedAtBefore(@Param("cutoff") Instant cutoff);
 }
