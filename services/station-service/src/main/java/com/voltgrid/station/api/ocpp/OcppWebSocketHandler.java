@@ -4,6 +4,8 @@ import com.voltgrid.station.application.StationConnectivityService;
 import com.voltgrid.station.application.security.OcppSessionFencer;
 import com.voltgrid.station.application.security.StationCredentialService;
 import com.voltgrid.station.infrastructure.lifecycle.ApplicationShutdownState;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
@@ -30,6 +32,17 @@ public class OcppWebSocketHandler
     private final StationCredentialService credentialService;
     private final ConcurrentHashMap<String, WebSocketSession> activeSessionMap =
             new ConcurrentHashMap<>();
+    private MeterRegistry meterRegistry;
+
+    @Autowired(required = false)
+    public void setMeterRegistry(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+        if (meterRegistry != null) {
+            Gauge.builder("voltgrid.ocpp.active_connections", activeSessionMap, ConcurrentHashMap::size)
+                    .description("Active connected OCPP charging station WebSocket sessions")
+                    .register(meterRegistry);
+        }
+    }
 
     @Autowired
     public OcppWebSocketHandler(
@@ -129,11 +142,18 @@ public class OcppWebSocketHandler
                     message.getPayload()
             );
 
+            if (meterRegistry != null) {
+                meterRegistry.counter("voltgrid.ocpp.messages.received", "status", "success").increment();
+            }
+
             session.sendMessage(
                     new TextMessage(response)
             );
 
         } catch (IllegalArgumentException exception) {
+            if (meterRegistry != null) {
+                meterRegistry.counter("voltgrid.ocpp.messages.received", "status", "invalid_frame").increment();
+            }
             session.close(
                     CloseStatus.BAD_DATA
                             .withReason("Invalid OCPP frame")

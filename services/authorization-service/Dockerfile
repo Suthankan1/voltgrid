@@ -56,6 +56,6 @@ COPY --from=build \
 
 USER voltgrid
 
-EXPOSE 9090
+EXPOSE 9090 8082
 
 ENTRYPOINT ["java", "-jar", "application.jar"]

@@ -28,3 +28,12 @@ scrape_configs:
         labels:
           service: operations-service
           environment: local
+
+  - job_name: voltgrid-authorization
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - host.docker.internal:8082
+        labels:
+          service: authorization-service
+          environment: local
