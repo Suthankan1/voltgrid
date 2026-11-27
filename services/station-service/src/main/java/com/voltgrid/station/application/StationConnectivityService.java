@@ -40,7 +40,9 @@ public class StationConnectivityService {
 
         var previousStatus = station.status();
         long newGeneration = station.connectionGeneration() + 1;
-        long newSequence = station.statusSequenceNumber() + 1;
+        long newSequence = previousStatus != StationStatus.ONLINE
+                ? station.statusSequenceNumber() + 1
+                : station.statusSequenceNumber();
 
         stationWriter.save(
                 new ChargingStation(
@@ -73,7 +75,35 @@ public class StationConnectivityService {
             String stationId,
             Instant seenAt
     ) {
-        registerConnection(stationId, seenAt);
+        var station = findStation(stationId);
+
+        var previousStatus = station.status();
+        long newSequence = previousStatus != StationStatus.ONLINE
+                ? station.statusSequenceNumber() + 1
+                : station.statusSequenceNumber();
+
+        stationWriter.save(
+                new ChargingStation(
+                        station.id(),
+                        station.name(),
+                        StationStatus.ONLINE,
+                        seenAt,
+                        station.organizationId(),
+                        station.siteId(),
+                        station.connectionGeneration(),
+                        newSequence
+                )
+        );
+
+        if (previousStatus != StationStatus.ONLINE) {
+            writeStatusChangedEvent(
+                    station,
+                    previousStatus,
+                    StationStatus.ONLINE,
+                    seenAt,
+                    newSequence
+            );
+        }
     }
 
     @Transactional(readOnly = true)

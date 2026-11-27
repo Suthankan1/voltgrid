@@ -81,7 +81,7 @@ class StationConnectivityServiceTests {
                                 seenAt,
                                 null,
                                 null,
-                                1L,
+                                0L,
                                 1L
                         )
                 );
@@ -171,8 +171,8 @@ class StationConnectivityServiceTests {
                                 seenAt,
                                 null,
                                 null,
-                                1L,
-                                1L
+                                0L,
+                                0L
                         )
                 );
 
