@@ -29,7 +29,7 @@ class HistoricalStationMigrationTests {
 
     private static final String SNAPSHOT = """
             SELECT jsonb_build_array(
-              (SELECT jsonb_agg(to_jsonb(s) - 'organization_id' - 'site_id' ORDER BY id) FROM charging_stations s),
+              (SELECT jsonb_agg(to_jsonb(s) - 'organization_id' - 'site_id' - 'connection_generation' - 'status_sequence_number' ORDER BY id) FROM charging_stations s),
               (SELECT jsonb_agg(to_jsonb(c) ORDER BY station_id) FROM station_connectors c),
               (SELECT jsonb_agg(to_jsonb(t) ORDER BY station_id) FROM charging_transactions t),
               (SELECT jsonb_agg(to_jsonb(m) ORDER BY id) FROM transaction_meter_samples m),
@@ -66,7 +66,7 @@ class HistoricalStationMigrationTests {
     void freshInstallValidates() {
         flyway("latest").migrate();
         flyway("latest").validate();
-        assertThat(flyway("latest").info().current().getVersion().getVersion()).isEqualTo("18");
+        assertThat(flyway("latest").info().current().getVersion().getVersion()).isEqualTo("19");
     }
 
     @Test

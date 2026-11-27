@@ -4,6 +4,8 @@ import com.voltgrid.station.domain.ChargingStation;
 import com.voltgrid.station.domain.StationStatus;
 import com.voltgrid.station.messaging.event.StationStatusChangedEvent;
 import com.voltgrid.station.messaging.outbox.StationStatusOutboxWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,6 +14,8 @@ import java.util.UUID;
 
 @Service
 public class StationConnectivityService {
+
+    private static final Logger log = LoggerFactory.getLogger(StationConnectivityService.class);
 
     private final StationReader stationReader;
     private final StationWriter stationWriter;
@@ -24,22 +28,21 @@ public class StationConnectivityService {
     ) {
         this.stationReader = stationReader;
         this.stationWriter = stationWriter;
-        this.stationStatusOutboxWriter =
-                stationStatusOutboxWriter;
+        this.stationStatusOutboxWriter = stationStatusOutboxWriter;
     }
 
     @Transactional
-    public void markOnline(
+    public long registerConnection(
             String stationId,
             Instant seenAt
     ) {
-        var station =
-                findStation(
-                        stationId
-                );
+        var station = findStation(stationId);
 
-        var previousStatus =
-                station.status();
+        var previousStatus = station.status();
+        long newGeneration = station.connectionGeneration() + 1;
+        long newSequence = previousStatus != StationStatus.ONLINE
+                ? station.statusSequenceNumber() + 1
+                : station.statusSequenceNumber();
 
         stationWriter.save(
                 new ChargingStation(
@@ -48,7 +51,9 @@ public class StationConnectivityService {
                         StationStatus.ONLINE,
                         seenAt,
                         station.organizationId(),
-                        station.siteId()
+                        station.siteId(),
+                        newGeneration,
+                        newSequence
                 )
         );
 
@@ -57,64 +62,76 @@ public class StationConnectivityService {
                     station,
                     previousStatus,
                     StationStatus.ONLINE,
-                    seenAt
+                    seenAt,
+                    newSequence
             );
         }
+
+        return newGeneration;
     }
 
     @Transactional
-    public void recordActivity(
+    public void markOnline(
             String stationId,
             Instant seenAt
     ) {
-        var station =
-                findStation(
-                        stationId
-                );
+        var station = findStation(stationId);
 
-        var previousStatus =
-                station.status();
-
-        var currentStatus =
-                previousStatus == StationStatus.OFFLINE
-                        ? StationStatus.ONLINE
-                        : previousStatus;
+        var previousStatus = station.status();
+        long newSequence = previousStatus != StationStatus.ONLINE
+                ? station.statusSequenceNumber() + 1
+                : station.statusSequenceNumber();
 
         stationWriter.save(
                 new ChargingStation(
                         station.id(),
                         station.name(),
-                        currentStatus,
+                        StationStatus.ONLINE,
                         seenAt,
                         station.organizationId(),
-                        station.siteId()
+                        station.siteId(),
+                        station.connectionGeneration(),
+                        newSequence
                 )
         );
 
-        if (previousStatus != currentStatus) {
+        if (previousStatus != StationStatus.ONLINE) {
             writeStatusChangedEvent(
                     station,
                     previousStatus,
-                    currentStatus,
-                    seenAt
+                    StationStatus.ONLINE,
+                    seenAt,
+                    newSequence
             );
         }
     }
 
-    @Transactional
-    public void markOffline(
-            String stationId
+    @Transactional(readOnly = true)
+    public boolean isGenerationActive(
+            String stationId,
+            long generation
     ) {
-        var station =
-                findStation(
-                        stationId
-                );
+        return stationReader.findById(stationId)
+                .map(s -> s.connectionGeneration() == generation)
+                .orElse(false);
+    }
 
-        var previousStatus =
-                station.status();
+    @Transactional
+    public boolean markOfflineIfGenerationMatches(
+            String stationId,
+            long expectedGeneration
+    ) {
+        var station = findStation(stationId);
 
-        var occurredAt =
-                Instant.now();
+        if (station.connectionGeneration() != expectedGeneration) {
+            log.info("Ignoring stale disconnect for station {} with generation {} (active generation is {})",
+                    stationId, expectedGeneration, station.connectionGeneration());
+            return false;
+        }
+
+        var previousStatus = station.status();
+        var occurredAt = Instant.now();
+        long newSequence = station.statusSequenceNumber() + 1;
 
         stationWriter.save(
                 new ChargingStation(
@@ -123,7 +140,9 @@ public class StationConnectivityService {
                         StationStatus.OFFLINE,
                         station.lastSeenAt(),
                         station.organizationId(),
-                        station.siteId()
+                        station.siteId(),
+                        station.connectionGeneration(),
+                        newSequence
                 )
         );
 
@@ -132,7 +151,60 @@ public class StationConnectivityService {
                     station,
                     previousStatus,
                     StationStatus.OFFLINE,
-                    occurredAt
+                    occurredAt,
+                    newSequence
+            );
+        }
+
+        return true;
+    }
+
+    @Transactional
+    public void markOffline(
+            String stationId
+    ) {
+        var station = findStation(stationId);
+        markOfflineIfGenerationMatches(stationId, station.connectionGeneration());
+    }
+
+    @Transactional
+    public void recordActivity(
+            String stationId,
+            Instant seenAt
+    ) {
+        var station = findStation(stationId);
+
+        var previousStatus = station.status();
+
+        var currentStatus =
+                previousStatus == StationStatus.OFFLINE
+                        ? StationStatus.ONLINE
+                        : previousStatus;
+
+        long newSequence = previousStatus != currentStatus
+                ? station.statusSequenceNumber() + 1
+                : station.statusSequenceNumber();
+
+        stationWriter.save(
+                new ChargingStation(
+                        station.id(),
+                        station.name(),
+                        currentStatus,
+                        seenAt,
+                        station.organizationId(),
+                        station.siteId(),
+                        station.connectionGeneration(),
+                        newSequence
+                )
+        );
+
+        if (previousStatus != currentStatus) {
+            writeStatusChangedEvent(
+                    station,
+                    previousStatus,
+                    currentStatus,
+                    seenAt,
+                    newSequence
             );
         }
     }
@@ -141,7 +213,8 @@ public class StationConnectivityService {
             ChargingStation station,
             StationStatus previousStatus,
             StationStatus currentStatus,
-            Instant occurredAt
+            Instant occurredAt,
+            long sequenceNumber
     ) {
         stationStatusOutboxWriter.save(
                 new StationStatusChangedEvent(
@@ -150,7 +223,8 @@ public class StationConnectivityService {
                         previousStatus.name(),
                         currentStatus.name(),
                         occurredAt,
-                        station.organizationId()
+                        station.organizationId(),
+                        sequenceNumber
                 ),
                 occurredAt
         );

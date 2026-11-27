@@ -34,6 +34,12 @@ public class ChargingStationEntity {
     @Column(name = "last_seen_at")
     private Instant lastSeenAt;
 
+    @Column(name = "connection_generation", nullable = false)
+    private long connectionGeneration = 0L;
+
+    @Column(name = "status_sequence_number", nullable = false)
+    private long statusSequenceNumber = 0L;
+
     protected ChargingStationEntity() {
     }
 
@@ -42,7 +48,7 @@ public class ChargingStationEntity {
             String name,
             StationStatus status
     ) {
-        this(id, name, status, null, null, null);
+        this(id, name, status, null, null, null, 0L, 0L);
     }
 
     public ChargingStationEntity(
@@ -51,7 +57,7 @@ public class ChargingStationEntity {
             StationStatus status,
             Instant lastSeenAt
     ) {
-        this(id, name, status, lastSeenAt, null, null);
+        this(id, name, status, lastSeenAt, null, null, 0L, 0L);
     }
 
     public ChargingStationEntity(
@@ -62,12 +68,27 @@ public class ChargingStationEntity {
             String organizationId,
             String siteId
     ) {
+        this(id, name, status, lastSeenAt, organizationId, siteId, 0L, 0L);
+    }
+
+    public ChargingStationEntity(
+            String id,
+            String name,
+            StationStatus status,
+            Instant lastSeenAt,
+            String organizationId,
+            String siteId,
+            long connectionGeneration,
+            long statusSequenceNumber
+    ) {
         this.id = id;
         this.name = name;
         this.status = status;
         this.lastSeenAt = lastSeenAt;
         this.organizationId = organizationId;
         this.siteId = siteId;
+        this.connectionGeneration = connectionGeneration;
+        this.statusSequenceNumber = statusSequenceNumber;
     }
 
     public String getId() {
@@ -98,15 +119,31 @@ public class ChargingStationEntity {
         return status;
     }
 
+    public void setStatus(StationStatus status) {
+        this.status = status;
+    }
+
     public Instant getLastSeenAt() {
         return lastSeenAt;
     }
 
-    public void updateStatus(
-            StationStatus status,
-            Instant lastSeenAt
-    ) {
-        this.status = status;
+    public void setLastSeenAt(Instant lastSeenAt) {
         this.lastSeenAt = lastSeenAt;
+    }
+
+    public long getConnectionGeneration() {
+        return connectionGeneration;
+    }
+
+    public void setConnectionGeneration(long connectionGeneration) {
+        this.connectionGeneration = connectionGeneration;
+    }
+
+    public long getStatusSequenceNumber() {
+        return statusSequenceNumber;
+    }
+
+    public void setStatusSequenceNumber(long statusSequenceNumber) {
+        this.statusSequenceNumber = statusSequenceNumber;
     }
 }

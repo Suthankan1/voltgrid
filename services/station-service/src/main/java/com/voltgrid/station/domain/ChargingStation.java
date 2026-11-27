@@ -8,8 +8,21 @@ public record ChargingStation(
         StationStatus status,
         Instant lastSeenAt,
         String organizationId,
-        String siteId
+        String siteId,
+        long connectionGeneration,
+        long statusSequenceNumber
 ) {
+
+    public ChargingStation(
+            String id,
+            String name,
+            StationStatus status,
+            Instant lastSeenAt,
+            String organizationId,
+            String siteId
+    ) {
+        this(id, name, status, lastSeenAt, organizationId, siteId, 0L, 0L);
+    }
 
     public ChargingStation(
             String id,
@@ -17,7 +30,7 @@ public record ChargingStation(
             StationStatus status,
             Instant lastSeenAt
     ) {
-        this(id, name, status, lastSeenAt, null, null);
+        this(id, name, status, lastSeenAt, null, null, 0L, 0L);
     }
 
     public ChargingStation(
@@ -25,6 +38,6 @@ public record ChargingStation(
             String name,
             StationStatus status
     ) {
-        this(id, name, status, null, null, null);
+        this(id, name, status, null, null, null, 0L, 0L);
     }
 }

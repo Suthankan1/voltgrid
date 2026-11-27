@@ -3,8 +3,8 @@ package com.voltgrid.station.api.ocpp;
 import com.voltgrid.station.application.StationConnectivityService;
 import com.voltgrid.station.application.security.OcppSessionFencer;
 import com.voltgrid.station.application.security.StationCredentialService;
-import org.springframework.beans.factory.annotation.Autowired;
 import com.voltgrid.station.infrastructure.lifecycle.ApplicationShutdownState;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.SubProtocolCapable;
@@ -12,6 +12,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -21,6 +22,7 @@ public class OcppWebSocketHandler
         implements SubProtocolCapable, OcppSessionFencer {
 
     public static final String SUBPROTOCOL = "ocpp2.0.1";
+    public static final String CONNECTION_GENERATION_ATTRIBUTE = "voltgrid.ocpp.connection-generation";
 
     private final OcppMessageProcessor messageProcessor;
     private final StationConnectivityService connectivityService;
@@ -66,6 +68,9 @@ public class OcppWebSocketHandler
                 .get(OcppHandshakeInterceptor.STATION_ID_ATTRIBUTE);
 
         if (stationId != null) {
+            long generation = connectivityService.registerConnection(stationId, Instant.now());
+            session.getAttributes().put(CONNECTION_GENERATION_ATTRIBUTE, generation);
+
             var oldSession = activeSessionMap.put(stationId, session);
             if (oldSession != null && oldSession != session && oldSession.isOpen()) {
                 try {
@@ -100,6 +105,15 @@ public class OcppWebSocketHandler
 
         if (stationId == null || activeSessionMap.get(stationId) != session) {
             session.close(CloseStatus.POLICY_VIOLATION.withReason("Session is no longer active"));
+            return;
+        }
+
+        Long generation = (Long) session
+                .getAttributes()
+                .get(CONNECTION_GENERATION_ATTRIBUTE);
+
+        if (generation != null && !connectivityService.isGenerationActive(stationId, generation)) {
+            session.close(CloseStatus.POLICY_VIOLATION.withReason("Superseded by newer connection generation"));
             return;
         }
 
@@ -141,9 +155,17 @@ public class OcppWebSocketHandler
                 .get(OcppHandshakeInterceptor.STATION_ID_ATTRIBUTE);
 
         if (stationId != null) {
+            Long generation = (Long) session
+                    .getAttributes()
+                    .get(CONNECTION_GENERATION_ATTRIBUTE);
+
             activeSessionMap.computeIfPresent(stationId, (id, current) -> {
                 if (current != session) return current;
-                connectivityService.markOffline(id);
+                if (generation != null && generation > 0) {
+                    connectivityService.markOfflineIfGenerationMatches(id, generation);
+                } else {
+                    connectivityService.markOffline(id);
+                }
                 return null;
             });
         }

@@ -78,7 +78,11 @@ class StationConnectivityServiceTests {
                                 "STATION-003",
                                 "Galle Central",
                                 StationStatus.ONLINE,
-                                seenAt
+                                seenAt,
+                                null,
+                                null,
+                                0L,
+                                1L
                         )
                 );
 
@@ -118,6 +122,11 @@ class StationConnectivityServiceTests {
         assertEquals(
                 seenAt,
                 event.occurredAt()
+        );
+
+        assertEquals(
+                1L,
+                event.sequenceNumber()
         );
     }
 
@@ -159,7 +168,11 @@ class StationConnectivityServiceTests {
                                 "STATION-003",
                                 "Galle Central",
                                 StationStatus.ONLINE,
-                                seenAt
+                                seenAt,
+                                null,
+                                null,
+                                0L,
+                                0L
                         )
                 );
 
@@ -210,7 +223,11 @@ class StationConnectivityServiceTests {
                                 "STATION-003",
                                 "Galle Central",
                                 StationStatus.ONLINE,
-                                seenAt
+                                seenAt,
+                                null,
+                                null,
+                                0L,
+                                0L
                         )
                 );
 
@@ -255,7 +272,11 @@ class StationConnectivityServiceTests {
                                 "STATION-003",
                                 "Galle Central",
                                 StationStatus.OFFLINE,
-                                lastSeenAt
+                                lastSeenAt,
+                                null,
+                                null,
+                                0L,
+                                1L
                         )
                 );
 
@@ -305,6 +326,11 @@ class StationConnectivityServiceTests {
                 event.occurredAt(),
                 occurredAtCaptor.getValue()
         );
+
+        assertEquals(
+                1L,
+                event.sequenceNumber()
+        );
     }
 
     @Test
@@ -339,7 +365,11 @@ class StationConnectivityServiceTests {
                                 "STATION-003",
                                 "Galle Central",
                                 StationStatus.OFFLINE,
-                                lastSeenAt
+                                lastSeenAt,
+                                null,
+                                null,
+                                0L,
+                                1L
                         )
                 );
 
@@ -374,7 +404,11 @@ class StationConnectivityServiceTests {
                         "STATION-003",
                         "Galle Central",
                         StationStatus.ONLINE,
-                        heartbeatAt
+                        heartbeatAt,
+                        null,
+                        null,
+                        0L,
+                        1L
                 )
         );
 
@@ -386,5 +420,6 @@ class StationConnectivityServiceTests {
         assertEquals("OFFLINE", event.previousStatus());
         assertEquals("ONLINE", event.currentStatus());
         assertEquals(heartbeatAt, event.occurredAt());
+        assertEquals(1L, event.sequenceNumber());
     }
 }

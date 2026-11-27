@@ -62,7 +62,7 @@ class HistoricalProjectionMigrationTests {
 
     private static List<String> projections(JdbcTemplate jdbc) {
         return jdbc.queryForList("""
-                SELECT (to_jsonb(p) - 'organization_id')::text
+                SELECT (to_jsonb(p) - 'organization_id' - 'sequence_number')::text
                 FROM station_status_projections p ORDER BY station_id
                 """, String.class);
     }
