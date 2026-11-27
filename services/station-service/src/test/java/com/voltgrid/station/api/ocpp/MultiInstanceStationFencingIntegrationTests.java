@@ -4,18 +4,15 @@ import com.voltgrid.station.application.StationConnectivityService;
 import com.voltgrid.station.application.StationReader;
 import com.voltgrid.station.domain.StationStatus;
 import com.voltgrid.station.infrastructure.lifecycle.ApplicationShutdownState;
+import com.voltgrid.station.support.PostgresTestConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.context.annotation.Import;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -33,22 +30,8 @@ import static org.mockito.Mockito.when;
                 "voltgrid.security.require-auth=false"
         }
 )
-@Testcontainers
+@Import(PostgresTestConfiguration.class)
 class MultiInstanceStationFencingIntegrationTests {
-
-    @Container
-    static final PostgreSQLContainer POSTGRES =
-            new PostgreSQLContainer("postgres:18.6")
-                    .withDatabaseName("voltgrid_station")
-                    .withUsername("voltgrid")
-                    .withPassword("voltgrid_dev");
-
-    @DynamicPropertySource
-    static void configurePostgres(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
-    }
 
     @Autowired
     private StationConnectivityService connectivityService;
