@@ -11,6 +11,9 @@ on:
 permissions:
   contents: read
 
+env:
+  OIDC_AUDIENCE: voltgrid-api
+
 concurrency:
   group: operator-web-${{ github.ref }}
   cancel-in-progress: true

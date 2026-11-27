@@ -40,6 +40,12 @@ OPERATOR_LOCAL_WRITES=true STATION_GRAPHQL_URL=http://127.0.0.1:8080/graphql OPE
 
 Registration writes require **all** of: `OPERATOR_LOCAL_WRITES=true`, loopback HTTP `STATION_GRAPHQL_URL`, and loopback `Host` / `X-Forwarded-Host` request headers. Failed or timed-out registration submissions return explicit uncertain guidance and offer a read-only verification lookup rather than automatic mutation retry.
 
+## OIDC startup configuration
+
+The development and production servers require `OPERATOR_WEB_ORIGIN`, `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, and `OIDC_AUDIENCE` at startup. Set the API audience explicitly and keep it distinct from the browser client ID. Configure the operator origin as an HTTPS origin and the issuer as an HTTPS issuer identifier. Supply the client secret through the runtime environment. Provider discovery and key retrieval are checked when needed to authenticate requests.
+
+For the isolated local fixture, `OIDC_LOCAL_HTTP=true` requires both the app and the issuer to use loopback HTTP. `OPERATOR_LOCAL_WRITES=true` requires that same fixture mode. Existing installations that relied on the former implicit audience need to set `OIDC_AUDIENCE=voltgrid-api` or their configured API audience before upgrading. A rollback requires only the previous app revision and runtime configuration.
+
 ## Verification Commands
 
 Run these commands from `apps/operator-web` with Node 24 or later and `pnpm@12.4.2`. Browser suites also require the local OIDC fixture and the client and password variables in the [fixture guide](../../integration-tests/oidc/README.md).
