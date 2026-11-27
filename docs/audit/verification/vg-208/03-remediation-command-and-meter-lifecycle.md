@@ -38,3 +38,11 @@ All 21 integration tests in `StationCommandLifecycleIntegrationTests` and `Stati
 [INFO] Tests run: 21, Failures: 0, Errors: 0, Skipped: 0
 [INFO] BUILD SUCCESS
 ```
+
+## Dispatch result after commit
+
+Two additional PostgreSQL regressions reproduced a remaining issue in PR #93. An immediate CALL_RESULT left a command pending after the dispatch path overwrote its accepted status. A command sent after an enclosing transaction committed stayed requested because the dispatch result used the already-committed transaction context. Both cases cover start and stop with an in-process sender.
+
+The dispatch result now uses a new transaction and a conditional update limited to rows still in REQUESTED. An immediate response therefore retains its accepted state. The existing rollback regression still verifies that a rolled-back request emits no CALL. The combined command and meter suites passed 23 tests, and full offline Station Maven verification passed 307 tests. All sender assertions used local fixtures.
+
+The remainder of #10 includes session ownership and timeout races, EVSE and transaction identity checks, RFID-aware idempotency and safe backfill, simulator acceptance, and approved physical charger validation.

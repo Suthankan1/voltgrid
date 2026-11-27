@@ -14,6 +14,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -37,6 +38,7 @@ public class StationCommandService {
     private final ChargingStationJpaRepository chargingStationRepository;
     private final JsonMapper jsonMapper;
     private final TransactionTemplate transactionTemplate;
+    private final TransactionTemplate dispatchResultTransaction;
     private OcppCommandSender commandSender;
 
     @Autowired
@@ -50,6 +52,8 @@ public class StationCommandService {
         this.chargingStationRepository = chargingStationRepository;
         this.jsonMapper = jsonMapper;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.dispatchResultTransaction = new TransactionTemplate(transactionManager);
+        this.dispatchResultTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     public StationCommandService(
@@ -159,21 +163,10 @@ public class StationCommandService {
                 throw dive;
             }
 
-            final UUID finalCommandId = saved.getId();
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    boolean sent = commandSender != null && commandSender.sendCall(stationId, messageId, "RequestStartTransaction", wirePayloadJson);
-                    transactionTemplate.execute(status -> {
-                        repository.findById(finalCommandId).ifPresent(cmd -> {
-                            cmd.setStatus(sent ? CommandStatus.PENDING : CommandStatus.REJECTED);
-                            if (!sent) {
-                                cmd.setResponsePayload("{\"status\":\"Rejected\",\"reason\":\"Station disconnected or send failed\"}");
-                            }
-                            repository.save(cmd);
-                        });
-                        return null;
-                    });
+                    dispatchCommittedCommand(saved, wirePayloadJson);
                 }
             });
             return toDomain(saved);
@@ -193,20 +186,7 @@ public class StationCommandService {
             throw dive;
         }
 
-        boolean sent = commandSender != null && commandSender.sendCall(stationId, messageId, "RequestStartTransaction", wirePayloadJson);
-
-        final boolean finalSent = sent;
-        final UUID finalCommandId = committedEntity.getId();
-        committedEntity = transactionTemplate.execute(status -> {
-            var cmd = repository.findById(finalCommandId).orElseThrow();
-            cmd.setStatus(finalSent ? CommandStatus.PENDING : CommandStatus.REJECTED);
-            if (!finalSent) {
-                cmd.setResponsePayload("{\"status\":\"Rejected\",\"reason\":\"Station disconnected\"}");
-            }
-            return repository.save(cmd);
-        });
-
-        return toDomain(committedEntity);
+        return toDomain(dispatchCommittedCommand(committedEntity, wirePayloadJson));
     }
 
     public StationCommand requestStopTransaction(
@@ -268,21 +248,10 @@ public class StationCommandService {
                 throw dive;
             }
 
-            final UUID finalCommandId = saved.getId();
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    boolean sent = commandSender != null && commandSender.sendCall(stationId, messageId, "RequestStopTransaction", payloadJson);
-                    transactionTemplate.execute(status -> {
-                        repository.findById(finalCommandId).ifPresent(cmd -> {
-                            cmd.setStatus(sent ? CommandStatus.PENDING : CommandStatus.REJECTED);
-                            if (!sent) {
-                                cmd.setResponsePayload("{\"status\":\"Rejected\",\"reason\":\"Station disconnected or send failed\"}");
-                            }
-                            repository.save(cmd);
-                        });
-                        return null;
-                    });
+                    dispatchCommittedCommand(saved, payloadJson);
                 }
             });
             return toDomain(saved);
@@ -301,20 +270,18 @@ public class StationCommandService {
             throw dive;
         }
 
-        boolean sent = commandSender != null && commandSender.sendCall(stationId, messageId, "RequestStopTransaction", payloadJson);
+        return toDomain(dispatchCommittedCommand(committedEntity, payloadJson));
+    }
 
-        final boolean finalSent = sent;
-        final UUID finalCommandId = committedEntity.getId();
-        committedEntity = transactionTemplate.execute(status -> {
-            var cmd = repository.findById(finalCommandId).orElseThrow();
-            cmd.setStatus(finalSent ? CommandStatus.PENDING : CommandStatus.REJECTED);
-            if (!finalSent) {
-                cmd.setResponsePayload("{\"status\":\"Rejected\",\"reason\":\"Station disconnected\"}");
-            }
-            return repository.save(cmd);
+    private StationCommandEntity dispatchCommittedCommand(StationCommandEntity command, String wirePayload) {
+        boolean sent = commandSender != null && commandSender.sendCall(
+                command.getStationId(), command.getMessageId(), command.getAction(), wirePayload);
+        return dispatchResultTransaction.execute(status -> {
+            repository.updateDispatchResult(command.getId(), CommandStatus.REQUESTED,
+                    sent ? CommandStatus.PENDING : CommandStatus.REJECTED,
+                    sent ? null : "{\"status\":\"Rejected\",\"reason\":\"Station disconnected or send failed\"}");
+            return repository.findById(command.getId()).orElseThrow();
         });
-
-        return toDomain(committedEntity);
     }
 
     private StationCommandEntity checkConflictAndReturn(

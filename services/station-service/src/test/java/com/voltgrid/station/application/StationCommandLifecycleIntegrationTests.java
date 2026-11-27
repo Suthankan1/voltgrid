@@ -510,4 +510,43 @@ class StationCommandLifecycleIntegrationTests {
         assertThat(updatedCommand.status()).isEqualTo(CommandStatus.REJECTED);
         assertThat(updatedCommand.responsePayload()).contains("NotSupported");
     }
+
+    @Test
+    void keepsResponseReceivedBeforeDispatchReturns() {
+        commandService.setCommandSender(new OcppCommandSender() {
+            @Override
+            public boolean sendCall(String stationId, String messageId, String action, String payloadJson) {
+                commandService.handleCommandResponse(stationId, messageId, """
+                        {"status":"Accepted"}
+                        """);
+                return true;
+            }
+
+            @Override
+            public boolean isStationConnected(String stationId) {
+                return true;
+            }
+        });
+
+        var start = commandService.requestStartTransaction(
+                "STATION-CMD-01", 1, "TAG-SYNTHETIC", "19001", UUID.randomUUID().toString());
+        var stop = commandService.requestStopTransaction(
+                "STATION-CMD-01", "tx-immediate-response", UUID.randomUUID().toString());
+
+        assertThat(start.status()).isEqualTo(CommandStatus.ACCEPTED);
+        assertThat(stop.status()).isEqualTo(CommandStatus.ACCEPTED);
+    }
+
+    @Test
+    void persistsDispatchStateAfterOuterTransactionCommits() {
+        var transaction = new TransactionTemplate(transactionManager);
+        var start = transaction.execute(status -> commandService.requestStartTransaction(
+                "STATION-CMD-01", 1, "TAG-SYNTHETIC", "19002", UUID.randomUUID().toString()));
+        var stop = transaction.execute(status -> commandService.requestStopTransaction(
+                "STATION-CMD-01", "tx-outer-commit", UUID.randomUUID().toString()));
+
+        assertThat(outboundCalls).containsKeys(start.messageId(), stop.messageId());
+        assertThat(commandService.getCommand(start.id()).orElseThrow().status()).isEqualTo(CommandStatus.PENDING);
+        assertThat(commandService.getCommand(stop.id()).orElseThrow().status()).isEqualTo(CommandStatus.PENDING);
+    }
 }
