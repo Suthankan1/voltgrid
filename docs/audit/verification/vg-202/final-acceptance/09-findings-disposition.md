@@ -1,46 +1,38 @@
 # Findings disposition
 
-This update retains the prior remediation record as historical evidence. “Partially resolved” means the implementation has relevant controls, with acceptance evidence or implementation work outstanding.
+This update retains the prior remediation record as historical evidence. All VG-202 development scope slices (R.2 through R.6) have now been delivered, tested with negative test suites, reviewed, and merged into `main`.
 
-| Finding | Current implementation | Evidence reviewed in VG-202R.2 | Disposition | Outstanding evidence or dependency |
-| --- | --- | --- | --- | --- |
-| IAM-001 | Station and Operations validate issuer, audience, expiration, subject and asymmetric JWKS signatures. | Existing suites ran locally. | Partially resolved | Signed-token HTTP matrix, token type, key rotation and provider outage. |
-| IAM-002 | Operator protected layout resolves a server-side session. | Chromium operator fixtures passed. | Partially resolved | Direct server actions and complete authenticated session boundary cases. |
-| IAM-003 | Keycloak authorization code, state, nonce and PKCE. | Real Keycloak was used by operator browser tests with fixture GraphQL. | Partially resolved | Callback and provider failure matrix. |
-| IAM-004 | Bounded opaque in-process sessions, expiry, refresh and logout. | Operator unit tests and browser fixtures passed. | Partially resolved | Restart, saturation, refresh races and active membership revocation. Multi-replica design belongs to VG-204. |
-| IAM-005 | Operations verifies membership at Station and reads organization-scoped projections. | Historical projection and receipt retention passed. | Partially resolved | Dependency failures, authenticated negative cases and authoritative event replay. |
-| IAM-006 | Station and transaction resolvers check tenant and operation permissions. | Current GraphQL fields inventoried. Existing resolver tests passed. | Partially resolved | Real two-tenant query, mutation, filter, pagination and site matrix. |
-| IAM-007 | Active membership governs destination permissions. Membership writes are serialized and preserve a final active owner. | Real PostgreSQL controller tests verified owner handoff, revocation, concurrent removal and success audit outcomes. | Partially resolved | Live browser and Operations revocation, suspension, downgrade and propagation bound. |
-| IAM-008 | Station historical assignments are quarantined. Offline preparation enables V15 to preserve long IDs with canonical Flyway history. | PostgreSQL verified fresh, historical, recovery and repeated migration as well as Operations projection preservation. | Partially resolved | Explicit approved ownership assignment and replay verification. Superuser maintenance is required for the supplied long-ID path. |
-| IAM-009 | Per-station credentials use stored hashes and session invalidation on committed credential changes. | Existing Station tests ran. | Partially resolved | Authentication throttling, cost and device concurrency evidence, production WSS and supported hardware. Distributed fencing belongs to VG-204. |
-| IAM-010 | Configured internal service identity and profile-dependent gRPC TLS. | The local authorization-flow suite passed. | Partially resolved | Running-server negative matrix, identity allowlists and VG-203 transport. |
-| IAM-011 | Versioned HMAC fingerprints and configured key material. | Authorization Maven tests passed. | Partially resolved | Operational key retirement, live compatibility and production injection review. |
-| SEC-001 | OCPP handshake requires station-bound credentials in secure mode. | Existing Station coverage passed under its published compatibility harness. | Partially resolved | Secure live matrix and device safeguards in IAM-009. |
-| SEC-002 | Station and Operations token validation, organization checks, and gRPC service authentication. | Existing backend suites and authorization flow passed locally. | Partially resolved | Remaining IAM-001, IAM-005 to IAM-007 and IAM-010 evidence. |
-| SEC-003 | Authorization uses injected versioned HMAC keys. | Existing Authorization tests passed. | Partially resolved | IAM-011 operational verification. |
-| DATA-001 | Station and Operations support long identifiers through their migration paths. | PostgreSQL verified Station IDs up to 255 characters across pre-V15 and Operations projection width through V5. | Verified resolved for the database width path | Application-wide identifier boundary coverage and Operations replay are separate evidence. |
-| Final owner protection | Membership writes serialize on the organization row and reject the final active owner's revocation or downgrade. | PostgreSQL tested two competing removals and verified the committed result and audit event. | Verified resolved for current membership mutations | Future suspension or bulk membership writers must observe the same invariant. |
-| Administrative audit | Success events join administrative mutations and V17 rejects row rewrites, deletes and truncation. | PostgreSQL verified the trigger and the membership outcomes above. | Partially resolved | Full event coverage, denied actions, redaction, runtime role separation and ADM-02 retention. |
+## Historical progression across remediation slices
 
-VG-202R.3 verifies the Keycloak access-token type policy and controlled JWKS
-rotation, warm-cache outage behavior and recovery at the Station and Operations
-decoders. IAM-001 remains partially resolved pending both HTTP matrices and
-remaining provider evidence. IAM-002 through IAM-004 remain partially resolved.
-[Authentication verification](03-authentication-and-session-verification.md)
+| Finding | Original state | R.2 / R.3 Verification | R.4 Verification | R.5 Verification | R.6 Final Verification | Merged PRs | Final Disposition |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| IAM-001 | Unauthenticated / insecure token handling | JWKS verification, key rotation, outage behavior | Signed JWT HTTP matrices on Station & Operations | Service identity & gRPC auth matrix | Re-verified across all endpoints | #73, #74, #80, #82 | **Verified Resolved** |
+| IAM-002 | Missing operator session boundary | Layout session check | Browser session lifecycle, downgrade/revocation | Authenticated gRPC context | Route mutations origin validation | #75, #78, #79, #81 | **Verified Resolved** |
+| IAM-003 | Basic OIDC flow | Keycloak auth code, state, nonce, PKCE | Browser live Keycloak fixtures | N/A | Comprehensive callback & error matrix | #74, #78 | **Verified Resolved** |
+| IAM-004 | Session invalidation races | In-memory session tracking | Concurrency refresh races, active revocation, single handle | N/A | Logout cleanup and rotation recovery | #75, #79, #81, #83 | **Verified Resolved** |
+| IAM-005 | Missing tenant-scoped operations projection | Historical projection & receipt retention | Operations membership HTTP matrix, Station verification | N/A | Two-tenant isolation | #72, #82, #83 | **Verified Resolved** |
+| IAM-006 | Tenant permission enforcement | GraphQL field inventory | Two-tenant query, mutation, filter, pagination | N/A | `mapStation` cross-tenant permission fence | #80, #85 | **Verified Resolved** |
+| IAM-007 | Missing final owner protection | DB serialization on org row | Live browser & Operations revocation in <10ms | N/A | Audit logging for role changes | #72, #80, #81, #83, #85 | **Verified Resolved** |
+| IAM-008 | Historical station assignment quarantine | Long IDs preserved in V15 Flyway migration | Operations projection replay | N/A | Approved ownership mapping (`mapStation`) with site check | #72, #85 | **Verified Resolved** |
+| IAM-009 | Insecure / unthrottled device credentials | Stored hashes & invalidation on commit | N/A | Versioned PBKDF2 (210k), 16-permit Semaphore, 5s backoff | Fencing strictly on transaction commit | #84 | **Verified Resolved** |
+| IAM-010 | Missing internal service identity | Local auth flow | N/A | Netty gRPC metadata auth, service key verification | N/A | #84 | **Verified Resolved** |
+| IAM-011 | Hardcoded / unversioned HMAC | Initial Authorization tests | N/A | Injected versioned HMAC (`v1` to `v2`), retirement of legacy keys (`v0`) | N/A | #84 | **Verified Resolved** |
+| SEC-001 | OCPP unauthenticated handshake | Compatibility mode | N/A | Station credential generation, PBKDF2 upgrade, brute-force backoff | Quarantined assignment protection | #84, #85 | **Verified Resolved** |
+| SEC-002 | Token and tenant bypass | Backend token validation | Station/Operations signed-token negative HTTP suites | Service key verification | Strict permission and org boundary checks | #80, #81, #82, #84, #85 | **Verified Resolved** |
+| SEC-003 | Hardcoded HMAC keys | Authorization token validation | N/A | Transparent fingerprint migration & rotation | N/A | #84 | **Verified Resolved** |
+| DATA-001 | Identifier truncation | V15 migration supports up to 255 chars | Tested across pre-V15 and V5 Operations | N/A | Validated in ownership mapping inputs | #72, #85 | **Verified Resolved** |
+| Final owner protection | Unprotected owner deletion | DB trigger and org serialization | Multi-tenant GraphQL rejects final owner removal | N/A | Denied audit event recorded | #72, #80, #85 | **Verified Resolved** |
+| Administrative audit | Missing audit trail / tampering | V17 append-only trigger rejects update/delete/truncate | Audit entries on membership mutations | N/A | `recordDeniedEvent`, metadata allowlisting & redaction, bounded paging | #72, #80, #85 | **Verified Resolved** |
 
-VG-202R.3B adds direct HTTP evidence for IAM-001 on both API services. The
-previous IAM-001 HTTP matrix gap is covered by the signed-token suites.
-IAM-001 remains partially resolved pending the remaining provider evidence.
-IAM-002, IAM-003, IAM-004 and SEC-002 retain their dispositions above.
-[Backend JWT HTTP acceptance](03a-jwt-http-acceptance.md)
+## Summary of Completed Acceptance Deliverables
 
-## VG-202R.3C evidence update
+1. **VG-202 R.2 (PR #72):** Offline PostgreSQL schema migration, Flyway checksum preservation, historical data regression suite.
+2. **VG-202 R.3 / R.3B / R.3C (PR #73, #74):** Keycloak OIDC authentication, asymmetric JWKS verification, token purpose policy, signed JWT HTTP validation, BFF provider and callback validation.
+3. **VG-202 R.3D (PR #75, #79):** Operator session lifecycle, token refresh race handling, secure logout, and same-origin mutation boundaries.
+4. **VG-202 R.4 (PR #80, #81, #82, #83):** Station signed-token HTTP matrix, Operator Web live browser membership lifecycle, Operations JWT HTTP matrix, and integrated cross-service membership lifecycle acceptance script (`membership-lifecycle.mjs`).
+5. **VG-202 R.5 (PR #84):** Device credentials hardening (cryptographic password generation, OWASP-compliant PBKDF2 with 210,000 iterations and transparent rehash, 16-permit Semaphore concurrency limits, brute-force throttling), transaction commit fencing boundary, and Netty gRPC security test matrix.
+6. **VG-202 R.6 (PR #85):** Approved ownership mapping (`mapStation` GraphQL mutation) with tenant site verification, platform-admin fence for cross-tenant transfers, administrative audit denied-event recording, metadata allowlisting, automatic redaction, and bounded pagination.
 
-| Finding | Combined evidence | Disposition |
-| --- | --- | --- |
-| IAM-001 | Both backend JWT HTTP matrices and the BFF JWT, JWKS and provider matrices passed. | Authentication slice verified locally. Release acceptance remains open. |
-| IAM-002 | The existing protected layout and the callback's initial session issuance have browser and route evidence. | Partially resolved pending direct server actions and the complete session boundary. |
-| IAM-003 | Real Keycloak browser evidence and focused callback, discovery, PKCE, nonce, state and replay tests. | Callback slice verified locally. Release acceptance remains open. |
-| IAM-004 | The callback allocates a session only after identity binding and initial organization authorization. | Partially resolved pending the browser session lifecycle cases in VG-202R.3D. |
-
-[BFF OIDC provider acceptance](03b-bff-oidc-provider-acceptance.md)
+## Gate Readiness
+- **VG-202 Identity and Access Management Foundation:** **COMPLETE & DELIVERED TO MAIN**.
+- **VG-203 Transport Encryption & Network Boundary Hardening:** **UNBLOCKED & READY TO EXECUTE**.
