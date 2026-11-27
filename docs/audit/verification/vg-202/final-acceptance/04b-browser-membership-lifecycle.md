@@ -1,0 +1,9 @@
+# VG-202R.4 browser membership lifecycle
+
+On 2026-11-27, the browser slice was verified from main `2e6c1fd6dff2e41e64427b20c7c8bd598b5643bf` on `remediation/vg-202r4-browser-membership`.
+
+Protected renders, the browser session endpoint and organization switching consult the active membership in Station. The BFF uses the role returned for the current request, rather than serving the role from login or refresh. A definitive 403 invalidates the existing handle. Transport and other service failures deny the current request and allow recovery with the handle once Station returns. After the lookup, the BFF verifies that the token, selected organization and session remain current. The Station request is private and bounded by the existing three-second timeout. The BFF adds one organization-access request when resolving a protected server request, so Station availability and latency affect access.
+
+`e2e/membership-session.spec.ts` signs in through real isolated Keycloak and drives the actual Next server against a controlled Station HTTP fixture. It verifies role downgrade, safe outage and recovery, revoke with an unexpired token, protected-page redirect, and denial of the old handle even after the fixture restores access. Requests use a five-second test ceiling, no polling and no token refresh wait. This is a next-request fixture check and supplies no production latency or real cross-service availability evidence.
+
+Frozen pnpm install, 253 Node cases (0 failures or skips), lint, type check, production build, and 13 targeted Chromium cases passed. Final-head CI and owner merge are pending. The companion signed-token Station/PostgreSQL coverage is in #80. The integrated real Station, Operations and browser journey, suspension/downgrade matrix and external gates remain open. No schema or configuration is added. Rollback uses the previous BFF revision and restart.

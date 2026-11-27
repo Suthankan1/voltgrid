@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { organizationAccess, PRIVATE_HEADERS, resolveSession, sameOrigin, SESSION_COOKIE_NAME, sessions } from "@/lib/auth";
+import { organizationAccess, PRIVATE_HEADERS, resolveActiveSession, sameOrigin, SESSION_COOKIE_NAME, sessions } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   if (!sameOrigin(request)) return new NextResponse(null, { status: 403, headers: PRIVATE_HEADERS });
   const id = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-  const { token } = await resolveSession(id);
+  const { token } = await resolveActiveSession(id);
   const session = id && sessions.get(id);
   if (!token || !id || !session) return new NextResponse(null, { status: 401, headers: PRIVATE_HEADERS });
   const previousUser = session.user;

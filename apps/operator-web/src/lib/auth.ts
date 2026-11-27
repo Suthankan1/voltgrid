@@ -147,9 +147,31 @@ export async function resolveSession(id: string | undefined): Promise<AuthSessio
   return { user: null, token: null, isAuthenticated: false };
 }
 
+export async function resolveActiveSession(id: string | undefined): Promise<AuthSession> {
+  const anonymous = { user: null, token: null, isAuthenticated: false };
+  const { user, token } = await resolveSession(id);
+  if (!id || !user || !token) return anonymous;
+
+  let access;
+  try {
+    access = await organizationAccess(token, user.activeOrganizationId);
+  } catch {
+    return anonymous;
+  }
+  const current = sessions.get(id);
+  if (!current || current.user !== user || current.token !== token || current.tokenExpiresAt <= Date.now()) {
+    return anonymous;
+  }
+  if (!access) {
+    sessions.delete(id);
+    return anonymous;
+  }
+  return { user: { ...user, roles: [access.role] }, token, isAuthenticated: true };
+}
+
 export const getSession = cache(async (): Promise<AuthSession> => {
   const { cookies } = await import("next/headers");
-  return resolveSession((await cookies()).get(SESSION_COOKIE_NAME)?.value);
+  return resolveActiveSession((await cookies()).get(SESSION_COOKIE_NAME)?.value);
 });
 
 export async function authorizeMutation(id: string | undefined, origin: string | null) {
