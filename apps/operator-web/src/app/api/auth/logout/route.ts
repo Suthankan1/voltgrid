@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
 
   if (session) {
     try {
-      await session.refreshing;
+      await session.refreshing?.catch(() => undefined);
       if (session.refreshToken) {
         const { client } = await getProvider();
         if (client.serverMetadata().revocation_endpoint) {
