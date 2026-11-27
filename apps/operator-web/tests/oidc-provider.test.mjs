@@ -25,7 +25,9 @@ test("BFF OIDC provider acceptance", { timeout: 30_000 }, async t => {
   let discoveryStatus = 200;
   let discoveryBody;
   let exchange;
+  const revocations = [];
   let organizationStatus = 200;
+  let switchOrganization;
   let organizationRequests = 0;
   let expectedAccessToken;
   const server = createServer((request, response) => {
@@ -40,8 +42,19 @@ test("BFF OIDC provider acceptance", { timeout: 30_000 }, async t => {
       response.end(JSON.stringify({ keys: [replacement.jwk] }));
     } else if (request.url === "/token" && exchange) {
       void exchange(request, response);
+    } else if (request.url === "/revoke") {
+      let body = "";
+      request.on("data", chunk => { body += chunk; });
+      request.on("end", () => {
+        revocations.push(new URLSearchParams(body).get("token"));
+        response.end();
+      });
     } else if (request.url?.startsWith("/api/operator/organization-access?")) {
       organizationRequests++;
+      if (request.method === "POST" && switchOrganization) {
+        void switchOrganization(request, response);
+        return;
+      }
       if (request.url !== "/api/operator/organization-access?organizationId=fixture-org" ||
           request.headers.authorization !== "Bearer " + expectedAccessToken) {
         response.writeHead(400).end("{}");
@@ -67,6 +80,7 @@ test("BFF OIDC provider acceptance", { timeout: 30_000 }, async t => {
     jwks_uri: origin + "/jwks",
     authorization_endpoint: origin + "/authorize",
     token_endpoint: origin + "/token",
+    revocation_endpoint: origin + "/revoke",
   };
   Object.assign(process.env, {
     OIDC_ISSUER: issuer,
@@ -247,13 +261,16 @@ test("BFF OIDC provider acceptance", { timeout: 30_000 }, async t => {
     t.after(() => hooks.deregister());
     const { GET: login } = await import("../src/app/api/auth/login/route.ts");
     const { GET: callback } = await import("../src/app/api/auth/callback/route.ts");
-    const { logins, sessions } = await import("../src/lib/auth.ts");
+    const { POST: logout } = await import("../src/app/api/auth/logout/route.ts");
+    const { POST: switchRoute } = await import("../src/app/api/auth/switch-org/route.ts");
+    const { logins, resolveSession, sessions } = await import("../src/lib/auth.ts");
     const createSession = t.mock.method(sessions, "create");
     const { oidc } = await import("../src/lib/oidc.ts");
     const key = replacement;
     let codeCounter = 0;
     let tokenRequests = 0;
     let exchangeOutcome;
+    let refreshExchange;
     const codes = new Map();
     exchange = async (request, response) => {
       tokenRequests++;
@@ -261,6 +278,10 @@ test("BFF OIDC provider acceptance", { timeout: 30_000 }, async t => {
         let body = "";
         for await (const chunk of request) body += chunk;
         const form = new URLSearchParams(body);
+        if (form.get("grant_type") === "refresh_token" && refreshExchange) {
+          await refreshExchange(form.get("refresh_token"), response);
+          return;
+        }
         const entry = codes.get(form.get("code"));
         const challenge = form.get("code_verifier");
         if (!entry || !challenge || await oidc.calculatePKCECodeChallenge(challenge) !== entry.challenge ||
@@ -321,9 +342,12 @@ test("BFF OIDC provider acceptance", { timeout: 30_000 }, async t => {
       return { id, code, state, nonce, challenge, url };
     }
 
-    async function complete(login, params = { state: login.state, code: login.code }) {
+    async function complete(login, params = { state: login.state, code: login.code }, priorSession) {
+      const cookies = [];
+      if (login.id) cookies.push("voltgrid_oidc=" + login.id);
+      if (priorSession) cookies.push("voltgrid_session=" + priorSession);
       const request = new NextRequest(origin + "/api/auth/callback?" + new URLSearchParams(params), {
-        headers: login.id ? { cookie: "voltgrid_oidc=" + login.id } : {},
+        headers: { cookie: cookies.join("; ") },
       });
       const before = createSession.mock.callCount();
       const response = await callback(request);
@@ -466,6 +490,126 @@ test("BFF OIDC provider acceptance", { timeout: 30_000 }, async t => {
       await denied(await complete({ ...next, code: txn.code }));
       assert.equal(tokenRequests, before + 2);
       sessions.delete(success.cookies.get("voltgrid_session").value);
+    });
+
+    async function signIn(priorSession) {
+      const result = await complete(await begin(), undefined, priorSession);
+      assert.equal(result.status, 307);
+      return result.cookies.get("voltgrid_session").value;
+    }
+
+    function signOut(id) {
+      return logout(new NextRequest(origin + "/api/auth/logout", {
+        method: "POST",
+        headers: { origin, cookie: "voltgrid_session=" + id },
+      }));
+    }
+
+    await t.test("R.3D callback replaces the old handle and logout leaves an independent session intact", async () => {
+      const prior = await signIn();
+      const independent = await signIn();
+      const current = await signIn(prior);
+      assert.notEqual(current, prior);
+      for (const id of [undefined, "unknown", "#" + current, prior]) {
+        assert.equal((await resolveSession(id)).isAuthenticated, false);
+      }
+      assert.equal((await resolveSession(current)).isAuthenticated, true);
+      const response = await signOut(current);
+      assert.equal(response.status, 303);
+      assert.equal(response.cookies.get("voltgrid_session").maxAge, 0);
+      assert.equal((await resolveSession(current)).isAuthenticated, false);
+      assert.equal((await resolveSession(independent)).isAuthenticated, true);
+      sessions.get(independent).expiresAt = Date.now() - 1;
+      assert.equal((await resolveSession(independent)).isAuthenticated, false);
+    });
+
+    for (const outcome of ["rotate", "logout", "expire", "reject"]) {
+      await t.test("R.3D concurrent refresh: " + outcome, async () => {
+        const id = await signIn();
+        const session = sessions.get(id);
+        session.tokenExpiresAt = Date.now() - 1;
+        session.refreshToken = "fixture-refresh-initial";
+        const started = Promise.withResolvers();
+        const release = Promise.withResolvers();
+        const before = tokenRequests;
+        const revokedBefore = revocations.length;
+        const oldToken = session.token;
+        const expiry = session.expiresAt;
+        refreshExchange = async (token, response) => {
+          started.resolve(token);
+          await release.promise;
+          expectedAccessToken = await mint({ org_id: "fixture-org", name: "Refreshed operator" }, key);
+          response.writeHead(outcome === "reject" ? 503 : 200).end(JSON.stringify({
+            token_type: "Bearer", access_token: expectedAccessToken, refresh_token: "fixture-refresh-rotated",
+          }));
+        };
+        try {
+          const first = resolveSession(id);
+          const second = resolveSession(id);
+          assert.equal(await started.promise, "fixture-refresh-initial");
+          const logoutResult = outcome === "logout" ? signOut(id) : undefined;
+          if (outcome === "expire") session.expiresAt = Date.now() - 1;
+          if (outcome === "logout" || outcome === "expire") {
+            assert.equal((await resolveSession(id)).isAuthenticated, false);
+          }
+          release.resolve();
+          const results = await Promise.all([first, second]);
+          assert.equal(tokenRequests, before + 1);
+          if (outcome === "rotate") {
+            assert.ok(results.every(result => result.isAuthenticated && result.token === expectedAccessToken));
+            assert.equal(session.expiresAt, expiry);
+            assert.equal(session.refreshToken, "fixture-refresh-rotated");
+          } else {
+            assert.ok(results.every(result => !result.isAuthenticated && result.token === null));
+            assert.equal(session.token, oldToken);
+            assert.equal(sessions.get(id), undefined);
+          }
+          if (logoutResult) {
+            assert.equal((await logoutResult).status, 303);
+            assert.deepEqual(revocations.slice(revokedBefore), ["fixture-refresh-rotated"]);
+          }
+        } finally {
+          release.resolve();
+          refreshExchange = undefined;
+          sessions.delete(id);
+        }
+      });
+    }
+
+    await t.test("R.3D a delayed organization response cannot overwrite a refreshed session", async () => {
+      const id = await signIn();
+      const session = sessions.get(id);
+      const started = Promise.withResolvers();
+      const release = Promise.withResolvers();
+      switchOrganization = async (_request, response) => {
+        started.resolve();
+        await release.promise;
+        response.end(JSON.stringify({ organizationId: "other-org", role: "OWNER" }));
+      };
+      refreshExchange = async (_token, response) => {
+        expectedAccessToken = await mint({ org_id: "fixture-org", name: "Refreshed operator" }, key);
+        response.end(JSON.stringify({ token_type: "Bearer", access_token: expectedAccessToken }));
+      };
+      try {
+        const switching = switchRoute(new NextRequest(origin + "/api/auth/switch-org", {
+          method: "POST",
+          headers: { origin, cookie: "voltgrid_session=" + id },
+          body: JSON.stringify({ organizationId: "other-org" }),
+        }));
+        await started.promise;
+        session.tokenExpiresAt = Date.now() - 1;
+        session.refreshToken = "fixture-refresh-initial";
+        assert.equal((await resolveSession(id)).token, expectedAccessToken);
+        release.resolve();
+        assert.equal((await switching).status, 409);
+        assert.equal(session.user.activeOrganizationId, "fixture-org");
+        assert.deepEqual(session.user.roles, ["SUPPORT"]);
+      } finally {
+        release.resolve();
+        switchOrganization = undefined;
+        refreshExchange = undefined;
+        sessions.delete(id);
+      }
     });
   });
 });

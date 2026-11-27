@@ -62,6 +62,15 @@ test("expired records are rejected and their storage can be reclaimed", () => {
   assert.ok(sessions.get(active));
 });
 
+test("session capacity preserves active records and a fresh process store has no prior handles", () => {
+  const sessions = createAuthStore(1);
+  const record = { expiresAt: Date.now() + 60_000 };
+  const id = sessions.create(record);
+  assert.throws(() => sessions.create({ ...record }), /Authentication store is full/);
+  assert.equal(sessions.get(id), record);
+  assert.equal(createAuthStore(1).get(id), undefined);
+});
+
 test("ADMIN_NAV_ITEMS defines all four administrative areas", () => {
   assert.equal(ADMIN_NAV_ITEMS.length, 4);
 

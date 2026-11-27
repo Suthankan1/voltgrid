@@ -107,40 +107,49 @@ export async function verifiedSession(
   };
 }
 
-async function refresh(session: Session) {
+async function refresh(id: string, session: Session) {
   if (!session.refreshToken) throw new Error("OIDC session requires sign-in");
   const { client } = await getProvider();
   const tokens = await oidc.refreshTokenGrant(client, session.refreshToken);
+  // Logout may hold a detached record while waiting to revoke the rotated grant.
+  session.refreshToken = tokens.refresh_token ?? session.refreshToken;
+  if (sessions.get(id) !== session) return;
   const updated = await verifiedSession(
     session.user.userId,
     tokens.access_token,
-    tokens.refresh_token ?? session.refreshToken,
+    session.refreshToken,
     session.expiresAt,
     session.user.activeOrganizationId,
   );
-  Object.assign(session, updated);
+  if (sessions.get(id) === session) Object.assign(session, updated);
 }
 
-export const getSession = cache(async (): Promise<AuthSession> => {
-  const { cookies } = await import("next/headers");
-  const id = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
+export async function resolveSession(id: string | undefined): Promise<AuthSession> {
   const session = id && sessions.get(id);
   if (id && session) {
     try {
       if (session.tokenExpiresAt <= Date.now() + 15_000) {
-        session.refreshing ??= refresh(session).finally(() => {
+        session.refreshing ??= refresh(id, session).finally(() => {
           session.refreshing = undefined;
         });
         await session.refreshing;
       }
-      if (sessions.get(id) === session && session.tokenExpiresAt > Date.now()) {
-        return { user: session.user, token: session.token, isAuthenticated: true };
+      if (sessions.get(id) === session) {
+        if (session.tokenExpiresAt > Date.now()) {
+          return { user: session.user, token: session.token, isAuthenticated: true };
+        }
+        sessions.delete(id);
       }
     } catch {
-      sessions.delete(id);
+      if (sessions.get(id) === session) sessions.delete(id);
     }
   }
   return { user: null, token: null, isAuthenticated: false };
+}
+
+export const getSession = cache(async (): Promise<AuthSession> => {
+  const { cookies } = await import("next/headers");
+  return resolveSession((await cookies()).get(SESSION_COOKIE_NAME)?.value);
 });
 
 export async function getAuthHeaders(): Promise<Record<string, string>> {
