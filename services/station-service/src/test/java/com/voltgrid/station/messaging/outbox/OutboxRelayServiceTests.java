@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import tools.jackson.databind.json.JsonMapper;
@@ -15,6 +16,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -182,6 +184,21 @@ class OutboxRelayServiceTests {
         ).save(
                 event
         );
+    }
+
+    @Test
+    void shouldPropagatePersistenceFailureAfterAcknowledgementWithoutRecordingASendFailure() {
+        var event = createEvent();
+        var failure = new DataAccessResourceFailureException("Database write unavailable");
+        when(outboxEventRepository.findNextUnpublishedForUpdate()).thenReturn(Optional.of(event));
+        when(kafkaTemplate.send(TOPIC, event.getAggregateId(), event.getPayload()))
+                .thenReturn(CompletableFuture.completedFuture(null));
+        when(outboxEventRepository.save(event)).thenThrow(failure);
+
+        assertEquals(failure, assertThrows(DataAccessResourceFailureException.class, service::relayNext));
+        assertEquals(0, event.getRetryCount());
+        assertNull(event.getLastAttemptedAt());
+        verify(outboxEventRepository).save(event);
     }
 
     private OutboxEventEntity createEvent() {

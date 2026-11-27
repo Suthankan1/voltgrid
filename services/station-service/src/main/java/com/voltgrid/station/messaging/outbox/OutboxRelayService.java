@@ -94,8 +94,6 @@ public class OutboxRelayService {
                 publishTimeout;
     }
 
-    private static final int MAX_RETRIES = 5;
-
     @Transactional
     public boolean relayNext() {
         var event =
@@ -108,31 +106,18 @@ public class OutboxRelayService {
         }
 
         try {
-            publish(
-                    event
-            );
-
-            event.markPublished(
-                    Instant.now()
-            );
-
-            outboxEventRepository.save(
-                    event
-            );
-
-            return true;
-        } catch (Exception exception) {
-            event.recordFailure(
-                    exception.getMessage(),
-                    Instant.now()
-            );
-
-            outboxEventRepository.save(
-                    event
-            );
-
+            publish(event);
+        } catch (RuntimeException exception) {
+            event.recordFailure(exception.getMessage(), Instant.now());
+            outboxEventRepository.save(event);
             return false;
         }
+
+        // Persistence failures after acknowledgement must roll back the claim.
+        // The same event can then be delivered again without spending its send retry budget.
+        event.markPublished(Instant.now());
+        outboxEventRepository.save(event);
+        return true;
     }
 
     private void publish(

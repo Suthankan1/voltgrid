@@ -4,6 +4,7 @@ import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.BeforeAll;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.junit.jupiter.Container;
@@ -21,13 +23,14 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(
         properties = {
@@ -126,6 +129,9 @@ class OutboxRelayIntegrationTests {
     @Autowired
     private JsonMapper jsonMapper;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @BeforeEach
     void cleanDatabase() {
         outboxEventRepository.deleteAll();
@@ -196,11 +202,7 @@ class OutboxRelayIntegrationTests {
                     )
             );
 
-            var record =
-                    awaitRecord(
-                            consumer,
-                            Duration.ofSeconds(10)
-                    );
+            var record = awaitRecords(consumer, eventId, 1).getFirst();
 
             assertThat(
                     record.key()
@@ -223,6 +225,56 @@ class OutboxRelayIntegrationTests {
                             payload
                     )
             );
+        }
+    }
+
+    @Test
+    void shouldRedeliverTheSameEventAfterAcknowledgementAndDatabaseRollback() {
+        var eventId = UUID.randomUUID();
+        var now = Instant.now();
+        var event = new OutboxEventEntity(
+                eventId, "ChargingStation", "STATION-RETRY", "StationStatusChanged",
+                """
+                {"eventId": "%s", "stationId": "STATION-RETRY"}
+                """.formatted(eventId), now, now
+        );
+        outboxEventRepository.saveAndFlush(event);
+
+        jdbcTemplate.execute("""
+                CREATE FUNCTION fixture_reject_outbox_publish() RETURNS trigger
+                LANGUAGE plpgsql AS $$
+                BEGIN
+                    RAISE EXCEPTION 'fixture outbox commit failure';
+                END;
+                $$
+                """);
+        try (var consumer = createConsumer()) {
+            jdbcTemplate.execute("""
+                    CREATE TRIGGER fixture_reject_outbox_publish
+                    BEFORE UPDATE OF published_at ON outbox_events
+                    FOR EACH ROW WHEN (NEW.published_at IS NOT NULL)
+                    EXECUTE FUNCTION fixture_reject_outbox_publish()
+                    """);
+            try {
+                assertThatThrownBy(outboxRelayService::relayNext)
+                        .hasStackTraceContaining("fixture outbox commit failure");
+                var retained = outboxEventRepository.findById(eventId).orElseThrow();
+                assertThat(retained.getPublishedAt()).isNull();
+                assertThat(retained.getRetryCount()).isZero();
+                assertThat(retained.getLastAttemptedAt()).isNull();
+            } finally {
+                jdbcTemplate.execute("DROP TRIGGER fixture_reject_outbox_publish ON outbox_events");
+            }
+
+            assertThat(outboxRelayService.relayNext()).isTrue();
+            assertThat(outboxEventRepository.findById(eventId).orElseThrow().getPublishedAt()).isNotNull();
+            consumer.subscribe(List.of(TOPIC));
+            var deliveries = awaitRecords(consumer, eventId, 2);
+            assertThat(deliveries).extracting(ConsumerRecord::key).containsExactly("STATION-RETRY", "STATION-RETRY");
+            assertThat(deliveries.get(0).value()).isEqualTo(deliveries.get(1).value());
+            assertThat(deliveries.get(0).offset()).isLessThan(deliveries.get(1).offset());
+        } finally {
+            jdbcTemplate.execute("DROP FUNCTION fixture_reject_outbox_publish()");
         }
     }
 
@@ -266,33 +318,21 @@ class OutboxRelayIntegrationTests {
         );
     }
 
-    private org.apache.kafka.clients.consumer.ConsumerRecord<
-            String,
-            String
-            > awaitRecord(
+    private List<ConsumerRecord<String, String>> awaitRecords(
             KafkaConsumer<String, String> consumer,
-            Duration timeout
+            UUID eventId,
+            int count
     ) {
-        var deadline =
-                System.nanoTime()
-                        + timeout.toNanos();
-
-        while (System.nanoTime() < deadline) {
-            var records =
-                    consumer.poll(
-                            Duration.ofMillis(250)
-                    );
-
-            if (!records.isEmpty()) {
-                return records.iterator()
-                        .next();
+        var deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
+        var matching = new ArrayList<ConsumerRecord<String, String>>();
+        while (matching.size() < count && System.nanoTime() < deadline) {
+            for (var record : consumer.poll(Duration.ofMillis(250))) {
+                if (eventId.toString().equals(jsonMapper.readTree(record.value()).path("eventId").asText())) {
+                    matching.add(record);
+                }
             }
         }
-
-        fail(
-                "Timed out waiting for Kafka record"
-        );
-
-        return null;
+        assertThat(matching).hasSize(count);
+        return matching;
     }
 }
