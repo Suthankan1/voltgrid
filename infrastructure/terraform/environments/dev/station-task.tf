@@ -99,7 +99,7 @@ resource "aws_ecs_task_definition" "station" {
       environment = [
         {
           name  = "STATION_DB_URL"
-          value = "jdbc:postgresql://${aws_db_instance.postgres.address}:${aws_db_instance.postgres.port}/voltgrid_station"
+          value = "jdbc:postgresql://${aws_db_instance.postgres.address}:${aws_db_instance.postgres.port}/voltgrid_station?sslmode=${var.postgres_ssl_mode}"
         },
         {
           name  = "AUTHORIZATION_GRPC_HOST"

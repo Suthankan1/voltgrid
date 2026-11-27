@@ -99,7 +99,7 @@ resource "aws_ecs_task_definition" "authorization" {
       environment = [
         {
           name  = "AUTHORIZATION_DB_URL"
-          value = "jdbc:postgresql://${aws_db_instance.postgres.address}:${aws_db_instance.postgres.port}/voltgrid_authorization"
+          value = "jdbc:postgresql://${aws_db_instance.postgres.address}:${aws_db_instance.postgres.port}/voltgrid_authorization?sslmode=${var.postgres_ssl_mode}"
         },
         {
           name  = "AUTHORIZATION_TOKEN_HMAC_KEY"

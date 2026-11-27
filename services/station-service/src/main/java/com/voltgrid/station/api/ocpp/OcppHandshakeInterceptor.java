@@ -25,28 +25,39 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
     private final StationReader stationReader;
     private final StationCredentialService credentialService;
     private final boolean authRequired;
+    private final boolean requireSecureTransport;
 
     @Autowired
     public OcppHandshakeInterceptor(
             StationReader stationReader,
             StationCredentialService credentialService,
-            @Value("${voltgrid.ocpp.auth-required:true}") boolean authRequired
+            @Value("${voltgrid.ocpp.auth-required:true}") boolean authRequired,
+            @Value("${voltgrid.ocpp.require-secure-transport:false}") boolean requireSecureTransport
     ) {
         this.stationReader = stationReader;
         this.credentialService = credentialService;
         this.authRequired = authRequired;
+        this.requireSecureTransport = requireSecureTransport;
     }
 
     public OcppHandshakeInterceptor(StationReader stationReader) {
-        this(stationReader, null, false);
+        this(stationReader, null, false, false);
     }
 
     public OcppHandshakeInterceptor(StationReader stationReader, boolean authRequired) {
-        this(stationReader, null, authRequired);
+        this(stationReader, null, authRequired, false);
     }
 
     public OcppHandshakeInterceptor(StationReader stationReader, StationCredentialService credentialService) {
-        this(stationReader, credentialService, true);
+        this(stationReader, credentialService, true, false);
+    }
+
+    public OcppHandshakeInterceptor(
+            StationReader stationReader,
+            StationCredentialService credentialService,
+            boolean authRequired
+    ) {
+        this(stationReader, credentialService, authRequired, false);
     }
 
     @Override
@@ -56,6 +67,11 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
             WebSocketHandler wsHandler,
             Map<String, Object> attributes
     ) {
+        if (requireSecureTransport && !isSecureTransport(request)) {
+            response.setStatusCode(HttpStatus.FORBIDDEN);
+            return false;
+        }
+
         if (!supportsOcpp201(request)) {
             response.setStatusCode(HttpStatus.BAD_REQUEST);
             return false;
@@ -158,5 +174,26 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
         }
 
         return stationId;
+    }
+
+    private boolean isSecureTransport(ServerHttpRequest request) {
+        var protoHeaders = request.getHeaders().get("X-Forwarded-Proto");
+        if (protoHeaders != null && !protoHeaders.isEmpty()) {
+            var proto = protoHeaders.get(0).trim().toLowerCase();
+            if (proto.contains(",")) {
+                String[] hops = proto.split(",");
+                for (String hop : hops) {
+                    String cleanHop = hop.trim().toLowerCase();
+                    if (!"https".equals(cleanHop) && !"wss".equals(cleanHop)) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            return "https".equals(proto) || "wss".equals(proto);
+        }
+
+        var scheme = request.getURI().getScheme();
+        return scheme != null && ("https".equalsIgnoreCase(scheme) || "wss".equalsIgnoreCase(scheme));
     }
 }
