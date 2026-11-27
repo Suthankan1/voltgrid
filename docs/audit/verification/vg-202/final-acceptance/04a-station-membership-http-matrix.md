@@ -11,4 +11,4 @@ On 2026-11-27, this slice was verified from main `2e6c1fd6dff2e41e64427b20c7c8bd
 
 Secure-mode `mvn -B -ntp -Dtest=StationJwtHttpAcceptanceTests,KeycloakAccessTokenPolicyTests test` passed 34 tests (27 HTTP and seven decoder), zero failures, errors, and skips. Station `mvn -B -ntp verify` with the established CI fixture environment passed 243 tests, zero failures, errors, and skips. The dedicated HTTP class explicitly requires authentication. No schema or runtime configuration changes.
 
-The full two-tenant field, role, filter and pagination matrix, live BFF and Operations membership enforcement, historical mapping and replay, final-head CI, and owner merge stay open.
+The full two-tenant field, role, filter and pagination matrix, historical mapping and replay, and external gates stay open. The integrated live BFF, Station, and Operations membership journey is documented in [04d-integrated-membership-lifecycle.md](04d-integrated-membership-lifecycle.md).

@@ -21,11 +21,22 @@ Production transport and distributed operation remain separate VG-203 and VG-204
 ## VG-202R.3B backend acceptance
 
 - [Station and Operations signed JWT HTTP validation](03a-jwt-http-acceptance.md)
+
 ## VG-202R.3C BFF acceptance
 
 - [BFF OIDC provider, token policy and callback evidence](03b-bff-oidc-provider-acceptance.md)
 
+## VG-202R.4 membership lifecycle and HTTP matrices
+
+- [Station membership HTTP matrix](04a-station-membership-http-matrix.md)
+- [Browser membership lifecycle](04b-browser-membership-lifecycle.md)
+- [Operations membership HTTP matrix](04c-operations-membership-http-matrix.md)
+- [Integrated cross-service membership lifecycle](04d-integrated-membership-lifecycle.md)
+
+## VG-202R.5 device credentials and gRPC lifecycle
+
+- [Device credentials, versioned PBKDF2, concurrency limits and running gRPC matrix](05-device-credentials-and-grpc-lifecycle.md)
+
 ## VG-202R.6 ownership mapping and audit lifecycle
 
 - [Approved ownership mapping and administrative audit lifecycle](06-ownership-mapping-and-audit-lifecycle.md)
-
