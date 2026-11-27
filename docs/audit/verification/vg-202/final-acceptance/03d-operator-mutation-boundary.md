@@ -6,8 +6,10 @@ On 2026-11-27, the mutation slice was implemented on `remediation/vg-202r3e-muta
 | --- | --- | --- |
 | Anonymous, missing/foreign origin, expired session, revoked membership and unavailable membership service cause zero GraphQL mutations | The signed-provider fixture in `tests/oidc-provider.test.mjs` exercises all eight admin mutation functions and station registration against an HTTP fixture. Next request headers and cookies are controlled inputs. | Passed locally |
 | Valid operator still dispatches same-origin mutations with access token and server-derived organization | Positive admin mutation fixture and real Keycloak registration through the running Next server | Passed locally |
-| Linux final-head CI and owner review | This branch depends on PR #72. The Operator Web workflow currently targets PRs against main. Retarget or verify the branch against main after #72 lands. | Pending |
+| Linux final-head CI and owner review | The owner merged #75 into the #72 source branch. Carry its scoped commit onto latest main after #72 and #74 have landed and verify the new head. | Pending |
 
 `pnpm install --frozen-lockfile`, `pnpm test` (238 passed, zero failures or skips), `pnpm lint`, `pnpm exec tsc --noEmit`, and `pnpm build` passed. The targeted Chromium run of `e2e/operator.spec.ts` and `e2e/station-registration.spec.ts` passed all 14 cases against the isolated real Keycloak fixture and GraphQL test service.
+
+On the main-based carry-forward branch, the frozen install, 255 Node tests, lint, type check and production build passed with the startup validation included.
 
 The HTTPS cookie and protected response-cache matrix, real backend membership revoke/downgrade and timing evidence, owner merge, and broader #4/#12 acceptance remain open.
