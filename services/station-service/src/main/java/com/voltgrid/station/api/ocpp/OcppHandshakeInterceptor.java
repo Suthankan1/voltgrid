@@ -2,6 +2,7 @@ package com.voltgrid.station.api.ocpp;
 
 import com.voltgrid.station.application.StationReader;
 import com.voltgrid.station.application.security.StationCredentialService;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -26,6 +27,18 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
     private final StationCredentialService credentialService;
     private final boolean authRequired;
     private final boolean requireSecureTransport;
+    private MeterRegistry meterRegistry;
+
+    @Autowired(required = false)
+    public void setMeterRegistry(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+    }
+
+    private void recordFailure(String reason) {
+        if (meterRegistry != null) {
+            meterRegistry.counter("voltgrid.ocpp.handshake_failures", "reason", reason).increment();
+        }
+    }
 
     @Autowired
     public OcppHandshakeInterceptor(
@@ -68,11 +81,13 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
             Map<String, Object> attributes
     ) {
         if (requireSecureTransport && !isSecureTransport(request)) {
+            recordFailure("insecure_transport");
             response.setStatusCode(HttpStatus.FORBIDDEN);
             return false;
         }
 
         if (!supportsOcpp201(request)) {
+            recordFailure("invalid_subprotocol");
             response.setStatusCode(HttpStatus.BAD_REQUEST);
             return false;
         }
@@ -80,17 +95,20 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
         var stationId = extractStationId(request);
 
         if (stationId == null) {
+            recordFailure("not_found");
             response.setStatusCode(HttpStatus.NOT_FOUND);
             return false;
         }
         var station = stationReader.findById(stationId).orElse(null);
         if (station == null) {
+            recordFailure("not_found");
             response.setStatusCode(HttpStatus.NOT_FOUND);
             return false;
         }
 
         boolean mapped = station.organizationId() != null && !station.organizationId().isBlank();
         if ((authRequired && !mapped) || !authenticateStation(request, stationId, attributes)) {
+            recordFailure("unauthorized");
             response.setStatusCode(HttpStatus.UNAUTHORIZED);
             if (response.getHeaders() != null) {
                 response.getHeaders().set("WWW-Authenticate", "Basic realm=\"VoltGrid CSMS\"");

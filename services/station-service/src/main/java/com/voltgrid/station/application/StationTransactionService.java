@@ -5,9 +5,12 @@ import com.voltgrid.station.domain.TransactionEventReceipt;
 import com.voltgrid.station.domain.TransactionEventType;
 import com.voltgrid.station.domain.TransactionMeterSample;
 import com.voltgrid.station.domain.TransactionStatus;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
@@ -19,6 +22,12 @@ public class StationTransactionService {
     private final TransactionMeterSampleWriter meterSampleWriter;
     private final TransactionEventReceiptWriter eventReceiptWriter;
     private final TransactionEventReceiptReader eventReceiptReader;
+    private MeterRegistry meterRegistry;
+
+    @Autowired(required = false)
+    public void setMeterRegistry(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+    }
 
     public StationTransactionService(
             StationTransactionReader transactionReader,
@@ -206,6 +215,11 @@ public class StationTransactionService {
                         sequenceNumber
                 )
         );
+
+        if (meterRegistry != null && transaction.startedAt() != null && endedAt != null) {
+            long durationSeconds = Math.max(0, Duration.between(transaction.startedAt(), endedAt).toSeconds());
+            meterRegistry.timer("voltgrid.transaction.duration").record(Duration.ofSeconds(durationSeconds));
+        }
 
         recordReceipt(
                 stationId,
