@@ -1,0 +1,26 @@
+name: Local Observability CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'observability/local/**'
+      - 'tests/infrastructure/verify-local-observability-ports.py'
+      - '.github/workflows/local-observability-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'observability/local/**'
+      - 'tests/infrastructure/verify-local-observability-ports.py'
+      - '.github/workflows/local-observability-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-port-bindings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 tests/infrastructure/verify-local-observability-ports.py
