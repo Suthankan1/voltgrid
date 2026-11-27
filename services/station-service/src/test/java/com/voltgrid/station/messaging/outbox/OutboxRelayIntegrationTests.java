@@ -34,7 +34,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(
         properties = {
-                "voltgrid.kafka.outbox.relay-enabled=false"
+                "voltgrid.kafka.outbox.relay-enabled=false",
+                "voltgrid.security.require-auth=false"
         }
 )
 @Testcontainers

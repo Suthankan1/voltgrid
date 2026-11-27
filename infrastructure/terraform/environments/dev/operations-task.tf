@@ -109,7 +109,7 @@ resource "aws_ecs_task_definition" "operations" {
         },
         {
           name  = "OPERATIONS_DB_URL"
-          value = "jdbc:postgresql://${aws_db_instance.postgres.address}:${aws_db_instance.postgres.port}/voltgrid_operations"
+          value = "jdbc:postgresql://${aws_db_instance.postgres.address}:${aws_db_instance.postgres.port}/voltgrid_operations?sslmode=${var.postgres_ssl_mode}"
         },
 
         # Managed Kafka is intentionally deferred in the AWS dev environment.

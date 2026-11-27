@@ -6,19 +6,39 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Profile({"prod", "production"})
-final class ProductionSecurityConfiguration {
+public final class ProductionSecurityConfiguration {
 
-    ProductionSecurityConfiguration(
+    public ProductionSecurityConfiguration(
             @Value("${voltgrid.security.require-auth:true}") boolean requireOperatorAuth,
             @Value("${voltgrid.ocpp.auth-required:true}") boolean requireDeviceAuth,
+            @Value("${voltgrid.ocpp.require-secure-transport:true}") boolean requireSecureTransport,
             @Value("${spring.grpc.client.channel.authorization.ssl.enabled:true}") boolean grpcTls,
             @Value("${voltgrid.security.jwt.issuer:}") String issuer,
             @Value("${voltgrid.security.jwt.jwk-set-uri:}") String jwks,
-            @Value("${voltgrid.service-auth.station-service-key:${SERVICE_IDENTITY_STATION_SERVICE_KEY:}}") String stationKey
+            @Value("${voltgrid.service-auth.station-service-key:${SERVICE_IDENTITY_STATION_SERVICE_KEY:}}") String stationKey,
+            @Value("${spring.datasource.url:}") String datasourceUrl,
+            @Value("${spring.kafka.properties.security.protocol:${spring.kafka.security.protocol:PLAINTEXT}}") String kafkaSecurityProtocol
     ) {
-        if (!requireOperatorAuth || !requireDeviceAuth || !grpcTls || stationKey.length() < 32
-                || !issuer.startsWith("https://") || !jwks.startsWith("https://")) {
+        if (!requireOperatorAuth || !requireDeviceAuth || !requireSecureTransport || !grpcTls || stationKey.length() < 32
+                || !issuer.startsWith("https://") || !jwks.startsWith("https://")
+                || !isSecureDatabaseUrl(datasourceUrl) || !isSecureKafkaProtocol(kafkaSecurityProtocol)) {
             throw new IllegalStateException("Production security requires authenticated endpoints, explicit credentials and TLS");
         }
+    }
+
+    public static boolean isSecureDatabaseUrl(String url) {
+        if (url == null || url.isBlank()) {
+            return false;
+        }
+        String lower = url.toLowerCase();
+        return lower.contains("sslmode=verify-full") || lower.contains("sslmode=verify-ca") || lower.contains("ssl=true");
+    }
+
+    public static boolean isSecureKafkaProtocol(String protocol) {
+        if (protocol == null || protocol.isBlank()) {
+            return false;
+        }
+        String upper = protocol.toUpperCase();
+        return "SSL".equals(upper) || "SASL_SSL".equals(upper);
     }
 }

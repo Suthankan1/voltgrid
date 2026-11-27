@@ -6,16 +6,26 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Profile({"prod", "production"})
-final class ProductionSecurityConfiguration {
+public final class ProductionSecurityConfiguration {
 
-    ProductionSecurityConfiguration(
+    public ProductionSecurityConfiguration(
             @Value("${voltgrid.service-auth.enabled:true}") boolean requireServiceAuth,
             @Value("${voltgrid.security.require-secure-keys:true}") boolean requireSecureKeys,
             @Value("${spring.grpc.server.ssl.enabled:false}") boolean grpcTls,
-            @Value("${spring.grpc.server.ssl.bundle:}") String sslBundle
+            @Value("${spring.grpc.server.ssl.bundle:}") String sslBundle,
+            @Value("${spring.datasource.url:}") String datasourceUrl
     ) {
-        if (!requireServiceAuth || !requireSecureKeys || !grpcTls || sslBundle.isBlank()) {
+        if (!requireServiceAuth || !requireSecureKeys || !grpcTls || sslBundle.isBlank()
+                || !isSecureDatabaseUrl(datasourceUrl)) {
             throw new IllegalStateException("Production security requires authenticated endpoints, explicit credentials and TLS");
         }
+    }
+
+    public static boolean isSecureDatabaseUrl(String url) {
+        if (url == null || url.isBlank()) {
+            return false;
+        }
+        String lower = url.toLowerCase();
+        return lower.contains("sslmode=verify-full") || lower.contains("sslmode=verify-ca") || lower.contains("ssl=true");
     }
 }

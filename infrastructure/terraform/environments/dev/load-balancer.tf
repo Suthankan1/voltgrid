@@ -114,11 +114,19 @@ resource "aws_lb_listener" "http" {
   port     = 80
   protocol = "HTTP"
 
-  # Station is the default public backend. This also covers OCPP WebSocket
-  # paths without needing to couple Terraform to a specific OCPP URL.
+  # Redirect HTTP to HTTPS when TLS certificate is provisioned, otherwise forward to Station backend.
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.station.arn
+    type             = var.acm_certificate_arn != "" ? "redirect" : "forward"
+    target_group_arn = var.acm_certificate_arn != "" ? null : aws_lb_target_group.station.arn
+
+    dynamic "redirect" {
+      for_each = var.acm_certificate_arn != "" ? [1] : []
+      content {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
+    }
   }
 }
 
@@ -143,6 +151,27 @@ resource "aws_lb_listener" "https" {
 
 resource "aws_lb_listener_rule" "operations" {
   listener_arn = aws_lb_listener.http.arn
+
+  priority = 10
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.operations.arn
+  }
+
+  condition {
+    path_pattern {
+      values = [
+        "/operations",
+        "/operations/*"
+      ]
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "operations_https" {
+  count        = var.acm_certificate_arn != "" ? 1 : 0
+  listener_arn = aws_lb_listener.https[0].arn
 
   priority = 10
 
