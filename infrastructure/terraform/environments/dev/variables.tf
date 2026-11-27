@@ -79,3 +79,9 @@ variable "services_desired_count" {
     error_message = "services_desired_count must be either 0 or 1 in the dev environment."
   }
 }
+
+variable "postgres_ssl_mode" {
+  description = "PostgreSQL SSL mode for backend database connectivity (verify-full, verify-ca, require, or disable)."
+  type        = string
+  default     = "verify-full"
+}

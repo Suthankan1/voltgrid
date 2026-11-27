@@ -9,19 +9,17 @@ An ADR documents an important architectural decision, including:
 - alternatives considered
 - consequences of the decision
 
-## Index
+## Index of Architecture Decision Records
 
-| ADR | Title | Status |
-| --- | --- | --- |
-| [0001](./0001-human-identity-and-external-oidc-provider.md) | Human Identity and External OIDC Provider | Accepted |
-| [0002](./0002-operator-browser-session-architecture.md) | Operator Browser Session Architecture | Accepted |
-| [0003](./0003-organization-and-resource-ownership.md) | Organization and Resource Ownership | Accepted |
-| [0004](./0004-role-and-permission-model.md) | Role and Permission Model | Accepted |
-| [0005](./0005-charging-station-device-authentication.md) | Charging Station Device Authentication | Accepted |
-| [0006](./0006-internal-service-identities.md) | Internal Service Identities | Accepted |
-| [0007](./0007-charging-token-fingerprint-key-management.md) | Charging Token Fingerprint Key Management | Accepted |
-| [0008](./0008-administrative-audit-trail.md) | Administrative Audit Trail | Accepted |
-| [0009](./0009-secure-configuration-profiles.md) | Secure Configuration Profiles | Accepted |
-| [0010](./0010-migration-and-compatibility-strategy.md) | Migration and Compatibility Strategy | Accepted |
-| [0011](./0011-transport-encryption-and-network-boundaries.md) | Transport Encryption and Network Boundaries | Accepted |
-| [0012](./0012-distributed-reliability-ordering-and-fencing.md) | Distributed Reliability, Causal Ordering, and Multi-Instance Fencing | Accepted |
+- [0001: Human Identity and External OIDC Provider](0001-human-identity-and-external-oidc-provider.md)
+- [0002: Operator Browser Session Architecture](0002-operator-browser-session-architecture.md)
+- [0003: Organization and Resource Ownership](0003-organization-and-resource-ownership.md)
+- [0004: Role and Permission Model](0004-role-and-permission-model.md)
+- [0005: Charging Station Device Authentication](0005-charging-station-device-authentication.md)
+- [0006: Internal Service Identities](0006-internal-service-identities.md)
+- [0007: Charging Token Fingerprint Key Management](0007-charging-token-fingerprint-key-management.md)
+- [0008: Administrative Audit Trail](0008-administrative-audit-trail.md)
+- [0009: Secure Configuration Profiles](0009-secure-configuration-profiles.md)
+- [0010: Migration and Compatibility Strategy](0010-migration-and-compatibility-strategy.md)
+- [0011: Transport Encryption, Network Boundaries, and Certificate Lifecycle](0011-transport-encryption-and-network-boundaries.md)
+- [0012: Distributed Reliability, Causal Ordering, and Multi-Instance Fencing](0012-distributed-reliability-ordering-and-fencing.md)
