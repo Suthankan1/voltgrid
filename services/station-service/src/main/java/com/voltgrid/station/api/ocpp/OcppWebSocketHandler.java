@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class OcppWebSocketHandler
         extends TextWebSocketHandler
-        implements SubProtocolCapable, OcppSessionFencer {
+        implements SubProtocolCapable, OcppSessionFencer, com.voltgrid.station.application.OcppCommandSender {
 
     public static final String SUBPROTOCOL = "ocpp2.0.1";
     public static final String CONNECTION_GENERATION_ATTRIBUTE = "voltgrid.ocpp.connection-generation";
@@ -30,6 +30,7 @@ public class OcppWebSocketHandler
     private final StationConnectivityService connectivityService;
     private final ApplicationShutdownState shutdownState;
     private final StationCredentialService credentialService;
+    private final tools.jackson.databind.json.JsonMapper jsonMapper;
     private final ConcurrentHashMap<String, WebSocketSession> activeSessionMap =
             new ConcurrentHashMap<>();
     private MeterRegistry meterRegistry;
@@ -49,12 +50,23 @@ public class OcppWebSocketHandler
             OcppMessageProcessor messageProcessor,
             StationConnectivityService connectivityService,
             ApplicationShutdownState shutdownState,
-            StationCredentialService credentialService
+            @Autowired(required = false) StationCredentialService credentialService,
+            @Autowired(required = false) tools.jackson.databind.json.JsonMapper jsonMapper
     ) {
         this.messageProcessor = messageProcessor;
         this.connectivityService = connectivityService;
         this.shutdownState = shutdownState;
         this.credentialService = credentialService;
+        this.jsonMapper = jsonMapper != null ? jsonMapper : tools.jackson.databind.json.JsonMapper.builder().build();
+    }
+
+    OcppWebSocketHandler(
+            OcppMessageProcessor messageProcessor,
+            StationConnectivityService connectivityService,
+            ApplicationShutdownState shutdownState,
+            StationCredentialService credentialService
+    ) {
+        this(messageProcessor, connectivityService, shutdownState, credentialService, null);
     }
 
     OcppWebSocketHandler(
@@ -62,7 +74,7 @@ public class OcppWebSocketHandler
             StationConnectivityService connectivityService,
             ApplicationShutdownState shutdownState
     ) {
-        this(messageProcessor, connectivityService, shutdownState, null);
+        this(messageProcessor, connectivityService, shutdownState, null, null);
     }
 
     @Override
@@ -146,9 +158,11 @@ public class OcppWebSocketHandler
                 meterRegistry.counter("voltgrid.ocpp.messages.received", "status", "success").increment();
             }
 
-            session.sendMessage(
-                    new TextMessage(response)
-            );
+            if (response != null) {
+                session.sendMessage(
+                        new TextMessage(response)
+                );
+            }
 
         } catch (IllegalArgumentException exception) {
             if (meterRegistry != null) {
@@ -189,5 +203,36 @@ public class OcppWebSocketHandler
                 return null;
             });
         }
+    }
+
+    @Override
+    public boolean sendCall(String stationId, String messageId, String action, String payloadJson) {
+        if (stationId == null) {
+            return false;
+        }
+        WebSocketSession session = activeSessionMap.get(stationId);
+        if (session == null || !session.isOpen()) {
+            return false;
+        }
+        try {
+            var callArray = jsonMapper.createArrayNode();
+            callArray.add(2); // CALL
+            callArray.add(messageId);
+            callArray.add(action);
+            callArray.add(jsonMapper.readTree(payloadJson));
+            session.sendMessage(new TextMessage(jsonMapper.writeValueAsString(callArray)));
+            return true;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean isStationConnected(String stationId) {
+        if (stationId == null) {
+            return false;
+        }
+        WebSocketSession session = activeSessionMap.get(stationId);
+        return session != null && session.isOpen();
     }
 }
