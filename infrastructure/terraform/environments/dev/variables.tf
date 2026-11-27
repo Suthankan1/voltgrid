@@ -81,7 +81,12 @@ variable "services_desired_count" {
 }
 
 variable "postgres_ssl_mode" {
-  description = "PostgreSQL SSL mode for backend database connectivity (verify-full, verify-ca, require, or disable)."
+  description = "PostgreSQL SSL mode for backend database connectivity with certificate and hostname verification."
   type        = string
   default     = "verify-full"
+
+  validation {
+    condition     = var.postgres_ssl_mode == "verify-full"
+    error_message = "PostgreSQL connections must use verify-full."
+  }
 }

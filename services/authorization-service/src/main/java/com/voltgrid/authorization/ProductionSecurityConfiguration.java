@@ -1,5 +1,12 @@
 package com.voltgrid.authorization;
 
+import java.sql.SQLException;
+import java.util.Properties;
+
+import org.postgresql.Driver;
+import org.postgresql.PGProperty;
+import org.postgresql.jdbc.GSSEncMode;
+import org.postgresql.jdbc.SslMode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -25,7 +32,18 @@ public final class ProductionSecurityConfiguration {
         if (url == null || url.isBlank()) {
             return false;
         }
-        String lower = url.toLowerCase();
-        return lower.contains("sslmode=verify-full") || lower.contains("sslmode=verify-ca") || lower.contains("ssl=true");
+        Properties properties = Driver.parseURL(url, null);
+        if (properties == null
+                || PGProperty.SSL_FACTORY.isPresent(properties)
+                || PGProperty.SSL_HOSTNAME_VERIFIER.isPresent(properties)) {
+            return false;
+        }
+        try {
+            GSSEncMode gssMode = GSSEncMode.of(properties);
+            return SslMode.of(properties) == SslMode.VERIFY_FULL
+                    && (gssMode == GSSEncMode.DISABLE || gssMode == GSSEncMode.ALLOW);
+        } catch (SQLException invalidConnectionProperty) {
+            return false;
+        }
     }
 }

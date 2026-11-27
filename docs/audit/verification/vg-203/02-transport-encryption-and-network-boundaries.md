@@ -11,7 +11,7 @@ On 2026-11-27, the transport encryption and network boundary hardening controls 
 | EVSE to Station Service | OCPP 2.0.1 over WSS (Port 8080/443) | Profile 2 (WSS + salted HTTP Basic Auth). Profile 3 (Client Cert mTLS) reserved for hardware PKI | Plaintext `ws://` / `http://` rejected with `403 Forbidden` when `requireSecureTransport=true` |
 | Internal gRPC | Authorization Service (Port 9090) | Netty TLS with x509 leaf and trusted CA certificate chain; shared secret service key `X-Service-Key` | Plaintext clients rejected at handshake; untrusted CA rejected; missing/invalid service key rejected with `UNAUTHENTICATED` (401) |
 | Event Streaming | Apache Kafka / AWS MSK | `security.protocol=SSL` or `SASL_SSL` enforced in production profiles | Production startup aborts with `IllegalStateException` if plaintext or insecure protocol configured |
-| Relational Storage | PostgreSQL | `sslmode=verify-full` (or `verify-ca`/`ssl=true`) enforced on JDBC URLs in production profiles | Production startup aborts with `IllegalStateException` if `sslmode` is missing or disabled |
+| Relational Storage | PostgreSQL | `sslmode=verify-full` (or pgJDBC's equivalent `ssl=true`) enforced on JDBC URLs in production profiles | Production startup aborts with `IllegalStateException` if `sslmode` is missing or disabled |
 | Local Observability | Jaeger, Prometheus, OTel (Ports 16686, 9091, 4317, 4318) | Strict loopback binding (`127.0.0.1`) on all host port publications | Local Docker host avoids wildcard `0.0.0.0` exposure |
 
 ## Terraform Configuration Hardening
@@ -33,7 +33,7 @@ The Terraform environment definitions under `infrastructure/terraform/environmen
   - Rejects multi-hop or spoofed headers with insecure hops.
   - Verified by `OcppHandshakeTransportSecurityTests` (8/8 tests passed).
 - `ProductionSecurityConfiguration`:
-  - Enforces `sslmode=verify-full`, `verify-ca`, or `ssl=true` for database connections in production profiles.
+  - Enforces `sslmode=verify-full` or pgJDBC's equivalent `ssl=true` for database connections in production profiles.
   - Enforces `security.protocol=SSL` or `SASL_SSL` for Kafka event streaming.
   - Enforces `requireSecureTransport=true` in production profiles.
   - Verified by `ProductionSecurityConfigurationTests` (9/9 tests passed).
@@ -41,13 +41,13 @@ The Terraform environment definitions under `infrastructure/terraform/environmen
 
 ### 2. Operations Service
 - `ProductionSecurityConfiguration`:
-  - Enforces `sslmode=verify-full`, `verify-ca`, or `ssl=true` for database connections in production profiles.
+  - Enforces `sslmode=verify-full` or pgJDBC's equivalent `ssl=true` for database connections in production profiles.
   - Enforces Kafka `security.protocol=SSL` or `SASL_SSL` in production profiles.
   - Verified by `ProductionSecurityConfigurationTests` (6/6 tests passed).
 
 ### 3. Authorization Service
 - `ProductionSecurityConfiguration`:
-  - Enforces `sslmode=verify-full`, `verify-ca`, or `ssl=true` for database connections in production profiles.
+  - Enforces `sslmode=verify-full` or pgJDBC's equivalent `ssl=true` for database connections in production profiles.
   - Verified by `ProductionSecurityConfigurationTests` (6/6 tests passed).
 - `AuthorizationGrpcTlsIntegrationTests`:
   - Verified Netty gRPC server TLS with isolated self-signed and custom CA certificates.
@@ -70,3 +70,10 @@ The Terraform environment definitions under `infrastructure/terraform/environmen
 3. **Emergency Revocation**:
    - Revoked certificates are added to CRL / OCSP responder immediately.
    - System strictly rejects connections on handshake failure; fallback to plaintext or unauthenticated transport is prohibited.
+
+
+## PostgreSQL configuration regression
+
+The production guards use pgJDBC's URL parser and SSL mode resolution. They require certificate and peer hostname verification and reject custom SSL factories, custom hostname verifiers, and GSS modes that can take precedence over TLS. The Terraform configuration requires `verify-full`. Deployments using `verify-ca` must configure the CA and use the database endpoint covered by the server certificate before restarting.
+
+Focused offline Maven tests passed on Java 25 in Station (9), Authorization (6), and Operations (7) using `mvn -o -q -f services/<service>-service/pom.xml -Dtest=ProductionSecurityConfigurationTests test`. These tests exercise URL policy. Database handshakes, CA/hostname negatives, expiry, rotation, authenticated Kafka, gRPC, and reverse-proxy boundary acceptance remain tracked in #5.
