@@ -45,4 +45,22 @@ public class StationRegistrationService {
 
         return station;
     }
+
+    @Transactional
+    public ChargingStation mapStation(String id, String organizationId, String siteId) {
+        var existing = stationReader.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Station not found: " + id));
+
+        var mapped = new ChargingStation(
+                existing.id(),
+                existing.name(),
+                existing.status(),
+                existing.lastSeenAt(),
+                organizationId,
+                siteId
+        );
+
+        stationWriter.save(mapped);
+        return mapped;
+    }
 }

@@ -55,6 +55,7 @@ type Mutation {
     registerStation(
         input: RegisterStationInput!
     ): ChargingStation!
+    mapStation(input: MapStationInput!): ChargingStation!
 
     createOrganization(input: CreateOrganizationInput!): Organization!
     createSite(input: CreateSiteInput!): Site!
@@ -188,6 +189,12 @@ input RegisterStationInput {
     id: ID!
     name: String!
     organizationId: ID
+    siteId: ID
+}
+
+input MapStationInput {
+    stationId: ID!
+    organizationId: ID!
     siteId: ID
 }
 

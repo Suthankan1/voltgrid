@@ -24,3 +24,8 @@ Production transport and distributed operation remain separate VG-203 and VG-204
 ## VG-202R.3C BFF acceptance
 
 - [BFF OIDC provider, token policy and callback evidence](03b-bff-oidc-provider-acceptance.md)
+
+## VG-202R.6 ownership mapping and audit lifecycle
+
+- [Approved ownership mapping and administrative audit lifecycle](06-ownership-mapping-and-audit-lifecycle.md)
+

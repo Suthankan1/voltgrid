@@ -177,4 +177,112 @@ class MultiTenantStationGraphQlTests {
         assertThat(pageView.content().get(0).getOrganizationId()).isEqualTo(orgId);
         verify(tenantAuthorizationService).assertAuthorized(orgId, Permission.AUDIT_READ);
     }
+
+    @Test
+    void shouldMapQuarantinedStationToAuthorizedOrganizationAndSite() {
+        String orgId = "org-ceylon-01";
+        String siteId = "site-colombo";
+        String stationId = "STA-QUARANTINED-1";
+        var input = new MapStationInput(stationId, orgId, siteId);
+
+        when(tenantAuthorizationService.resolveAuthorizedOrganizationId(orgId)).thenReturn(orgId);
+        when(siteRepository.findById(siteId)).thenReturn(Optional.of(new SiteEntity(siteId, orgId, "Colombo", "ACTIVE")));
+        var quarantinedStation = new ChargingStation(stationId, "Legacy Charger", StationStatus.OFFLINE, null, null, null);
+        when(stationQueryService.findById(stationId)).thenReturn(Optional.of(quarantinedStation));
+        var mappedStation = new ChargingStation(stationId, "Legacy Charger", StationStatus.OFFLINE, null, orgId, siteId);
+        when(stationRegistrationService.mapStation(stationId, orgId, siteId)).thenReturn(mappedStation);
+
+        var result = controller.mapStation(input);
+
+        assertThat(result.id()).isEqualTo(stationId);
+        assertThat(result.organizationId()).isEqualTo(orgId);
+        assertThat(result.siteId()).isEqualTo(siteId);
+
+        verify(tenantAuthorizationService).assertAuthorized(orgId, Permission.STATION_REGISTER);
+        verify(auditService).recordEvent(
+                eq("STATION_MAPPED"),
+                any(),
+                eq("USER"),
+                eq(orgId),
+                eq("STATION"),
+                eq(stationId),
+                eq("MAP"),
+                eq("SUCCESS"),
+                isNull(),
+                contains(stationId)
+        );
+    }
+
+    @Test
+    void shouldRejectMappingStationToInvalidSiteInForeignOrganization() {
+        String orgId = "org-ceylon-01";
+        String foreignSiteId = "site-foreign";
+        String stationId = "STA-QUARANTINED-2";
+        var input = new MapStationInput(stationId, orgId, foreignSiteId);
+
+        when(tenantAuthorizationService.resolveAuthorizedOrganizationId(orgId)).thenReturn(orgId);
+        when(stationQueryService.findById(stationId)).thenReturn(Optional.of(
+                new ChargingStation(stationId, "Legacy Charger", StationStatus.OFFLINE, null, null, null)
+        ));
+        // Site belongs to org-foreign, not orgId
+        when(siteRepository.findById(foreignSiteId)).thenReturn(Optional.of(
+                new SiteEntity(foreignSiteId, "org-foreign", "Foreign Site", "ACTIVE")
+        ));
+
+        assertThatThrownBy(() -> controller.mapStation(input))
+                .isInstanceOf(TenantAccessDeniedException.class)
+                .hasMessageContaining("Active site access required");
+    }
+
+    @Test
+    void shouldRejectReassigningStationFromAnotherOrganizationAsNonPlatformAdmin() {
+        String orgId = "org-ceylon-01";
+        String stationId = "STA-OWNED-BY-OTHER";
+        var input = new MapStationInput(stationId, orgId, null);
+
+        when(tenantAuthorizationService.resolveAuthorizedOrganizationId(orgId)).thenReturn(orgId);
+        when(stationQueryService.findById(stationId)).thenReturn(Optional.of(
+                new ChargingStation(stationId, "Owned Charger", StationStatus.OFFLINE, null, "org-other", null)
+        ));
+
+        // Non-platform-admin user
+        SecurityContext.set(new AuthenticatedUser("user-1", "user@test.local", Set.of("ORG_OWNER"), orgId));
+
+        assertThatThrownBy(() -> controller.mapStation(input))
+                .isInstanceOf(TenantAccessDeniedException.class)
+                .hasMessageContaining("Reassigning station from another organization requires platform admin");
+    }
+
+    @Test
+    void shouldAllowReassigningStationFromAnotherOrganizationAsPlatformAdmin() {
+        String orgId = "org-ceylon-01";
+        String stationId = "STA-REASSIGN-01";
+        var input = new MapStationInput(stationId, orgId, null);
+
+        when(tenantAuthorizationService.resolveAuthorizedOrganizationId(orgId)).thenReturn(orgId);
+        when(stationQueryService.findById(stationId)).thenReturn(Optional.of(
+                new ChargingStation(stationId, "Reassigned Charger", StationStatus.OFFLINE, null, "org-other", null)
+        ));
+        var mapped = new ChargingStation(stationId, "Reassigned Charger", StationStatus.OFFLINE, null, orgId, null);
+        when(stationRegistrationService.mapStation(stationId, orgId, null)).thenReturn(mapped);
+
+        // Platform admin
+        SecurityContext.set(new AuthenticatedUser("admin-root", "admin@voltgrid.local", Set.of("PLATFORM_ADMIN"), "org-voltgrid"));
+
+        var result = controller.mapStation(input);
+
+        assertThat(result.organizationId()).isEqualTo(orgId);
+        verify(auditService).recordEvent(
+                eq("STATION_MAPPED"),
+                eq("admin-root"),
+                eq("USER"),
+                eq(orgId),
+                eq("STATION"),
+                eq(stationId),
+                eq("MAP"),
+                eq("SUCCESS"),
+                isNull(),
+                contains("previousOrganizationId")
+        );
+    }
 }
