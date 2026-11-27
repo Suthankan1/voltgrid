@@ -44,6 +44,27 @@ public class OcppMessageProcessor {
     private final StationConnectorStatusService connectorStatusService;
     private final StationTransactionService transactionService;
     private final AuthorizationClient authorizationClient;
+    private final com.voltgrid.station.application.StationMeterValueService meterValueService;
+    private final com.voltgrid.station.application.StationCommandService commandService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public OcppMessageProcessor(
+            JsonMapper jsonMapper,
+            StationConnectivityService connectivityService,
+            StationConnectorStatusService connectorStatusService,
+            StationTransactionService transactionService,
+            AuthorizationClient authorizationClient,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.voltgrid.station.application.StationMeterValueService meterValueService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.voltgrid.station.application.StationCommandService commandService
+    ) {
+        this.jsonMapper = jsonMapper;
+        this.connectivityService = connectivityService;
+        this.connectorStatusService = connectorStatusService;
+        this.transactionService = transactionService;
+        this.authorizationClient = authorizationClient;
+        this.meterValueService = meterValueService;
+        this.commandService = commandService;
+    }
 
     public OcppMessageProcessor(
             JsonMapper jsonMapper,
@@ -52,11 +73,7 @@ public class OcppMessageProcessor {
             StationTransactionService transactionService,
             AuthorizationClient authorizationClient
     ) {
-        this.jsonMapper = jsonMapper;
-        this.connectivityService = connectivityService;
-        this.connectorStatusService = connectorStatusService;
-        this.transactionService = transactionService;
-        this.authorizationClient = authorizationClient;
+        this(jsonMapper, connectivityService, connectorStatusService, transactionService, authorizationClient, null, null);
     }
 
     @WithSpan("ocpp.message")
@@ -67,9 +84,38 @@ public class OcppMessageProcessor {
         try {
             var message = jsonMapper.readTree(rawMessage);
 
+            if (!message.isArray() || message.size() < 3 || !message.get(0).canConvertToInt() || !message.get(1).isString()) {
+                throw new IllegalArgumentException("Invalid OCPP frame");
+            }
+
+            int messageTypeId = message.get(0).intValue();
+            var messageId = message.get(1).stringValue();
+
+            if (messageTypeId == CALL_RESULT) {
+                if (commandService != null) {
+                    var payloadNode = message.size() > 2 ? message.get(2) : jsonMapper.createObjectNode();
+                    commandService.handleCommandResponse(stationId, messageId, jsonMapper.writeValueAsString(payloadNode));
+                }
+                connectivityService.recordActivity(stationId, Instant.now());
+                return null;
+            }
+
+            if (messageTypeId == CALL_ERROR) {
+                if (commandService != null) {
+                    String errorCode = message.size() > 2 && message.get(2).isString() ? message.get(2).stringValue() : "GenericError";
+                    String errorDesc = message.size() > 3 && message.get(3).isString() ? message.get(3).stringValue() : "";
+                    commandService.handleCommandError(stationId, messageId, errorCode, errorDesc);
+                }
+                connectivityService.recordActivity(stationId, Instant.now());
+                return null;
+            }
+
+            if (messageTypeId != CALL) {
+                throw new IllegalArgumentException("Invalid OCPP message type: " + messageTypeId);
+            }
+
             validateCall(message);
 
-            var messageId = message.get(1).stringValue();
             var action = message.get(2).stringValue();
 
             LOGGER.debug(
@@ -492,6 +538,14 @@ public class OcppMessageProcessor {
             );
         }
 
+        if (commandService != null && request.transactionInfo() != null && request.transactionInfo().transactionId() != null) {
+            commandService.correlateTransactionEvent(
+                    stationId,
+                    request.transactionInfo().transactionId(),
+                    request.eventType()
+            );
+        }
+
         connectivityService.recordActivity(
                 stationId,
                 Instant.now()
@@ -788,6 +842,29 @@ public class OcppMessageProcessor {
                     "FormatViolation",
                     "Invalid MeterValues payload"
             );
+        }
+
+        MeterValuesRequest request;
+        try {
+            request = jsonMapper.treeToValue(payload, MeterValuesRequest.class);
+        } catch (Exception ex) {
+            return callError(
+                    messageId,
+                    "FormatViolation",
+                    "Invalid MeterValues payload format"
+            );
+        }
+
+        if (request == null || request.evseId() == null || request.evseId() < 0) {
+            return callError(
+                    messageId,
+                    "FormatViolation",
+                    "Invalid evseId in MeterValues"
+            );
+        }
+
+        if (meterValueService != null && request.meterValue() != null) {
+            meterValueService.recordMeterValues(stationId, request.evseId(), request.meterValue());
         }
 
         connectivityService.recordActivity(

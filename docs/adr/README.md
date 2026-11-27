@@ -26,3 +26,4 @@ An ADR documents an important architectural decision, including:
 - [0013: Bounded Data Access, GraphQL Pagination, and Database Lifecycle](0013-bounded-data-access-and-database-lifecycle.md)
 - [0014: DevSecOps, Supply-Chain Hardening, and Immutable Build Governance](0014-devsecops-and-supply-chain-security.md)
 - [0015: Observability, SRE Baseline, Metrics Cardinality, and Alerting Topology](0015-observability-sre-and-recovery-readiness.md)
+- [0016: OCPP 2.0.1 Standalone MeterValues Ingestion and Outbound Command Lifecycle](0016-ocpp-meter-values-and-command-lifecycle.md)
