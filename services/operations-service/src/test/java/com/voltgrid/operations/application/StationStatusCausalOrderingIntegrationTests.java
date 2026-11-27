@@ -135,4 +135,27 @@ class StationStatusCausalOrderingIntegrationTests {
         assertThat(proj2.getSequenceNumber()).isEqualTo(2L);
         assertThat(proj2.getLastEventId()).isEqualTo(event2Id);
     }
+
+    @Test
+    void sequencedStateWinsOverLaterDatedLegacyEventsInEitherDeliveryOrder() {
+        Instant sequencedAt = Instant.parse("2026-11-27T12:00:00Z");
+        for (boolean legacyFirst : new boolean[] {true, false}) {
+            String stationId = "STATION-MIXED-" + legacyFirst;
+            var legacy = new StationStatusChangedEvent(UUID.randomUUID(), stationId, "org-volt",
+                    "ONLINE", "OFFLINE", sequencedAt.plusSeconds(60), 0L);
+            var sequenced = new StationStatusChangedEvent(UUID.randomUUID(), stationId, "org-volt",
+                    "OFFLINE", "ONLINE", sequencedAt, 1L);
+
+            handler.handle(legacyFirst ? legacy : sequenced);
+            handler.handle(legacyFirst ? sequenced : legacy);
+            handler.handle(legacy);
+
+            var projection = projectionRepository.findById(stationId).orElseThrow();
+            assertThat(projection.getCurrentStatus()).isEqualTo("ONLINE");
+            assertThat(projection.getLastEventId()).isEqualTo(sequenced.eventId());
+            assertThat(projection.getSequenceNumber()).isEqualTo(1L);
+            assertThat(receiptRepository.existsById(legacy.eventId())).isTrue();
+            assertThat(receiptRepository.existsById(sequenced.eventId())).isTrue();
+        }
+    }
 }
