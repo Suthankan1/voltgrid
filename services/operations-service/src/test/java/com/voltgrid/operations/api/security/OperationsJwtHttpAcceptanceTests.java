@@ -46,11 +46,14 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -80,6 +83,8 @@ class OperationsJwtHttpAcceptanceTests {
     private static RSAKey untrusted;
     private static final AtomicInteger alternateKeyRequests = new AtomicInteger();
     private static final AtomicInteger downstreamRequests = new AtomicInteger();
+    private static final AtomicInteger stationAccessStatus = new AtomicInteger(204);
+    private static final AtomicReference<CountDownLatch> delayedStationAccess = new AtomicReference<>();
     private static final BlockingQueue<Boolean> clearedContexts = new LinkedBlockingQueue<>();
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
@@ -112,7 +117,15 @@ class OperationsJwtHttpAcceptanceTests {
                         // Deny requests that lack a parseable fixture identity.
                     }
                 }
-                exchange.sendResponseHeaders(member ? 204 : 403, -1);
+                var delay = delayedStationAccess.get();
+                if (delay != null) {
+                    try {
+                        delay.await(8, TimeUnit.SECONDS);
+                    } catch (InterruptedException interrupted) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+                exchange.sendResponseHeaders(member ? stationAccessStatus.get() : 403, -1);
             }
         });
         issuerServer.start();
@@ -154,6 +167,8 @@ class OperationsJwtHttpAcceptanceTests {
     void seed(@Autowired StationStatusProjectionRepository projections) {
         Instant now = Instant.now();
         projections.save(new StationStatusProjectionEntity(RESOURCE, ORG, "ONLINE", UUID.randomUUID(), now, now));
+        projections.save(new StationStatusProjectionEntity(
+                "jwt-http-foreign", "jwt-http-other-org", "OFFLINE", UUID.randomUUID(), now, now));
     }
 
     @Test
@@ -182,6 +197,64 @@ class OperationsJwtHttpAcceptanceTests {
         Instant now = Instant.now();
         assertAuthorized(signed(claims().expirationTime(Date.from(now.minusSeconds(5))).build()));
         assertAuthorized(signed(claims().notBeforeTime(Date.from(Instant.now().plusSeconds(15))).build()));
+    }
+
+    @Test
+    void checksCurrentMembershipOnEverySignedRequestAndBoundsStationFailures() throws Exception {
+        String token = signed(claims().build());
+        assertAuthorized(token);
+
+        try {
+            for (int status : new int[] {403, 503}) {
+                stationAccessStatus.set(status);
+                assertMembershipDenied(token);
+            }
+
+            stationAccessStatus.set(204);
+            var release = new CountDownLatch(1);
+            delayedStationAccess.set(release);
+            try {
+                long started = System.nanoTime();
+                assertMembershipDenied(token);
+                assertThat(Duration.ofNanos(System.nanoTime() - started)).isLessThan(Duration.ofSeconds(5));
+            } finally {
+                delayedStationAccess.set(null);
+                release.countDown();
+            }
+
+            assertAuthorized(token);
+        } finally {
+            stationAccessStatus.set(204);
+        }
+    }
+
+    @Test
+    void aliasesAndProjectionPagesStayScopedToTheAuthorizedOrganization() throws Exception {
+        String token = signed(claims().build());
+        var response = request("Bearer " + token, JSON.writeValueAsString(Map.of("query", """
+                {
+                    own: stationStatus(stationId: "jwt-http-station") { stationId }
+                    foreign: stationStatus(stationId: "jwt-http-foreign") { stationId }
+                    page: stationStatuses(first: 10) { edges { node { stationId } } }
+                }
+                """)));
+        assertThat(response.statusCode()).isEqualTo(200);
+        var body = JSON.readTree(response.body());
+        assertThat(body.has("errors")).isFalse();
+        assertThat(body.at("/data/own/stationId").asString()).isEqualTo(RESOURCE);
+        assertThat(body.at("/data/foreign").isNull()).isTrue();
+        assertThat(body.at("/data/page/edges").size()).isEqualTo(1);
+        assertThat(body.at("/data/page/edges/0/node/stationId").asString()).isEqualTo(RESOURCE);
+    }
+
+    private void assertMembershipDenied(String token) throws Exception {
+        int downstreamBefore = downstreamRequests.get();
+        int accessBefore = stationAccessRequests.get();
+        var response = request("Bearer " + token);
+        assertThat(response.statusCode()).isEqualTo(403);
+        assertThat(response.body()).doesNotContain(RESOURCE, token);
+        assertThat(downstreamRequests.get()).isEqualTo(downstreamBefore);
+        assertThat(stationAccessRequests.get()).isEqualTo(accessBefore + 1);
     }
 
     private void assertAuthorized(String token) throws Exception {
@@ -215,10 +288,14 @@ class OperationsJwtHttpAcceptanceTests {
     }
 
     private HttpResponse<String> request(String authorization) throws Exception {
+        return request(authorization, QUERY);
+    }
+
+    private HttpResponse<String> request(String authorization, String body) throws Exception {
         var builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/graphql"))
                 .timeout(Duration.ofSeconds(10))
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(QUERY));
+                .POST(HttpRequest.BodyPublishers.ofString(body));
         if (authorization != null) {
             builder.header("Authorization", authorization);
         }
