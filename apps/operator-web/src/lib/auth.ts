@@ -152,6 +152,29 @@ export const getSession = cache(async (): Promise<AuthSession> => {
   return resolveSession((await cookies()).get(SESSION_COOKIE_NAME)?.value);
 });
 
+export async function authorizeMutation(id: string | undefined, origin: string | null) {
+  if (!id || origin !== appOrigin()) return null;
+  const { token, user } = await resolveSession(id);
+  if (!token || !user) return null;
+  const organizationId = user.activeOrganizationId;
+  try {
+    if (!await organizationAccess(token, organizationId)) return null;
+  } catch {
+    return null;
+  }
+  const current = sessions.get(id);
+  if (!current || current.token !== token || current.user !== user || current.tokenExpiresAt <= Date.now()) {
+    return null;
+  }
+  return { Authorization: `Bearer ${token}`, "X-Tenant-Id": organizationId };
+}
+
+export async function getMutationAuthHeaders() {
+  const { cookies, headers } = await import("next/headers");
+  const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
+  return authorizeMutation(cookieStore.get(SESSION_COOKIE_NAME)?.value, headerStore.get("origin"));
+}
+
 export async function getAuthHeaders(): Promise<Record<string, string>> {
   const session = await getSession();
   if (!session.token || !session.user) return {};
