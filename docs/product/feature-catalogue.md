@@ -6,11 +6,11 @@ Delivery groups A–F are proposed ordering (see [roadmap](delivery-roadmap.md))
 
 | ID | Capability | Baseline | Priority | Group | Acceptance criterion | Dependencies / impact |
 | --- | --- | --- | --- | --- | --- | --- |
-| SEC-01 | Operator identity / OIDC | Implemented (VG-202) | P0 | A | Authenticated actions, expiring/revocable sessions; no shared admin credential. | VG-202; external IdP; API/BFF authorization. |
-| SEC-02 | Organization/role/resource authorization | Implemented (VG-202) | P0 | A | Owner/admin/operator/support/finance/technician can access only permitted resources. | SEC-01, CORE-01; negative cross-tenant tests. |
-| SEC-03 | Charging-station device identity | Implemented (VG-202) | P0 | A | Station ID alone cannot authenticate; credentials rotate and revoke. | VG-202/203; OCPP hardware security profile. |
-| SEC-04 | Immutable administrative audit trail | Implemented (VG-202) | P0 | A | Actor, time, action, resource and result recorded for login/configuration/commands/tariffs/refunds/roles. | SEC-01/02; tamper protection, retention and redaction. |
-| CORE-01 | Multi-tenant organization/site model | Implemented (VG-202) | P0 | A | Multiple CPOs/sites/hosts isolated across queries, writes and events. | SEC-01/02 co-design; migration/backfill. |
+| SEC-01 | Operator identity / OIDC | Implemented (VG-202), acceptance pending | P0 | A | Authenticated actions, expiring/revocable sessions; no shared admin credential. | VG-202; external IdP; API/BFF authorization. |
+| SEC-02 | Organization/role/resource authorization | Implemented (VG-202), acceptance pending | P0 | A | Owner/admin/operator/support/finance/technician can access only permitted resources. | SEC-01, CORE-01; negative cross-tenant tests. |
+| SEC-03 | Charging-station device identity | Implemented (VG-202), acceptance pending | P0 | A | Station ID alone cannot authenticate; credentials rotate and revoke. | VG-202/203; OCPP hardware security profile. |
+| SEC-04 | Immutable administrative audit trail | Implemented (VG-202), acceptance pending | P0 | A | Actor, time, action, resource and result recorded for login/configuration/commands/tariffs/refunds/roles. | SEC-01/02; tamper protection, retention and redaction. |
+| CORE-01 | Multi-tenant organization/site model | Implemented (VG-202), acceptance pending | P0 | A | Multiple CPOs/sites/hosts isolated across queries, writes and events. | SEC-01/02 co-design; migration/backfill. |
 | CORE-02 | Geospatial site metadata | M | P0 | B | Verified/versioned coordinates, hours, amenities, accessibility and entrance instructions; unknown remains unknown. | CORE-01; host surveys; map provider. |
 | CORE-03 | EVSE capability model | P | P0 | B | Connector type, current, max power, hardware capability and status separate and validated. | Station/OCPP metadata; hardware verification. |
 | CORE-04 | Status freshness/trust | M | P0 | B | Every state has last-observed time; stale state never definitively available. | Connection telemetry; API/UI freshness policy. |
