@@ -1,4 +1,4 @@
-import { getAuthHeaders } from "./auth";
+import { getAuthHeaders, getMutationAuthHeaders } from "./auth";
 
 export interface OrganizationRecord {
   id: string;
@@ -58,18 +58,22 @@ export interface StationCredentialRecord {
   createdAt: string;
 }
 
-async function executeGraphQl<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+async function executeGraphQl<T>(
+  query: string,
+  variables: Record<string, unknown> = {},
+  authHeaders?: Record<string, string>,
+): Promise<T> {
   const endpoint = process.env.STATION_GRAPHQL_URL || "http://localhost:8081/graphql";
-  const authHeaders = await getAuthHeaders();
 
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...authHeaders,
+      ...(authHeaders ?? await getAuthHeaders()),
     },
     body: JSON.stringify({ query, variables }),
     cache: "no-store",
+    redirect: "error",
     signal: AbortSignal.timeout(6000),
   });
 
@@ -83,6 +87,12 @@ async function executeGraphQl<T>(query: string, variables: Record<string, unknow
   }
 
   return payload.data as T;
+}
+
+async function executeMutation<T>(query: string, variables: Record<string, unknown>): Promise<T> {
+  const authHeaders = await getMutationAuthHeaders();
+  if (!authHeaders) throw new Error("Operator action denied");
+  return executeGraphQl<T>(query, variables, authHeaders);
 }
 
 function isDynamicServerError(error: unknown): boolean {
@@ -211,7 +221,7 @@ export async function getAdministrativeAuditEvents(
 }
 
 export async function createOrganizationAction(id: string, name: string): Promise<OrganizationRecord> {
-  const data = await executeGraphQl<{ createOrganization: OrganizationRecord }>(
+  const data = await executeMutation<{ createOrganization: OrganizationRecord }>(
     `
     mutation CreateOrganization($input: CreateOrganizationInput!) {
       createOrganization(input: $input) {
@@ -229,7 +239,7 @@ export async function createOrganizationAction(id: string, name: string): Promis
 }
 
 export async function createSiteAction(id: string, organizationId: string, name: string): Promise<SiteRecord> {
-  const data = await executeGraphQl<{ createSite: SiteRecord }>(
+  const data = await executeMutation<{ createSite: SiteRecord }>(
     `
     mutation CreateSite($input: CreateSiteInput!) {
       createSite(input: $input) {
@@ -252,7 +262,7 @@ export async function inviteMemberAction(
   userEmail: string,
   role: string
 ): Promise<MemberRecord> {
-  const data = await executeGraphQl<{ inviteMember: MemberRecord }>(
+  const data = await executeMutation<{ inviteMember: MemberRecord }>(
     `
     mutation InviteMember($input: InviteMemberInput!) {
       inviteMember(input: $input) {
@@ -277,7 +287,7 @@ export async function updateMemberRoleAction(
   userId: string,
   role: string
 ): Promise<MemberRecord> {
-  const data = await executeGraphQl<{ updateMemberRole: MemberRecord }>(
+  const data = await executeMutation<{ updateMemberRole: MemberRecord }>(
     `
     mutation UpdateMemberRole($organizationId: ID!, $userId: String!, $role: String!) {
       updateMemberRole(organizationId: $organizationId, userId: $userId, role: $role) {
@@ -298,7 +308,7 @@ export async function updateMemberRoleAction(
 }
 
 export async function revokeMemberAction(organizationId: string, userId: string): Promise<boolean> {
-  const data = await executeGraphQl<{ revokeMember: boolean }>(
+  const data = await executeMutation<{ revokeMember: boolean }>(
     `
     mutation RevokeMember($organizationId: ID!, $userId: String!) {
       revokeMember(organizationId: $organizationId, userId: $userId)
@@ -313,7 +323,7 @@ export async function provisionStationCredentialAction(
   stationId: string,
   password: string
 ): Promise<StationCredentialRecord> {
-  const data = await executeGraphQl<{ provisionStationCredential: StationCredentialRecord }>(
+  const data = await executeMutation<{ provisionStationCredential: StationCredentialRecord }>(
     `
     mutation ProvisionCredential($input: ProvisionCredentialInput!) {
       provisionStationCredential(input: $input) {
@@ -334,7 +344,7 @@ export async function rotateStationCredentialAction(
   stationId: string,
   newPassword: string
 ): Promise<StationCredentialRecord> {
-  const data = await executeGraphQl<{ rotateStationCredential: StationCredentialRecord }>(
+  const data = await executeMutation<{ rotateStationCredential: StationCredentialRecord }>(
     `
     mutation RotateCredential($input: RotateCredentialInput!) {
       rotateStationCredential(input: $input) {
@@ -352,7 +362,7 @@ export async function rotateStationCredentialAction(
 }
 
 export async function revokeStationCredentialAction(stationId: string): Promise<boolean> {
-  const data = await executeGraphQl<{ revokeStationCredential: boolean }>(
+  const data = await executeMutation<{ revokeStationCredential: boolean }>(
     `
     mutation RevokeCredential($stationId: ID!) {
       revokeStationCredential(stationId: $stationId)
