@@ -87,12 +87,28 @@ class ProductionSecurityConfigurationTests {
     @Test
     void validatesDatabaseSslModes() {
         assertThat(ProductionSecurityConfiguration.isSecureDatabaseUrl("jdbc:postgresql://host:5432/db?sslmode=verify-full")).isTrue();
-        assertThat(ProductionSecurityConfiguration.isSecureDatabaseUrl("jdbc:postgresql://host:5432/db?sslmode=verify-ca")).isTrue();
+        assertThat(ProductionSecurityConfiguration.isSecureDatabaseUrl("jdbc:postgresql://host:5432/db?sslmode=verify-ca")).isFalse();
         assertThat(ProductionSecurityConfiguration.isSecureDatabaseUrl("jdbc:postgresql://host:5432/db?ssl=true")).isTrue();
         assertThat(ProductionSecurityConfiguration.isSecureDatabaseUrl("jdbc:postgresql://host:5432/db?sslmode=require")).isFalse();
         assertThat(ProductionSecurityConfiguration.isSecureDatabaseUrl("jdbc:postgresql://host:5432/db")).isFalse();
         assertThat(ProductionSecurityConfiguration.isSecureDatabaseUrl("")).isFalse();
         assertThat(ProductionSecurityConfiguration.isSecureDatabaseUrl(null)).isFalse();
+        assertThat(ProductionSecurityConfiguration.isSecureDatabaseUrl(
+                "jdbc:postgresql://host/db?sslmode=verify%2Dfull")).isTrue();
+
+        for (String properties : new String[] {
+                "applicationName=sslmode%3Dverify-full",
+                "sslmode=verify-full-extra",
+                "sslmode=verify-full&sslmode=disable",
+                "ssl=true&sslmode=disable",
+                "sslmode=verify-full&sslfactory=org.postgresql.ssl.NonValidatingFactory",
+                "sslmode=verify-full&sslhostnameverifier=com.example.CustomVerifier",
+                "sslmode=verify-full&gssEncMode=require",
+                "sslmode=verify%ZZ"
+        }) {
+            assertThat(ProductionSecurityConfiguration.isSecureDatabaseUrl(
+                    "jdbc:postgresql://host/db?" + properties)).as(properties).isFalse();
+        }
     }
 
     @Test
