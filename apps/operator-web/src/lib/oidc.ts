@@ -1,27 +1,14 @@
 import * as oidc from "openid-client";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
+import { readOidcConfig, readOperatorOrigin } from "./oidc-config.mjs";
+
 export function appOrigin(): string {
-  const url = new URL(process.env.OPERATOR_WEB_ORIGIN ?? "");
-  const localhost = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
-  if (url.protocol !== "https:" && !(url.protocol === "http:" && localhost && process.env.OIDC_LOCAL_HTTP === "true")) {
-    throw new Error("Operator origin requires HTTPS");
-  }
-  return url.origin;
+  return readOperatorOrigin().origin;
 }
 
 async function discover() {
-  const issuer = new URL(process.env.OIDC_ISSUER ?? "");
-  if (issuer.pathname.includes("/.well-known/")) throw new Error("OIDC issuer must be an issuer identifier");
-  const id = process.env.OIDC_CLIENT_ID;
-  const secret = process.env.OIDC_CLIENT_SECRET;
-  const audience = process.env.OIDC_AUDIENCE ?? "voltgrid-api";
-  if (!id || !secret) throw new Error("OIDC client configuration is incomplete");
-
-  const local = issuer.protocol === "http:" &&
-    ["localhost", "127.0.0.1", "[::1]"].includes(issuer.hostname) &&
-    process.env.OIDC_LOCAL_HTTP === "true" &&
-    new URL(appOrigin()).protocol === "http:";
+  const { issuer, id, secret, audience, local } = readOidcConfig();
   const client = await oidc.discovery(issuer, id, secret, undefined, {
     timeout: 5,
     execute: local

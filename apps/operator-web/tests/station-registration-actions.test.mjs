@@ -25,6 +25,7 @@ function loadTs(relPath) {
   const mod = { exports: {} };
   cache.set(absPath, mod.exports);
   const localRequire = (id) => {
+    if (id.endsWith(".mjs")) return require(path.resolve(libDir, id));
     if (id.startsWith("./")) {
       return loadTs(`${id.slice(2)}.ts`);
     }

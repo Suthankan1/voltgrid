@@ -23,6 +23,7 @@ After Station Service applies Flyway, load [organizations.sql](organizations.sql
 export OPERATOR_WEB_ORIGIN=http://127.0.0.1:3000
 export OIDC_LOCAL_HTTP=true
 export OIDC_CLIENT_ID=voltgrid-operator-web
+export OIDC_AUDIENCE=voltgrid-api
 export OIDC_CLIENT_SECRET="$VG_TEST_OIDC_CLIENT_SECRET"
 export STATION_GRAPHQL_URL=http://127.0.0.1:8080/graphql
 export OPERATIONS_GRAPHQL_URL=http://127.0.0.1:8081/graphql
