@@ -10,6 +10,8 @@ const ts = require("typescript");
 
 const libDir = path.resolve(new URL("../src/lib", import.meta.url).pathname);
 const cache = new Map();
+const mutationHeaders = { Authorization: "Bearer fixture-token", "X-Tenant-Id": "fixture-org" };
+let authorized = true;
 
 function loadTs(relPath) {
   const absPath = path.resolve(libDir, relPath);
@@ -25,7 +27,7 @@ function loadTs(relPath) {
   const mod = { exports: {} };
   cache.set(absPath, mod.exports);
   const localRequire = (id) => {
-    if (id === "./auth") return { getAuthHeaders: async () => ({}) };
+    if (id === "./auth") return { getMutationAuthHeaders: async () => authorized ? mutationHeaders : null };
     if (id.startsWith("./")) {
       return loadTs(`${id.slice(2)}.ts`);
     }
@@ -55,6 +57,7 @@ const originalWrites = process.env.OPERATOR_LOCAL_WRITES;
 const originalEndpoint = process.env.STATION_GRAPHQL_URL;
 
 afterEach(() => {
+  authorized = true;
   globalThis.fetch = originalFetch;
   for (const [key, value] of [
     ["OPERATOR_LOCAL_WRITES", originalWrites],
@@ -224,4 +227,18 @@ test("HTTP error, network error, and malformed payload produce uncertain outcome
     Response.json({ data: { registerStation: { id: "OTHER-ID", name: "Station", status: "OFFLINE" } } });
   const mismatchedOutcome = await submitStationRegistration("CP-1", "Station");
   assert.equal(mismatchedOutcome.status, "uncertain");
+});
+
+test("station registration cannot dispatch a mutation without authorization", async () => {
+  enableLocalWrites();
+  authorized = false;
+  let requests = 0;
+  globalThis.fetch = async () => {
+    requests++;
+    throw new Error("Unexpected mutation");
+  };
+  const outcome = await submitStationRegistration("CP-1", "Station");
+  assert.equal(outcome.status, "failure");
+  assert.match(outcome.message, /active operator session/);
+  assert.equal(requests, 0);
 });
