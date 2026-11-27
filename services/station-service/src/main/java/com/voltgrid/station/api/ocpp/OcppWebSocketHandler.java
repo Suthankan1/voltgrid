@@ -34,6 +34,12 @@ public class OcppWebSocketHandler
     private final ConcurrentHashMap<String, WebSocketSession> activeSessionMap =
             new ConcurrentHashMap<>();
     private MeterRegistry meterRegistry;
+    private com.voltgrid.station.application.StationCommandService commandService;
+
+    @Autowired(required = false)
+    public void setCommandService(com.voltgrid.station.application.StationCommandService commandService) {
+        this.commandService = commandService;
+    }
 
     @Autowired(required = false)
     public void setMeterRegistry(MeterRegistry meterRegistry) {
@@ -202,6 +208,14 @@ public class OcppWebSocketHandler
                 }
                 return null;
             });
+
+            if (commandService != null) {
+                try {
+                    commandService.handleStationDisconnect(stationId);
+                } catch (Exception ex) {
+                    // Do not fail close callback
+                }
+            }
         }
     }
 

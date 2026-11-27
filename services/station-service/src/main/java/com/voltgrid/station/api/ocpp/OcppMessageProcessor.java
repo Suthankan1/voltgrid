@@ -539,10 +539,14 @@ public class OcppMessageProcessor {
         }
 
         if (commandService != null && request.transactionInfo() != null && request.transactionInfo().transactionId() != null) {
+            Integer remoteStartId = request.transactionInfo().remoteStartId();
+            Integer evseId = request.evse() != null ? request.evse().id() : null;
             commandService.correlateTransactionEvent(
                     stationId,
                     request.transactionInfo().transactionId(),
-                    request.eventType()
+                    request.eventType(),
+                    remoteStartId,
+                    evseId
             );
         }
 

@@ -18,8 +18,14 @@ public record TransactionEventRequest(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record TransactionInfo(
-            String transactionId
+            String transactionId,
+            Integer remoteStartId,
+            String chargingState,
+            String stoppedReason
     ) {
+        public TransactionInfo(String transactionId) {
+            this(transactionId, null, null, null);
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
