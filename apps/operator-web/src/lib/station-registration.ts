@@ -1,4 +1,4 @@
-import { getAuthHeaders } from "./auth";
+import { getMutationAuthHeaders } from "./auth";
 
 import type { Station, StationStatus } from "./station-api";
 import { buildStationDetailOcppPath } from "./station-detail-model";
@@ -155,14 +155,25 @@ export async function submitStationRegistration(
     };
   }
 
+  const authHeaders = await getMutationAuthHeaders();
+  if (!authHeaders) {
+    return {
+      status: "failure",
+      id: validated.id,
+      name: validated.name,
+      message: "Station registration requires an active operator session.",
+    };
+  }
+
   try {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...await getAuthHeaders(),
+        ...authHeaders,
       },
       cache: "no-store",
+      redirect: "error",
       signal: AbortSignal.timeout(5000),
       body: JSON.stringify({
         query: REGISTER_STATION_MUTATION,

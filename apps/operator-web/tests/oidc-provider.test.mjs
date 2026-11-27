@@ -30,6 +30,7 @@ test("BFF OIDC provider acceptance", { timeout: 30_000 }, async t => {
   let switchOrganization;
   let organizationRequests = 0;
   let expectedAccessToken;
+  const graphRequests = [];
   const server = createServer((request, response) => {
     response.setHeader("Content-Type", "application/json");
     if (request.url === "/realm/.well-known/openid-configuration") {
@@ -42,6 +43,10 @@ test("BFF OIDC provider acceptance", { timeout: 30_000 }, async t => {
       response.end(JSON.stringify({ keys: [replacement.jwk] }));
     } else if (request.url === "/token" && exchange) {
       void exchange(request, response);
+    } else if (request.url === "/graphql") {
+      graphRequests.push(request.headers);
+      request.resume();
+      response.end(JSON.stringify({ data: { createSite: { id: "fixture-site" } } }));
     } else if (request.url === "/revoke") {
       let body = "";
       request.on("data", chunk => { body += chunk; });
@@ -246,8 +251,22 @@ test("BFF OIDC provider acceptance", { timeout: 30_000 }, async t => {
     const nextServerPath = require.resolve("next/server");
     const { NextRequest } = require("next/server");
     const lib = new URL("../src/lib/", import.meta.url);
+    let mutationRequest;
+    const requestStateKey = Symbol.for("voltgrid.test.mutation-request");
+    Object.defineProperty(globalThis, requestStateKey, { configurable: true, get: () => mutationRequest });
+    t.after(() => { delete globalThis[requestStateKey]; });
+    const nextHeaders = "data:text/javascript," + encodeURIComponent(`
+      const request = () => globalThis[Symbol.for("voltgrid.test.mutation-request")];
+      export async function cookies() {
+        return { get: () => request().id ? { value: request().id } : undefined };
+      }
+      export async function headers() {
+        return new Headers(request().origin ? { origin: request().origin } : {});
+      }
+    `);
     const hooks = registerHooks({
       resolve(specifier, context, nextResolve) {
+        if (specifier === "next/headers") return nextResolve(nextHeaders, context);
         if (specifier === "next/server") return nextResolve(nextServerPath, context);
         if (specifier.startsWith("@/lib/")) {
           return nextResolve(new URL(specifier.slice(6) + ".ts", lib).href, context);
@@ -608,6 +627,58 @@ test("BFF OIDC provider acceptance", { timeout: 30_000 }, async t => {
         release.resolve();
         switchOrganization = undefined;
         refreshExchange = undefined;
+        sessions.delete(id);
+      }
+    });
+
+    await t.test("R.3E admin mutations require same-origin requests and current membership", async () => {
+      const admin = await import("../src/lib/admin-api.ts");
+      const station = await import("../src/lib/station-registration.ts");
+      const id = await signIn();
+      const record = sessions.get(id);
+      const expiry = record.expiresAt;
+      const mutations = [
+        () => admin.createOrganizationAction("fixture-org", "Fixture"),
+        () => admin.createSiteAction("fixture-site", "fixture-org", "Fixture"),
+        () => admin.inviteMemberAction("fixture-org", "member", "member@example.test", "SUPPORT"),
+        () => admin.updateMemberRoleAction("fixture-org", "member", "SUPPORT"),
+        () => admin.revokeMemberAction("fixture-org", "member"),
+        () => admin.provisionStationCredentialAction("station", "fixture-value"),
+        () => admin.rotateStationCredentialAction("station", "fixture-value"),
+        () => admin.revokeStationCredentialAction("station"),
+      ];
+      const writes = process.env.OPERATOR_LOCAL_WRITES;
+      process.env.OPERATOR_LOCAL_WRITES = "true";
+      try {
+        const before = graphRequests.length;
+        for (const [label, request, membership] of [
+          ["anonymous", { origin }, 200],
+          ["wrong origin", { id, origin: "https://outside.example.test" }, 200],
+          ["missing origin", { id }, 200],
+          ["revoked membership", { id, origin }, 403],
+          ["membership service unavailable", { id, origin }, 503],
+          ["expired session", { id, origin }, 200],
+        ]) {
+          mutationRequest = request;
+          organizationStatus = membership;
+          if (label === "expired session") record.expiresAt = Date.now() - 1;
+          for (const action of mutations) await assert.rejects(action(), /Operator action denied/, label);
+          assert.equal((await station.submitStationRegistration("station", "Fixture")).status, "failure", label);
+          assert.equal(graphRequests.length, before, label);
+        }
+
+        record.expiresAt = expiry;
+        const active = await signIn();
+        mutationRequest = { id: active, origin };
+        assert.equal((await admin.createSiteAction("fixture-site", "fixture-org", "Fixture")).id, "fixture-site");
+        assert.equal(graphRequests.length, before + 1);
+        assert.equal(graphRequests.at(-1).authorization, "Bearer " + sessions.get(active).token);
+        assert.equal(graphRequests.at(-1)["x-tenant-id"], "fixture-org");
+        sessions.delete(active);
+      } finally {
+        if (writes === undefined) delete process.env.OPERATOR_LOCAL_WRITES;
+        else process.env.OPERATOR_LOCAL_WRITES = writes;
+        organizationStatus = 200;
         sessions.delete(id);
       }
     });
