@@ -53,6 +53,12 @@ public class StationStatusProjectionEntity {
     )
     private Instant updatedAt;
 
+    @Column(
+            name = "sequence_number",
+            nullable = false
+    )
+    private long sequenceNumber = 0L;
+
     protected StationStatusProjectionEntity() {
     }
 
@@ -63,7 +69,7 @@ public class StationStatusProjectionEntity {
             Instant statusChangedAt,
             Instant updatedAt
     ) {
-        this(stationId, null, currentStatus, lastEventId, statusChangedAt, updatedAt);
+        this(stationId, null, currentStatus, lastEventId, statusChangedAt, updatedAt, 0L);
     }
 
     public StationStatusProjectionEntity(
@@ -73,6 +79,18 @@ public class StationStatusProjectionEntity {
             UUID lastEventId,
             Instant statusChangedAt,
             Instant updatedAt
+    ) {
+        this(stationId, organizationId, currentStatus, lastEventId, statusChangedAt, updatedAt, 0L);
+    }
+
+    public StationStatusProjectionEntity(
+            String stationId,
+            String organizationId,
+            String currentStatus,
+            UUID lastEventId,
+            Instant statusChangedAt,
+            Instant updatedAt,
+            long sequenceNumber
     ) {
         if (stationId == null || stationId.isBlank()) {
             throw new IllegalArgumentException(
@@ -101,6 +119,7 @@ public class StationStatusProjectionEntity {
                 updatedAt,
                 "updatedAt must not be null"
         );
+        this.sequenceNumber = sequenceNumber;
     }
 
     public boolean apply(
@@ -108,6 +127,16 @@ public class StationStatusProjectionEntity {
             String currentStatus,
             Instant statusChangedAt,
             Instant updatedAt
+    ) {
+        return apply(eventId, currentStatus, statusChangedAt, updatedAt, 0L);
+    }
+
+    public boolean apply(
+            UUID eventId,
+            String currentStatus,
+            Instant statusChangedAt,
+            Instant updatedAt,
+            long sequenceNumber
     ) {
         Objects.requireNonNull(
                 eventId,
@@ -134,14 +163,29 @@ public class StationStatusProjectionEntity {
             return false;
         }
 
-        if (statusChangedAt.isBefore(this.statusChangedAt)) {
-            return false;
+        // Causal sequence ordering check
+        if (sequenceNumber > 0 && this.sequenceNumber > 0) {
+            if (sequenceNumber <= this.sequenceNumber) {
+                return false;
+            }
+        } else if (sequenceNumber == 0 && this.sequenceNumber > 0) {
+            if (!statusChangedAt.isAfter(this.statusChangedAt)) {
+                return false;
+            }
+        } else {
+            // Unversioned fallback
+            if (statusChangedAt.isBefore(this.statusChangedAt)) {
+                return false;
+            }
         }
 
         this.currentStatus = currentStatus;
         this.lastEventId = eventId;
         this.statusChangedAt = statusChangedAt;
         this.updatedAt = updatedAt;
+        if (sequenceNumber > 0) {
+            this.sequenceNumber = sequenceNumber;
+        }
 
         return true;
     }
@@ -172,5 +216,9 @@ public class StationStatusProjectionEntity {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public long getSequenceNumber() {
+        return sequenceNumber;
     }
 }

@@ -53,6 +53,8 @@ public class ProjectingStationStatusChangedHandler
             targetOrg = null;
         }
 
+        long eventSeq = event.sequenceNumber() != null ? event.sequenceNumber() : 0L;
+
         if (existing.isEmpty()) {
             projectionRepository.save(
                     new StationStatusProjectionEntity(
@@ -61,7 +63,8 @@ public class ProjectingStationStatusChangedHandler
                             event.currentStatus(),
                             event.eventId(),
                             event.occurredAt(),
-                            processedAt
+                            processedAt,
+                            eventSeq
                     )
             );
             return;
@@ -80,7 +83,8 @@ public class ProjectingStationStatusChangedHandler
                 event.eventId(),
                 event.currentStatus(),
                 event.occurredAt(),
-                processedAt
+                processedAt,
+                eventSeq
         )) {
             if (projection.getOrganizationId() == null) {
                 projection.setOrganizationId(targetOrg);

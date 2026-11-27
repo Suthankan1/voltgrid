@@ -53,7 +53,9 @@ public class JpaStationReader implements StationReader {
                 entity.getStatus(),
                 entity.getLastSeenAt(),
                 entity.getOrganizationId(),
-                entity.getSiteId()
+                entity.getSiteId(),
+                entity.getConnectionGeneration(),
+                entity.getStatusSequenceNumber()
         );
     }
 }

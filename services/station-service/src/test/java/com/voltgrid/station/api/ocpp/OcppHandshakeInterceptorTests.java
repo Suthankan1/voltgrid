@@ -199,10 +199,10 @@ class OcppHandshakeInterceptorTests {
 
         when(session.getAttributes())
                 .thenReturn(
-                        Map.of(
+                        new java.util.HashMap<>(Map.of(
                                 OcppHandshakeInterceptor.STATION_ID_ATTRIBUTE,
                                 "STATION-003"
-                        )
+                        ))
                 );
 
         var websocketHandler =

@@ -22,5 +22,17 @@ public class OutboxMetrics {
                 .register(
                         meterRegistry
                 );
+
+        Gauge.builder(
+                        "voltgrid.outbox.quarantined",
+                        outboxEventRepository,
+                        repo -> repo.countByPublishedAtIsNullAndRetryCountGreaterThanEqual(5)
+                )
+                .description(
+                        "Number of quarantined poison outbox events exceeding max retries"
+                )
+                .register(
+                        meterRegistry
+                );
     }
 }

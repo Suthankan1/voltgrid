@@ -28,7 +28,9 @@ public class JpaStationWriter implements StationWriter {
                         station.status(),
                         station.lastSeenAt(),
                         station.organizationId(),
-                        station.siteId()
+                        station.siteId(),
+                        station.connectionGeneration(),
+                        station.statusSequenceNumber()
                 )
         );
     }

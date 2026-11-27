@@ -10,7 +10,8 @@ public record StationStatusChangedEvent(
         String organizationId,
         String previousStatus,
         String currentStatus,
-        Instant occurredAt
+        Instant occurredAt,
+        Long sequenceNumber
 ) {
 
     public StationStatusChangedEvent {
@@ -51,6 +52,21 @@ public record StationStatusChangedEvent(
                     "previousStatus and currentStatus must differ"
             );
         }
+
+        if (sequenceNumber == null) {
+            sequenceNumber = 0L;
+        }
+    }
+
+    public StationStatusChangedEvent(
+            UUID eventId,
+            String stationId,
+            String organizationId,
+            String previousStatus,
+            String currentStatus,
+            Instant occurredAt
+    ) {
+        this(eventId, stationId, organizationId, previousStatus, currentStatus, occurredAt, 0L);
     }
 
     public StationStatusChangedEvent(
@@ -60,6 +76,6 @@ public record StationStatusChangedEvent(
             String currentStatus,
             Instant occurredAt
     ) {
-        this(eventId, stationId, null, previousStatus, currentStatus, occurredAt);
+        this(eventId, stationId, null, previousStatus, currentStatus, occurredAt, 0L);
     }
 }

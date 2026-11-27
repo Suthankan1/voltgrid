@@ -10,12 +10,29 @@ public record StationStatusChangedEvent(
         String previousStatus,
         String currentStatus,
         Instant occurredAt,
-        String organizationId
+        String organizationId,
+        long sequenceNumber
 ) {
 
-    public StationStatusChangedEvent(UUID eventId, String stationId, String previousStatus,
-                                     String currentStatus, Instant occurredAt) {
-        this(eventId, stationId, previousStatus, currentStatus, occurredAt, null);
+    public StationStatusChangedEvent(
+            UUID eventId,
+            String stationId,
+            String previousStatus,
+            String currentStatus,
+            Instant occurredAt
+    ) {
+        this(eventId, stationId, previousStatus, currentStatus, occurredAt, null, 0L);
+    }
+
+    public StationStatusChangedEvent(
+            UUID eventId,
+            String stationId,
+            String previousStatus,
+            String currentStatus,
+            Instant occurredAt,
+            String organizationId
+    ) {
+        this(eventId, stationId, previousStatus, currentStatus, occurredAt, organizationId, 0L);
     }
 
     public StationStatusChangedEvent {

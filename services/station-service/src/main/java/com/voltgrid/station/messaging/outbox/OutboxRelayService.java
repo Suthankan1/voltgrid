@@ -120,6 +120,11 @@ public class OutboxRelayService {
         return true;
     }
 
+    @Transactional
+    public int requeueQuarantinedEvents() {
+        return outboxEventRepository.resetQuarantinedEvents();
+    }
+
     private void publish(
             OutboxEventEntity event
     ) {
