@@ -105,4 +105,46 @@ class StationStatusGraphQlErrorE2EIntegrationTests {
                 )
                 .verify();
     }
+
+    @Test
+    void rejectsOverBudgetAliasesAcrossFragments() {
+        String selections = java.util.stream.IntStream.range(0, 21)
+                .mapToObj(i -> "status" + i + ": stationStatus(stationId: \"missing\") { stationId }")
+                .collect(java.util.stream.Collectors.joining("\n"));
+
+        graphQlTester.document("query { ...Statuses } fragment Statuses on Query { " + selections + " }")
+                .execute().errors()
+                .expect(error -> error.getMessage().contains("maximum GraphQL alias count exceeded"))
+                .verify();
+    }
+
+    @Test
+    void rejectsCombinedPageWorkUsingCoercedVariables() {
+        String selection = "(first: $size) { edges { node { stationId } } }";
+        graphQlTester.document("query($size: Int!) { " + """
+                a: stationStatuses%s
+                b: stationStatuses%s
+                c: stationStatuses%s
+                d: stationStatuses%s
+                e: stationStatuses%s
+                f: stationStatuses%s
+                }""".formatted(selection, selection, selection, selection, selection, selection))
+                .variable("size", 100)
+                .execute().errors()
+                .expect(error -> error.getMessage().contains("maximum query complexity exceeded"))
+                .verify();
+    }
+
+    @Test
+    void allowsMaximumSizePageWithOrdinaryAliases() {
+        graphQlTester.document("""
+                query {
+                  page: stationStatuses(first: 100) {
+                    edges { cursor node { stationId currentStatus lastEventId statusChangedAt updatedAt } }
+                    pageInfo { hasNextPage hasPreviousPage startCursor endCursor }
+                  }
+                  station: stationStatus(stationId: "missing") { stationId }
+                }
+                """).execute().errors().verify();
+    }
 }

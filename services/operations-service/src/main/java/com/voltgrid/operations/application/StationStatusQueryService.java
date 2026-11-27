@@ -13,8 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class StationStatusQueryService {
 
+    public static final int DEFAULT_PAGE_SIZE = 20;
+    public static final int MAX_PAGE_SIZE = 100;
     private static final int MIN_PAGE_SIZE = 1;
-    private static final int MAX_PAGE_SIZE = 100;
 
     private final StationStatusProjectionRepository repository;
 

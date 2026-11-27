@@ -41,3 +41,11 @@ On 2026-11-27, the bounded data access, query safety limits, transaction sequenc
 - `HistoricalStationMigrationTests` validates clean Flyway migration to version V20.
 - `HistoricalProjectionMigrationTests` validates clean Flyway migration to version V7.
 - Result: **PASSED**.
+
+## Operations GraphQL workload limits
+
+The Operations API retains the depth limit of 15 and now caps each request document at 20 aliases, including fragment definitions. Execution applies a complexity budget of 1,500. The station status connection charges for its effective page size and selected fields, including when the page size is supplied through a variable. The resolver continues enforcing the 1–100 page size and the existing `INVALID_PAGE_SIZE` error. The default remains 20.
+
+The HTTP regressions reproduced acceptance of excess aliases and combined maximum-size pages on the baseline. The corrected service rejects both and still accepts a maximum-size page with ordinary aliases. Local offline Maven verification passed 83 Operations tests with the CI fixture configuration. The separate authenticated run passed 35 JWT and token-policy tests.
+
+The current outbox and receipt purge methods have no production caller in the repository. Retention activation requires an agreed replay window and evidence that deduplication receipts cover that window, including restored snapshots and delayed broker deliveries. The representative query-plan and backup/restore evidence remains open in #7.

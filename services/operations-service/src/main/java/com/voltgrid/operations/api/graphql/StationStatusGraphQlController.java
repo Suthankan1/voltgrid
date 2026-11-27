@@ -15,8 +15,6 @@ import org.springframework.web.server.ResponseStatusException;
 @Controller
 public class StationStatusGraphQlController {
 
-    private static final int DEFAULT_PAGE_SIZE = 20;
-
     private final StationStatusQueryService queryService;
 
     @Value("${voltgrid.security.require-auth:true}")
@@ -62,7 +60,7 @@ public class StationStatusGraphQlController {
                 subrange
                         .count()
                         .orElse(
-                                DEFAULT_PAGE_SIZE
+                                StationStatusQueryService.DEFAULT_PAGE_SIZE
                         );
 
         return queryService.findAllByOrganizationId(
