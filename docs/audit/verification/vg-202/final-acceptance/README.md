@@ -24,3 +24,8 @@ Production transport and distributed operation remain separate VG-203 and VG-204
 ## VG-202R.3C BFF acceptance
 
 - [BFF OIDC provider, token policy and callback evidence](03b-bff-oidc-provider-acceptance.md)
+
+## VG-202R.5 device credentials and gRPC lifecycle
+
+- [Device credentials, versioned PBKDF2, concurrency limits and running gRPC matrix](05-device-credentials-and-grpc-lifecycle.md)
+

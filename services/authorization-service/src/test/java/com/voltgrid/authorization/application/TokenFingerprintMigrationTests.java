@@ -115,4 +115,25 @@ class TokenFingerprintMigrationTests {
         assertThat(str).doesNotContain(KEY_V1).doesNotContain(KEY_V2);
         assertThat(str).contains("activeKeyVersion=v2");
     }
+
+    @Test
+    void shouldRejectTokenWhenLegacyKeyIsRetired() {
+        var rawToken = "RFID-RETIRED-KEY-TOKEN";
+        var legacyTokenEntity = new AuthorizationTokenEntity(
+                UUID.randomUUID(),
+                "fingerprint-from-retired-v0-key",
+                AuthorizationTokenStatus.ACTIVE,
+                null,
+                "v0",
+                Instant.now(),
+                Instant.now()
+        );
+
+        when(repository.findByTokenFingerprint(any())).thenReturn(Optional.empty());
+
+        var decision = decisionService.authorize("STA-001", rawToken);
+
+        assertThat(decision).isEqualTo(TokenAuthorizationDecision.UNKNOWN_TOKEN);
+        verify(repository, never()).save(any());
+    }
 }

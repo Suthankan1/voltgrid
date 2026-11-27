@@ -57,6 +57,7 @@ public class StationCredentialEntity {
     public String getStationId() { return stationId; }
     public String getCredentialType() { return credentialType; }
     public String getPasswordHash() { return passwordHash; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public Instant getCreatedAt() { return createdAt; }
