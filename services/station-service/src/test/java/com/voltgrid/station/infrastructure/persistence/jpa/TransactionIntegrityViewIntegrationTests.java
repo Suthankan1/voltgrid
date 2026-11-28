@@ -1,5 +1,6 @@
 package com.voltgrid.station.infrastructure.persistence.jpa;
 
+import com.voltgrid.station.application.TransactionCompletenessService;
 import com.voltgrid.station.support.PostgresTestConfiguration;
 
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,9 @@ class TransactionIntegrityViewIntegrationTests {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private TransactionCompletenessService completenessService;
 
     @Test
     void shouldDeriveIntegrityStatusesFromReceiptHistory() {
@@ -205,6 +209,37 @@ class TransactionIntegrityViewIntegrationTests {
         );
     }
 
+    @Test
+    void ignoresReceiptsBeyondHighWaterMarkWhenCheckingForGaps() {
+        insertStation();
+        insertTransaction("TX-EXTRA-RECEIPT", "ENDED", 2);
+        insertReceipt("TX-EXTRA-RECEIPT", 0, "STARTED");
+        insertReceipt("TX-EXTRA-RECEIPT", 2, "ENDED");
+        insertReceipt("TX-EXTRA-RECEIPT", 3, "UPDATED");
+
+        assertIntegrity("TX-EXTRA-RECEIPT", "INCOMPLETE");
+    }
+
+    @Test
+    void requiresAnEndedReceiptAtTheHighWaterMark() {
+        insertStation();
+        insertTransaction("TX-MISSING-END", "ENDED", 1);
+        insertReceipt("TX-MISSING-END", 0, "STARTED");
+        insertReceipt("TX-MISSING-END", 1, "UPDATED");
+
+        assertIntegrity("TX-MISSING-END", "INCOMPLETE");
+    }
+
+    @Test
+    void evaluatesTheLargestRepresentableSequenceWithoutOverflow() {
+        insertStation();
+        insertTransaction("TX-EXTREME-SEQUENCE", "ENDED", Integer.MAX_VALUE);
+        insertReceipt("TX-EXTREME-SEQUENCE", 0, "STARTED");
+        insertReceipt("TX-EXTREME-SEQUENCE", Integer.MAX_VALUE, "ENDED");
+
+        assertIntegrity("TX-EXTREME-SEQUENCE", "INCOMPLETE");
+    }
+
     private void insertStation() {
         jdbcTemplate.update(
                 """
@@ -308,9 +343,7 @@ class TransactionIntegrityViewIntegrationTests {
                         transactionId
                 );
 
-        assertEquals(
-                expectedStatus,
-                actual
-        );
+        assertEquals(expectedStatus, actual);
+        assertEquals(expectedStatus, completenessService.calculate(STATION_ID, transactionId).status().name());
     }
 }

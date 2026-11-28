@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -116,27 +117,20 @@ public class TransactionCompletenessService {
             ChargingTransaction transaction,
             List<TransactionEventReceipt> receipts
     ) {
-        if (receipts.isEmpty()) {
+        var firstReceipt = receipts.stream()
+                .min(Comparator.comparingInt(TransactionEventReceipt::sequenceNumber));
+        if (firstReceipt.isEmpty() || firstReceipt.get().eventType() != TransactionEventType.STARTED) {
             return unknown(transaction);
         }
 
-        var startedReceipt =
-                receipts
-                        .stream()
-                        .filter(receipt ->
-                                receipt.eventType()
-                                        == TransactionEventType.STARTED
-                        )
-                        .findFirst();
-
-        if (startedReceipt.isEmpty()) {
+        int firstSequenceNumber = firstReceipt.get().sequenceNumber();
+        if (firstSequenceNumber < 0 || transaction.lastSequenceNumber() < firstSequenceNumber) {
             return unknown(transaction);
         }
 
-        var firstSequenceNumber =
-                startedReceipt
-                        .get()
-                        .sequenceNumber();
+        boolean hasEndReceipt = receipts.stream().anyMatch(receipt ->
+                receipt.sequenceNumber() == transaction.lastSequenceNumber()
+                        && receipt.eventType() == TransactionEventType.ENDED);
 
         var missingSequenceNumbers =
                 findMissingSequenceNumbers(
@@ -148,8 +142,7 @@ public class TransactionCompletenessService {
         var status =
                 determineStatus(
                         transaction,
-                        firstSequenceNumber,
-                        receipts.size(),
+                        hasEndReceipt,
                         missingSequenceNumbers
                 );
 
@@ -168,10 +161,6 @@ public class TransactionCompletenessService {
             int firstSequenceNumber,
             int lastSequenceNumber
     ) {
-        if (firstSequenceNumber < 0 || lastSequenceNumber < firstSequenceNumber) {
-            return List.of();
-        }
-
         var receivedNumbers =
                 new HashSet<Integer>(receipts.size());
 
@@ -211,8 +200,7 @@ public class TransactionCompletenessService {
 
     private TransactionDataStatus determineStatus(
             ChargingTransaction transaction,
-            int firstSequenceNumber,
-            int receiptsCount,
+            boolean hasEndReceipt,
             List<Integer> missingSequenceNumbers
     ) {
         if (transaction.status()
@@ -221,16 +209,9 @@ public class TransactionCompletenessService {
             return TransactionDataStatus.IN_PROGRESS;
         }
 
-        long expectedCount = (long) transaction.lastSequenceNumber() - firstSequenceNumber + 1;
-        if (expectedCount > 0 && receiptsCount < expectedCount) {
-            return TransactionDataStatus.INCOMPLETE;
-        }
-
-        if (missingSequenceNumbers.isEmpty()) {
-            return TransactionDataStatus.COMPLETE;
-        }
-
-        return TransactionDataStatus.INCOMPLETE;
+        return hasEndReceipt && missingSequenceNumbers.isEmpty()
+                ? TransactionDataStatus.COMPLETE
+                : TransactionDataStatus.INCOMPLETE;
     }
 
     private TransactionCompleteness unknown(
