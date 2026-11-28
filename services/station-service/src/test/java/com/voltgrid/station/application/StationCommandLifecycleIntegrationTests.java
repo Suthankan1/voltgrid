@@ -111,7 +111,7 @@ class StationCommandLifecycleIntegrationTests {
         assertThat(acceptedCommand.observedAt()).isNull();
 
         // 4. Station subsequently sends TransactionEvent(eventType: Started) with remoteStartId
-        String txId = "tx-cmd-started-" + UUID.randomUUID();
+        String txId = UUID.randomUUID().toString();
         String txStartedCall = """
                 [2, "msg-tx-start-001", "TransactionEvent", {
                     "eventType": "Started",
@@ -131,6 +131,130 @@ class StationCommandLifecycleIntegrationTests {
         assertThat(observedCommand.status()).isEqualTo(CommandStatus.OBSERVED);
         assertThat(observedCommand.observedAt()).isNotNull();
         assertThat(observedCommand.transactionId()).isEqualTo(txId);
+    }
+
+    @Test
+    void observesOnlyMatchingEquipmentWhenTransactionPrecedesResponse() {
+        String stationId = "STATION-CMD-01";
+        var command = commandService.requestStartTransaction(stationId, 2, "TAG-SYNTHETIC", "1002", null);
+        String event = """
+                [2, "early-start", "TransactionEvent", {
+                    "eventType": "Started",
+                    "timestamp": "2026-11-27T17:40:00Z",
+                    "triggerReason": "RemoteStart",
+                    "seqNo": 0,
+                    "transactionInfo": {"transactionId": "%s", "remoteStartId": 1002},
+                    "evse": {"id": %d, "connectorId": 1}
+                }]
+                """;
+
+        assertThat(messageProcessor.process("STATION-CMD-03", event.formatted("early-other-station", 2)))
+                .startsWith("[3,");
+        assertThat(messageProcessor.process(stationId, event.formatted("early-wrong-evse", 1)))
+                .startsWith("[3,");
+        assertThat(commandService.getCommand(command.id()).orElseThrow().status())
+                .isEqualTo(CommandStatus.PENDING);
+
+        String matchingEvent = event.formatted("early-correct-evse", 2);
+        assertThat(messageProcessor.process(stationId, matchingEvent)).startsWith("[3,");
+        var observed = commandService.getCommand(command.id()).orElseThrow();
+        assertThat(observed.status()).isEqualTo(CommandStatus.OBSERVED);
+        assertThat(observed.transactionId()).isEqualTo("early-correct-evse");
+
+        assertThat(messageProcessor.process(stationId, matchingEvent)).startsWith("[3,");
+        messageProcessor.process(stationId, """
+                [3, "%s", {"status":"Accepted"}]
+                """.formatted(command.messageId()));
+        assertThat(commandService.getCommand(command.id()).orElseThrow()).isEqualTo(observed);
+    }
+
+    @Test
+    void retransmittedStartCannotClaimADifferentCommand() {
+        String stationId = "STATION-CMD-03";
+        var original = commandService.requestStartTransaction(stationId, 1, "TAG-SYNTHETIC", "19103", null);
+        var other = commandService.requestStartTransaction(stationId, 1, "TAG-SYNTHETIC", "19104", null);
+        String event = """
+                [2, "remote-start-retransmission", "TransactionEvent", {
+                    "eventType": "Started", "timestamp": "2026-11-27T17:40:00Z",
+                    "triggerReason": "RemoteStart", "seqNo": 0,
+                    "transactionInfo": {"transactionId": "tx-retransmission", "remoteStartId": %d},
+                    "evse": {"id": 1, "connectorId": 1}
+                }]
+                """;
+
+        assertThat(messageProcessor.process(stationId, event.formatted(19103))).startsWith("[3,");
+        assertThat(messageProcessor.process(stationId, event.formatted(19104))).startsWith("[3,");
+
+        assertThat(commandService.getCommand(original.id()).orElseThrow().status())
+                .isEqualTo(CommandStatus.OBSERVED);
+        assertThat(commandService.getCommand(other.id()).orElseThrow().status())
+                .isEqualTo(CommandStatus.PENDING);
+    }
+
+    @Test
+    void observesCableFirstStartAndRemoteStopFromUpdatedEvents() {
+        String stationId = "STATION-CMD-03";
+        String transactionId = UUID.randomUUID().toString();
+        assertThat(messageProcessor.process(stationId, """
+                [2, "cable-first", "TransactionEvent", {
+                    "eventType": "Started", "timestamp": "2026-11-27T17:40:00Z",
+                    "triggerReason": "CablePluggedIn", "seqNo": 0,
+                    "transactionInfo": {"transactionId": "%s", "chargingState": "EVConnected"},
+                    "evse": {"id": 1, "connectorId": 1}
+                }]
+                """.formatted(transactionId))).startsWith("[3,");
+
+        var start = commandService.requestStartTransaction(stationId, 1, "TAG-SYNTHETIC", "1005", null);
+        messageProcessor.process(stationId, """
+                [3, "%s", {"status": "Accepted", "transactionId": "%s"}]
+                """.formatted(start.messageId(), transactionId));
+        assertThat(commandService.getCommand(start.id()).orElseThrow().status()).isEqualTo(CommandStatus.ACCEPTED);
+        assertThat(messageProcessor.process(stationId, """
+                [2, "remote-start-update", "TransactionEvent", {
+                    "eventType": "Updated", "timestamp": "2026-11-27T17:41:00Z",
+                    "triggerReason": "RemoteStart", "seqNo": 1,
+                    "transactionInfo": {"transactionId": "%s", "chargingState": "Charging", "remoteStartId": 1005}
+                }]
+                """.formatted(transactionId))).startsWith("[3,");
+        assertThat(commandService.getCommand(start.id()).orElseThrow().status()).isEqualTo(CommandStatus.OBSERVED);
+
+        var stop = commandService.requestStopTransaction(stationId, transactionId, null);
+        assertThat(messageProcessor.process(stationId, """
+                [2, "remote-stop-update", "TransactionEvent", {
+                    "eventType": "Updated", "timestamp": "2026-11-27T17:42:00Z",
+                    "triggerReason": "RemoteStop", "seqNo": 2,
+                    "transactionInfo": {"transactionId": "%s", "chargingState": "EVConnected"}
+                }]
+                """.formatted(transactionId))).startsWith("[3,");
+        assertThat(commandService.getCommand(stop.id()).orElseThrow().status()).isEqualTo(CommandStatus.OBSERVED);
+    }
+
+    @Test
+    void localStopDoesNotConfirmRemoteStop() {
+        String stationId = "STATION-CMD-02";
+        String transactionId = UUID.randomUUID().toString();
+        messageProcessor.process(stationId, """
+                [2, "local-start", "TransactionEvent", {
+                    "eventType": "Started", "timestamp": "2026-11-27T17:40:00Z",
+                    "triggerReason": "Authorized", "seqNo": 0,
+                    "transactionInfo": {"transactionId": "%s"},
+                    "evse": {"id": 1, "connectorId": 1}
+                }]
+                """.formatted(transactionId));
+        var stop = commandService.requestStopTransaction(stationId, transactionId, null);
+        commandService.handleCommandResponse(stationId, stop.messageId(), """
+                {"status":"Accepted"}
+                """);
+
+        assertThat(messageProcessor.process(stationId, """
+                [2, "local-end", "TransactionEvent", {
+                    "eventType": "Ended", "timestamp": "2026-11-27T17:41:00Z",
+                    "triggerReason": "EVDeparted", "seqNo": 1,
+                    "transactionInfo": {"transactionId": "%s"}
+                }]
+                """.formatted(transactionId))).startsWith("[3,");
+        assertThat(commandService.getCommand(stop.id()).orElseThrow().status())
+                .isEqualTo(CommandStatus.ACCEPTED);
     }
 
     @Test
@@ -195,7 +319,7 @@ class StationCommandLifecycleIntegrationTests {
         assertThat(commandService.getCommand(cmd2.id()).orElseThrow().status()).isEqualTo(CommandStatus.ACCEPTED);
 
         // TransactionEvent Started arrives for cmd2 (remoteStartId = 3002)
-        String txId2 = "tx-cmd2-" + UUID.randomUUID();
+        String txId2 = UUID.randomUUID().toString();
         messageProcessor.process(stationId, """
                 [2, "msg-sim-start-2", "TransactionEvent", {
                     "eventType": "Started",
@@ -245,7 +369,7 @@ class StationCommandLifecycleIntegrationTests {
     @Test
     void shouldExecuteFullCommandLifecycleForRequestStopTransaction() {
         String stationId = "STATION-CMD-02";
-        String txId = "tx-cmd-stop-" + UUID.randomUUID();
+        String txId = UUID.randomUUID().toString();
 
         // 1. First start transaction
         messageProcessor.process(stationId, """
@@ -294,8 +418,8 @@ class StationCommandLifecycleIntegrationTests {
     @Test
     void shouldCorrelateStopCommandStrictlyByTransactionId() {
         String stationId = "STATION-CMD-02";
-        String txA = "tx-A-" + UUID.randomUUID();
-        String txB = "tx-B-" + UUID.randomUUID();
+        String txA = UUID.randomUUID().toString();
+        String txB = UUID.randomUUID().toString();
 
         // Start both transactions so transaction service tracks them
         messageProcessor.process(stationId, """

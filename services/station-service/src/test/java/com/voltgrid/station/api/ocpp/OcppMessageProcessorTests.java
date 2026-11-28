@@ -24,6 +24,7 @@ import tools.jackson.databind.json.JsonMapper;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -591,14 +592,13 @@ class OcppMessageProcessorTests {
 
         verify(transactionService)
                 .startTransaction(
-                        "STATION-003",
-                        "TX-001",
-                        1,
-                        1,
-                        Instant.parse(
-                                "2026-09-08T10:30:00Z"
-                        ),
-                        0
+                        eq("STATION-003"),
+                        eq("TX-001"),
+                        eq(1),
+                        eq(1),
+                        eq(Instant.parse("2026-09-08T10:30:00Z")),
+                        eq(0),
+                        any(Consumer.class)
                 );
 
         verify(connectivityService)
@@ -651,10 +651,11 @@ class OcppMessageProcessorTests {
 
         verify(transactionService)
                 .updateTransaction(
-                        "STATION-003",
-                        "TX-001",
-                        1,
-                        List.of()
+                        eq("STATION-003"),
+                        eq("TX-001"),
+                        eq(1),
+                        eq(List.of()),
+                        any(Consumer.class)
                 );
 
         verify(connectivityService)
@@ -769,10 +770,11 @@ class OcppMessageProcessorTests {
 
         verify(transactionService)
                 .updateTransaction(
-                        "STATION-003",
-                        "TX-001",
-                        1,
-                        expectedSamples
+                        eq("STATION-003"),
+                        eq("TX-001"),
+                        eq(1),
+                        eq(expectedSamples),
+                        any(Consumer.class)
                 );
 
         verify(connectivityService)
@@ -890,12 +892,11 @@ class OcppMessageProcessorTests {
 
         verify(transactionService)
                 .endTransaction(
-                        "STATION-003",
-                        "TX-001",
-                        Instant.parse(
-                                "2026-09-08T11:15:00Z"
-                        ),
-                        3
+                        eq("STATION-003"),
+                        eq("TX-001"),
+                        eq(Instant.parse("2026-09-08T11:15:00Z")),
+                        eq(3),
+                        any(Consumer.class)
                 );
 
         verify(connectivityService)
@@ -919,10 +920,11 @@ class OcppMessageProcessorTests {
                 )
         ).when(transactionService)
                 .updateTransaction(
-                        "STATION-003",
-                        "TX-001",
-                        4,
-                        List.of()
+                        eq("STATION-003"),
+                        eq("TX-001"),
+                        eq(4),
+                        eq(List.of()),
+                        any(Consumer.class)
                 );
 
         var response = processor.process(
@@ -981,12 +983,11 @@ class OcppMessageProcessorTests {
                 )
         ).when(transactionService)
                 .endTransaction(
-                        "STATION-003",
-                        "TX-404",
-                        Instant.parse(
-                                "2026-09-08T11:15:00Z"
-                        ),
-                        1
+                        eq("STATION-003"),
+                        eq("TX-404"),
+                        eq(Instant.parse("2026-09-08T11:15:00Z")),
+                        eq(1),
+                        any(Consumer.class)
                 );
 
         var response = processor.process(
@@ -1043,12 +1044,11 @@ class OcppMessageProcessorTests {
                 )
         ).when(transactionService)
                 .endTransaction(
-                        "STATION-003",
-                        "TX-001",
-                        Instant.parse(
-                                "2026-09-08T11:15:00Z"
-                        ),
-                        2
+                        eq("STATION-003"),
+                        eq("TX-001"),
+                        eq(Instant.parse("2026-09-08T11:15:00Z")),
+                        eq(2),
+                        any(Consumer.class)
                 );
 
         var response = processor.process(
@@ -1108,10 +1108,11 @@ class OcppMessageProcessorTests {
                 )
         ).when(transactionService)
                 .updateTransaction(
-                        "STATION-003",
-                        "TX-001",
-                        2,
-                        List.of()
+                        eq("STATION-003"),
+                        eq("TX-001"),
+                        eq(2),
+                        eq(List.of()),
+                        any(Consumer.class)
                 );
 
         var response = processor.process(

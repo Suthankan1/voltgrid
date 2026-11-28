@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.function.Consumer;
 
 @Service
 public class StationTransactionService {
@@ -52,6 +53,19 @@ public class StationTransactionService {
             Instant startedAt,
             int sequenceNumber
     ) {
+        startTransaction(stationId, transactionId, evseId, connectorId, startedAt, sequenceNumber, transaction -> { });
+    }
+
+    @Transactional
+    public void startTransaction(
+            String stationId,
+            String transactionId,
+            int evseId,
+            int connectorId,
+            Instant startedAt,
+            int sequenceNumber,
+            Consumer<ChargingTransaction> onNewEvent
+    ) {
         var candidate =
                 new ChargingTransaction(
                         stationId,
@@ -73,6 +87,7 @@ public class StationTransactionService {
                     sequenceNumber,
                     TransactionEventType.STARTED
             );
+            onNewEvent.accept(candidate);
 
             return;
         }
@@ -118,6 +133,17 @@ public class StationTransactionService {
             String transactionId,
             int sequenceNumber,
             List<TransactionMeterSample> meterSamples
+    ) {
+        updateTransaction(stationId, transactionId, sequenceNumber, meterSamples, transaction -> { });
+    }
+
+    @Transactional
+    public void updateTransaction(
+            String stationId,
+            String transactionId,
+            int sequenceNumber,
+            List<TransactionMeterSample> meterSamples,
+            Consumer<ChargingTransaction> onNewEvent
     ) {
         var transaction =
                 findTransactionForUpdate(
@@ -173,6 +199,7 @@ public class StationTransactionService {
                 sequenceNumber,
                 TransactionEventType.UPDATED
         );
+        onNewEvent.accept(transaction);
     }
 
     @Transactional
@@ -181,6 +208,17 @@ public class StationTransactionService {
             String transactionId,
             Instant endedAt,
             int sequenceNumber
+    ) {
+        endTransaction(stationId, transactionId, endedAt, sequenceNumber, transaction -> { });
+    }
+
+    @Transactional
+    public void endTransaction(
+            String stationId,
+            String transactionId,
+            Instant endedAt,
+            int sequenceNumber,
+            Consumer<ChargingTransaction> onNewEvent
     ) {
         var transaction =
                 findTransactionForUpdate(
@@ -227,6 +265,7 @@ public class StationTransactionService {
                 sequenceNumber,
                 TransactionEventType.ENDED
         );
+        onNewEvent.accept(transaction);
     }
 
     private ChargingTransaction findTransactionForUpdate(
