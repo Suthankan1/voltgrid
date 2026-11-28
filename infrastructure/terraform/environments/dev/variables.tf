@@ -50,9 +50,17 @@ variable "authorization_token_hmac_key" {
 }
 
 variable "acm_certificate_arn" {
-  description = "Optional ACM certificate ARN for HTTPS listener on ALB."
+  description = "ACM certificate ARN for the public HTTPS listener, issued in aws_region."
   type        = string
-  default     = ""
+  nullable    = false
+
+  validation {
+    condition = (
+      can(regex("^arn:[a-z0-9-]+:acm:[a-z0-9-]+:[0-9]{12}:certificate/[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$", var.acm_certificate_arn)) &&
+      try(split(":", var.acm_certificate_arn)[3], "") == var.aws_region
+    )
+    error_message = "Provide an ACM certificate ARN for the configured AWS region."
+  }
 }
 
 variable "station_image_tag" {

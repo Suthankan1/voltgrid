@@ -43,14 +43,14 @@ resource "aws_security_group" "operations" {
 # Application Load Balancer
 # ---------------------------------------------------------------------------
 
-resource "aws_vpc_security_group_ingress_rule" "alb_http" {
+resource "aws_vpc_security_group_ingress_rule" "alb_https" {
   security_group_id = aws_security_group.alb.id
 
-  description = "Allow public HTTP traffic."
+  description = "Allow public HTTPS traffic."
 
   cidr_ipv4   = "0.0.0.0/0"
-  from_port   = 80
-  to_port     = 80
+  from_port   = 443
+  to_port     = 443
   ip_protocol = "tcp"
 }
 

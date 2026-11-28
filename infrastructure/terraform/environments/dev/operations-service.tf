@@ -64,6 +64,6 @@ resource "aws_ecs_service" "operations" {
 
   depends_on = [
     aws_iam_role_policy.operations_task_execution_secrets,
-    aws_lb_listener_rule.operations
+    aws_lb_listener_rule.operations_https
   ]
 }
