@@ -10,6 +10,7 @@ import com.voltgrid.station.application.StationConnectorStatusService;
 import com.voltgrid.station.application.StationTransactionService;
 import com.voltgrid.station.application.TransactionNotActiveException;
 import com.voltgrid.station.application.TransactionNotFoundException;
+import com.voltgrid.station.domain.ChargingTransaction;
 import com.voltgrid.station.domain.ConnectorStatus;
 import com.voltgrid.station.domain.TransactionMeterSample;
 import io.opentelemetry.instrumentation.annotations.SpanAttribute;
@@ -24,6 +25,7 @@ import tools.jackson.databind.json.JsonMapper;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 @Component
 public class OcppMessageProcessor {
@@ -433,6 +435,12 @@ public class OcppMessageProcessor {
             String messageId,
             JsonNode payload
     ) {
+        var remoteStartId = payload.path("transactionInfo").path("remoteStartId");
+        if (!remoteStartId.isMissingNode() && (!remoteStartId.isIntegralNumber()
+                || !remoteStartId.canConvertToInt() || remoteStartId.intValue() <= 0)) {
+            return callError(messageId, "FormatViolation", "Invalid TransactionEvent remoteStartId");
+        }
+
         var request = jsonMapper.treeToValue(
                 payload,
                 TransactionEventRequest.class
@@ -460,6 +468,15 @@ public class OcppMessageProcessor {
             );
         }
 
+        Consumer<ChargingTransaction> correlateCommand = transaction -> {
+            if (commandService != null) {
+                commandService.correlateTransactionEvent(
+                        stationId, request.transactionInfo().transactionId(), request.eventType(),
+                        request.triggerReason(), request.transactionInfo().remoteStartId(),
+                        transaction.evseId());
+            }
+        };
+
         try {
             switch (request.eventType()) {
                 case "Started" -> {
@@ -478,7 +495,8 @@ public class OcppMessageProcessor {
                             request.evse().id(),
                             request.evse().connectorId(),
                             eventAt,
-                            request.seqNo()
+                            request.seqNo(),
+                            correlateCommand
                     );
                 }
 
@@ -503,7 +521,8 @@ public class OcppMessageProcessor {
                             request.transactionInfo()
                                     .transactionId(),
                             request.seqNo(),
-                            meterSamples
+                            meterSamples,
+                            correlateCommand
                     );
                 }
 
@@ -513,7 +532,8 @@ public class OcppMessageProcessor {
                                 request.transactionInfo()
                                         .transactionId(),
                                 eventAt,
-                                request.seqNo()
+                                request.seqNo(),
+                                correlateCommand
                         );
 
                 default -> {
@@ -535,18 +555,6 @@ public class OcppMessageProcessor {
                     messageId,
                     "OccurrenceConstraintViolation",
                     exception.getMessage()
-            );
-        }
-
-        if (commandService != null && request.transactionInfo() != null && request.transactionInfo().transactionId() != null) {
-            Integer remoteStartId = request.transactionInfo().remoteStartId();
-            Integer evseId = request.evse() != null ? request.evse().id() : null;
-            commandService.correlateTransactionEvent(
-                    stationId,
-                    request.transactionInfo().transactionId(),
-                    request.eventType(),
-                    remoteStartId,
-                    evseId
             );
         }
 

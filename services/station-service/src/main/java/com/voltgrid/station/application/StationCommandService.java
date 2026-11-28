@@ -118,7 +118,9 @@ public class StationCommandService {
 
         // Build wire payload with raw idToken
         var wireNode = jsonMapper.createObjectNode();
-        wireNode.put("evseId", evseId);
+        if (evseId > 0) {
+            wireNode.put("evseId", evseId);
+        }
         wireNode.put("remoteStartId", parsedRemoteStartId);
         var wireIdToken = wireNode.putObject("idToken");
         wireIdToken.put("idToken", idToken != null ? idToken : "");
@@ -194,8 +196,8 @@ public class StationCommandService {
             String transactionId,
             String idempotencyKey
     ) {
-        if (transactionId == null || transactionId.isBlank()) {
-            throw new IllegalArgumentException("transactionId must not be blank");
+        if (!isValidTransactionId(transactionId)) {
+            throw new IllegalArgumentException("transactionId must contain 1 to 36 characters");
         }
 
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
@@ -343,9 +345,14 @@ public class StationCommandService {
             var node = jsonMapper.readTree(responsePayload);
             if (node.has("status") && "Accepted".equalsIgnoreCase(node.get("status").asText())) {
                 isAccepted = true;
+                var transactionId = node.get("transactionId");
+                if ("RequestStartTransaction".equals(entity.getAction()) && transactionId != null
+                        && transactionId.isTextual() && isValidTransactionId(transactionId.asText())) {
+                    entity.setTransactionId(transactionId.asText());
+                }
             }
         } catch (Exception ex) {
-            log.warn("Error parsing CALL_RESULT payload: {}", responsePayload);
+            log.warn("Invalid CALL_RESULT for command {}", entity.getId());
         }
 
         entity.setStatus(isAccepted ? CommandStatus.ACCEPTED : CommandStatus.REJECTED);
@@ -380,7 +387,9 @@ public class StationCommandService {
         }
 
         entity.setRespondedAt(Instant.now());
-        entity.setResponsePayload("{\"error\":\"" + errorCode + "\",\"description\":\"" + errorDescription + "\"}");
+        var errorPayload = jsonMapper.createObjectNode();
+        errorPayload.put("error", errorCode);
+        entity.setResponsePayload(jsonMapper.writeValueAsString(errorPayload));
         entity.setStatus(CommandStatus.REJECTED);
         repository.save(entity);
     }
@@ -390,92 +399,65 @@ public class StationCommandService {
             String stationId,
             String transactionId,
             String eventType,
+            String triggerReason,
             Integer remoteStartId,
             Integer evseId
     ) {
-        if ("Started".equalsIgnoreCase(eventType)) {
-            if (remoteStartId != null && remoteStartId > 0) {
-                var candidate = repository.findByStationIdAndActionAndRemoteStartIdAndStatus(
-                        stationId,
-                        "RequestStartTransaction",
-                        remoteStartId,
-                        CommandStatus.ACCEPTED
-                );
-                candidate.ifPresent(entity -> {
-                    entity.setStatus(CommandStatus.OBSERVED);
-                    entity.setObservedAt(Instant.now());
-                    entity.setTransactionId(transactionId);
-                    repository.save(entity);
-                    log.info("Correlated RequestStartTransaction {} with remoteStartId {} to transactionId {}",
-                            entity.getId(), remoteStartId, transactionId);
-                });
-            } else {
-                // If remoteStartId was not included in event, this is an unrelated local or autonomous transaction.
-                // It MUST NOT correlate with or overwrite remote start commands.
-                log.debug("TransactionEvent Started for station {} has no remoteStartId, skipping command correlation", stationId);
+        if (!isValidTransactionId(transactionId)) {
+            return;
+        }
+
+        boolean startObservation = "Started".equals(eventType)
+                || ("Updated".equals(eventType) && "RemoteStart".equals(triggerReason));
+        if (startObservation && remoteStartId != null && remoteStartId > 0
+                && evseId != null && evseId > 0) {
+            var candidates = repository.findFirst2ByStationIdAndActionAndRemoteStartIdOrderById(
+                    stationId, "RequestStartTransaction", remoteStartId);
+            if (candidates.size() == 1) {
+                var command = candidates.getFirst();
+                Integer expectedEvse = command.getEvseId();
+                if (expectedEvse != null && (expectedEvse == 0 || expectedEvse.equals(evseId))
+                        && (command.getTransactionId() == null || command.getTransactionId().equals(transactionId))) {
+                    observe(command, transactionId);
+                }
             }
-        } else if ("Ended".equalsIgnoreCase(eventType)) {
-            if (transactionId != null && !transactionId.isBlank()) {
-                var candidate = repository.findByStationIdAndActionAndTransactionIdAndStatus(
-                        stationId,
-                        "RequestStopTransaction",
-                        transactionId,
-                        CommandStatus.ACCEPTED
-                );
-                candidate.ifPresent(entity -> {
-                    entity.setStatus(CommandStatus.OBSERVED);
-                    entity.setObservedAt(Instant.now());
-                    repository.save(entity);
-                    log.info("Correlated RequestStopTransaction {} to transactionId {}", entity.getId(), transactionId);
-                });
+        } else if (("Ended".equals(eventType) || "Updated".equals(eventType))
+                && "RemoteStop".equals(triggerReason)) {
+            var candidates = repository.findFirst2ByStationIdAndActionAndTransactionIdOrderById(
+                    stationId, "RequestStopTransaction", transactionId);
+            if (candidates.size() == 1) {
+                observe(candidates.getFirst(), transactionId);
             }
         }
     }
 
-    public void correlateTransactionEvent(
-            String stationId,
-            String transactionId,
-            String eventType
-    ) {
-        correlateTransactionEvent(stationId, transactionId, eventType, null, null);
+    private void observe(StationCommandEntity command, String transactionId) {
+        switch (command.getStatus()) {
+            case REQUESTED, PENDING, ACCEPTED, TIMED_OUT, UNCERTAIN -> {
+                command.setStatus(CommandStatus.OBSERVED);
+                command.setObservedAt(Instant.now());
+                command.setTransactionId(transactionId);
+            }
+            case REJECTED, OBSERVED -> { }
+        }
     }
 
     @Transactional
     public void handleStationDisconnect(String stationId) {
-        var pending = repository.findByStationIdAndStatus(stationId, CommandStatus.PENDING);
-        for (var entity : pending) {
-            entity.setStatus(CommandStatus.UNCERTAIN);
-            entity.setResponsePayload("{\"status\":\"Uncertain\",\"reason\":\"Station disconnected before response\"}");
-            repository.save(entity);
-            log.info("Marked pending command {} as UNCERTAIN due to station disconnect", entity.getId());
-        }
-
-        var requested = repository.findByStationIdAndStatus(stationId, CommandStatus.REQUESTED);
-        for (var entity : requested) {
-            entity.setStatus(CommandStatus.REJECTED);
-            entity.setResponsePayload("{\"status\":\"Rejected\",\"reason\":\"Station disconnected before dispatch\"}");
-            repository.save(entity);
-        }
+        repository.updateDisconnectedCommands(stationId, CommandStatus.PENDING, CommandStatus.UNCERTAIN,
+                "{\"status\":\"Uncertain\",\"reason\":\"Station disconnected before response\"}");
+        repository.updateDisconnectedCommands(stationId, CommandStatus.REQUESTED, CommandStatus.UNCERTAIN,
+                "{\"status\":\"Uncertain\",\"reason\":\"Station disconnected during dispatch\"}");
     }
 
     @Transactional
     public void checkTimeouts(String stationId) {
-        Instant now = Instant.now();
-        var pending = repository.findByStationIdAndStatus(stationId, CommandStatus.PENDING);
-        for (var entity : pending) {
-            if (entity.getExpiresAt().isBefore(now)) {
-                entity.setStatus(CommandStatus.TIMED_OUT);
-                repository.save(entity);
-            }
-        }
+        repository.updateExpiredCommands(stationId, List.of(CommandStatus.REQUESTED, CommandStatus.PENDING),
+                CommandStatus.TIMED_OUT, Instant.now());
+    }
 
-        var requested = repository.findByStationIdAndStatus(stationId, CommandStatus.REQUESTED);
-        for (var entity : requested) {
-            if (entity.getExpiresAt().isBefore(now)) {
-                entity.setStatus(CommandStatus.TIMED_OUT);
-                repository.save(entity);
-            }
-        }
+    private static boolean isValidTransactionId(String transactionId) {
+        return transactionId != null && !transactionId.isBlank() && transactionId.length() <= 36;
     }
 
     public Optional<StationCommand> getCommand(UUID commandId) {
