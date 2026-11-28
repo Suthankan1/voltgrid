@@ -1,5 +1,6 @@
 package com.voltgrid.station.api.ocpp;
 
+import com.voltgrid.station.application.StationCommandService;
 import com.voltgrid.station.application.StationConnectivityService;
 import com.voltgrid.station.application.StationReader;
 import com.voltgrid.station.domain.StationStatus;
@@ -17,9 +18,14 @@ import org.springframework.web.socket.WebSocketSession;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -83,8 +89,9 @@ class MultiInstanceStationFencingIntegrationTests {
     @Test
     void shouldFenceStaleDisconnectFromPreviousInstanceWhenReconnectedToNewInstance() throws Exception {
         String stationId = "STATION-FENCE-001";
-        Instant t1 = Instant.parse("2026-11-27T10:00:00Z");
-        Instant t2 = Instant.parse("2026-11-27T10:00:05Z");
+        var commandService = mock(StationCommandService.class);
+        instance1Handler.setCommandService(commandService);
+        instance2Handler.setCommandService(commandService);
 
         // Simulate Instance 1 accepting connection for station
         WebSocketSession sessionInstance1 = mock(WebSocketSession.class);
@@ -118,6 +125,7 @@ class MultiInstanceStationFencingIntegrationTests {
 
         // Now Instance 1 tears down its old socket (delayed socket cleanup on previous instance)
         instance1Handler.afterConnectionClosed(sessionInstance1, CloseStatus.NORMAL);
+        verify(commandService, never()).handleStationDisconnect(stationId);
 
         // Invariant: Station must REMAIN ONLINE because Instance 1's generation is fenced and stale!
         var stationAfterStaleDisconnect = stationReader.findById(stationId).orElseThrow();
@@ -128,12 +136,48 @@ class MultiInstanceStationFencingIntegrationTests {
 
         // Instance 2 finally tears down active session -> station transitions to OFFLINE
         instance2Handler.afterConnectionClosed(sessionInstance2, CloseStatus.NORMAL);
+        verify(commandService).handleStationDisconnect(stationId);
 
         var stationAfterLegitDisconnect = stationReader.findById(stationId).orElseThrow();
         assertThat(stationAfterLegitDisconnect.status())
                 .as("Station transitions to OFFLINE when active generation disconnects")
                 .isEqualTo(StationStatus.OFFLINE);
         assertThat(stationAfterLegitDisconnect.statusSequenceNumber()).isGreaterThan(seq1);
+    }
+
+    @Test
+    void concurrentRegistrationsGetDistinctGenerations() throws Exception {
+        String stationId = "STATION-FENCE-001";
+        var start = new CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(() -> {
+                start.await();
+                return connectivityService.registerConnection(stationId, Instant.now());
+            });
+            var second = executor.submit(() -> {
+                start.await();
+                return connectivityService.registerConnection(stationId, Instant.now());
+            });
+
+            start.countDown();
+            long firstGeneration = first.get(10, TimeUnit.SECONDS);
+            long secondGeneration = second.get(10, TimeUnit.SECONDS);
+            assertThat(firstGeneration).isNotEqualTo(secondGeneration);
+            assertThat(stationReader.findById(stationId).orElseThrow().connectionGeneration())
+                    .isEqualTo(Math.max(firstGeneration, secondGeneration));
+        }
+    }
+
+    @Test
+    void rollsBackOfflineTransitionWhenDisconnectCleanupFails() {
+        String stationId = "STATION-FENCE-002";
+        long generation = connectivityService.registerConnection(stationId, Instant.now());
+
+        assertThatThrownBy(() -> connectivityService.markOfflineIfGenerationMatches(stationId, generation, () -> {
+            throw new IllegalStateException("Synthetic command cleanup failure");
+        })).isInstanceOf(IllegalStateException.class);
+
+        assertThat(stationReader.findById(stationId).orElseThrow().status()).isEqualTo(StationStatus.ONLINE);
     }
 
     @Test

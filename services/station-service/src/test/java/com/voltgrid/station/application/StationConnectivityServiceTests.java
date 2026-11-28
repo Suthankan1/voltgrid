@@ -54,7 +54,7 @@ class StationConnectivityServiceTests {
                 );
 
         when(
-                stationReader.findById(
+                stationReader.findByIdForUpdate(
                         "STATION-003"
                 )
         ).thenReturn(
@@ -143,7 +143,7 @@ class StationConnectivityServiceTests {
                 );
 
         when(
-                stationReader.findById(
+                stationReader.findByIdForUpdate(
                         "STATION-003"
                 )
         ).thenReturn(
@@ -198,7 +198,7 @@ class StationConnectivityServiceTests {
                 );
 
         when(
-                stationReader.findById(
+                stationReader.findByIdForUpdate(
                         "STATION-003"
                 )
         ).thenReturn(
@@ -248,7 +248,7 @@ class StationConnectivityServiceTests {
                 );
 
         when(
-                stationReader.findById(
+                stationReader.findByIdForUpdate(
                         "STATION-003"
                 )
         ).thenReturn(
@@ -341,7 +341,7 @@ class StationConnectivityServiceTests {
                 );
 
         when(
-                stationReader.findById(
+                stationReader.findByIdForUpdate(
                         "STATION-003"
                 )
         ).thenReturn(
@@ -387,7 +387,7 @@ class StationConnectivityServiceTests {
         var previousSeenAt = Instant.parse("2026-09-07T15:00:00Z");
         var heartbeatAt = Instant.parse("2026-09-07T15:30:00Z");
 
-        when(stationReader.findById("STATION-003"))
+        when(stationReader.findByIdForUpdate("STATION-003"))
                 .thenReturn(Optional.of(
                         new ChargingStation(
                                 "STATION-003",

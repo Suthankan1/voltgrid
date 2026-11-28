@@ -194,28 +194,22 @@ public class OcppWebSocketHandler
                 .getAttributes()
                 .get(OcppHandshakeInterceptor.STATION_ID_ATTRIBUTE);
 
-        if (stationId != null) {
-            Long generation = (Long) session
-                    .getAttributes()
-                    .get(CONNECTION_GENERATION_ATTRIBUTE);
+        if (stationId == null || !activeSessionMap.remove(stationId, session)) {
+            return;
+        }
 
-            activeSessionMap.computeIfPresent(stationId, (id, current) -> {
-                if (current != session) return current;
-                if (generation != null && generation > 0) {
-                    connectivityService.markOfflineIfGenerationMatches(id, generation);
-                } else {
-                    connectivityService.markOffline(id);
-                }
-                return null;
-            });
-
+        Long generation = (Long) session.getAttributes().get(CONNECTION_GENERATION_ATTRIBUTE);
+        Runnable onActiveDisconnect = () -> {
             if (commandService != null) {
-                try {
-                    commandService.handleStationDisconnect(stationId);
-                } catch (Exception ex) {
-                    // Do not fail close callback
-                }
+                commandService.handleStationDisconnect(stationId);
             }
+        };
+
+        if (generation != null && generation > 0) {
+            connectivityService.markOfflineIfGenerationMatches(stationId, generation, onActiveDisconnect);
+        } else {
+            connectivityService.markOffline(stationId);
+            onActiveDisconnect.run();
         }
     }
 

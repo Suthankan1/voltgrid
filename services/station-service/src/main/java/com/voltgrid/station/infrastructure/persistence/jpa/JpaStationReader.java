@@ -23,6 +23,11 @@ public class JpaStationReader implements StationReader {
     }
 
     @Override
+    public Optional<ChargingStation> findByIdForUpdate(String id) {
+        return repository.findByIdForUpdate(id).map(this::toDomain);
+    }
+
+    @Override
     public List<ChargingStation> findAll() {
         return repository.findAll()
                 .stream()

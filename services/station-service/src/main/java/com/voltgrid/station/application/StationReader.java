@@ -9,6 +9,10 @@ public interface StationReader {
 
     Optional<ChargingStation> findById(String id);
 
+    default Optional<ChargingStation> findByIdForUpdate(String id) {
+        return findById(id);
+    }
+
     List<ChargingStation> findAll();
 
     default List<ChargingStation> findByOrganizationId(String organizationId) {
