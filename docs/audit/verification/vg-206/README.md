@@ -5,3 +5,5 @@ This directory contains verification evidence for Milestone **VG-206: DevSecOps 
 ## Reports
 
 - [02-devsecops-and-supply-chain.md](02-devsecops-and-supply-chain.md) — GitHub Actions immutable SHA pinning, least-privilege permissions, concurrency controls, Gitleaks secret scanning, frontend SCA (pnpm audit), CycloneDX SBOM generation, and CodeQL SAST integration.
+
+- [03-java-advisory-remediation.md](03-java-advisory-remediation.md) — Java dependency fixes, manifest scan results and remaining supply-chain acceptance.
