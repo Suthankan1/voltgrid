@@ -58,9 +58,13 @@ jobs:
     name: Backend SBOM & SCA (CycloneDX)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
 
       - name: Set up Java 25
         uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
@@ -78,7 +82,29 @@ jobs:
       - name: Generate CycloneDX SBOM for Authorization Service
         run: ./services/authorization-service/mvnw -f services/authorization-service/pom.xml org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeAggregateBom
 
-      - name: Archive SBOM Artifacts
+      - name: Enforce Java dependency vulnerability policy
+        env:
+          TRIVY_IMAGE: aquasec/trivy@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb # 0.76.2
+        run: |
+          mkdir -p "${RUNNER_TEMP}/trivy-db" security-reports
+          docker run --rm -v "${RUNNER_TEMP}/trivy-db:/root/.cache/trivy" "$TRIVY_IMAGE" image --download-db-only
+          docker run --rm -v "${RUNNER_TEMP}/trivy-db:/root/.cache/trivy" "$TRIVY_IMAGE" version
+          result=0
+          for service in authorization operations station; do
+            if ! docker run --rm --network none \
+              -v "${RUNNER_TEMP}/trivy-db:/root/.cache/trivy" \
+              -v "$PWD/services/$service-service/target/bom.json:/fixture.json:ro" \
+              "$TRIVY_IMAGE" sbom --skip-db-update --pkg-types library \
+              --severity HIGH,CRITICAL --exit-code 42 --format json /fixture.json \
+              > "security-reports/$service.json"; then
+              printf '::error::Trivy policy check failed for %s dependencies\n' "$service"
+              result=1
+            fi
+          done
+          exit "$result"
+
+      - name: Archive SBOM and vulnerability reports
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.1
         with:
           name: voltgrid-sboms
@@ -89,4 +115,5 @@ jobs:
             services/operations-service/target/bom.xml
             services/authorization-service/target/bom.json
             services/authorization-service/target/bom.xml
+            security-reports/*.json
           retention-days: 14
