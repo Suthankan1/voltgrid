@@ -66,6 +66,6 @@ resource "aws_ecs_service" "station" {
   depends_on = [
     aws_iam_role_policy.station_task_execution_secrets,
     aws_ecs_service.authorization,
-    aws_lb_listener.http
+    aws_lb_listener.https
   ]
 }
