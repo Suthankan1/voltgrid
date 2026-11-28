@@ -4,7 +4,8 @@ import com.voltgrid.station.application.StationReader;
 import com.voltgrid.station.application.security.StationCredentialService;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
@@ -12,9 +13,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
+import java.math.BigInteger;
+import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -27,6 +31,7 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
     private final StationCredentialService credentialService;
     private final boolean authRequired;
     private final boolean requireSecureTransport;
+    private final List<TrustedProxyNetwork> trustedProxies;
     private MeterRegistry meterRegistry;
 
     @Autowired(required = false)
@@ -44,13 +49,42 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
     public OcppHandshakeInterceptor(
             StationReader stationReader,
             StationCredentialService credentialService,
-            @Value("${voltgrid.ocpp.auth-required:true}") boolean authRequired,
-            @Value("${voltgrid.ocpp.require-secure-transport:false}") boolean requireSecureTransport
+            Environment environment
+    ) {
+        this(stationReader, credentialService,
+                environment.getProperty("voltgrid.ocpp.auth-required", Boolean.class, true),
+                environment.getProperty("voltgrid.ocpp.require-secure-transport", Boolean.class,
+                        environment.acceptsProfiles(Profiles.of("prod", "production"))),
+                environment.getProperty("voltgrid.ocpp.trusted-proxy-cidrs", ""));
+        if (requireSecureTransport
+                && !"none".equalsIgnoreCase(environment.getProperty("server.forward-headers-strategy", "none"))) {
+            throw new IllegalStateException("Secure OCPP requires native request addresses and schemes");
+        }
+    }
+
+    public OcppHandshakeInterceptor(
+            StationReader stationReader,
+            StationCredentialService credentialService,
+            boolean authRequired,
+            boolean requireSecureTransport
+    ) {
+        this(stationReader, credentialService, authRequired, requireSecureTransport, "");
+    }
+
+    OcppHandshakeInterceptor(
+            StationReader stationReader,
+            StationCredentialService credentialService,
+            boolean authRequired,
+            boolean requireSecureTransport,
+            String trustedProxyCidrs
     ) {
         this.stationReader = stationReader;
         this.credentialService = credentialService;
         this.authRequired = authRequired;
         this.requireSecureTransport = requireSecureTransport;
+        this.trustedProxies = trustedProxyCidrs.isBlank() ? List.of()
+                : Arrays.stream(trustedProxyCidrs.split(",", -1)).map(String::trim)
+                        .map(TrustedProxyNetwork::parse).toList();
     }
 
     public OcppHandshakeInterceptor(StationReader stationReader) {
@@ -195,23 +229,45 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
     }
 
     private boolean isSecureTransport(ServerHttpRequest request) {
-        var protoHeaders = request.getHeaders().get("X-Forwarded-Proto");
-        if (protoHeaders != null && !protoHeaders.isEmpty()) {
-            var proto = protoHeaders.get(0).trim().toLowerCase();
-            if (proto.contains(",")) {
-                String[] hops = proto.split(",");
-                for (String hop : hops) {
-                    String cleanHop = hop.trim().toLowerCase();
-                    if (!"https".equals(cleanHop) && !"wss".equals(cleanHop)) {
-                        return false;
-                    }
-                }
-                return true;
-            }
-            return "https".equals(proto) || "wss".equals(proto);
+        if (isSecureScheme(request.getURI().getScheme())) {
+            return true;
         }
 
-        var scheme = request.getURI().getScheme();
-        return scheme != null && ("https".equalsIgnoreCase(scheme) || "wss".equalsIgnoreCase(scheme));
+        var peer = request.getRemoteAddress();
+        if (peer == null || peer.getAddress() == null
+                || trustedProxies.stream().noneMatch(network -> network.contains(peer.getAddress()))) {
+            return false;
+        }
+
+        var forwarded = request.getHeaders().getOrEmpty("X-Forwarded-Proto");
+        return forwarded.size() == 1 && isSecureScheme(forwarded.getFirst().trim());
+    }
+
+    private static boolean isSecureScheme(String protocol) {
+        return "https".equalsIgnoreCase(protocol) || "wss".equalsIgnoreCase(protocol);
+    }
+
+    private record TrustedProxyNetwork(BigInteger address, int addressBits, int hostBits) {
+
+        private static TrustedProxyNetwork parse(String cidr) {
+            var parts = cidr.split("/", -1);
+            if (parts.length != 2) {
+                throw new IllegalArgumentException("OCPP trusted proxy settings require CIDR notation");
+            }
+
+            byte[] address = InetAddress.ofLiteral(parts[0]).getAddress();
+            int addressBits = address.length * Byte.SIZE;
+            int prefixLength = Integer.parseInt(parts[1]);
+            if (prefixLength < 1 || prefixLength > addressBits) {
+                throw new IllegalArgumentException("Invalid OCPP trusted proxy CIDR prefix");
+            }
+            return new TrustedProxyNetwork(new BigInteger(1, address), addressBits, addressBits - prefixLength);
+        }
+
+        private boolean contains(InetAddress peer) {
+            byte[] address = peer.getAddress();
+            return address.length * Byte.SIZE == addressBits
+                    && this.address.xor(new BigInteger(1, address)).bitLength() <= hostBits;
+        }
     }
 }

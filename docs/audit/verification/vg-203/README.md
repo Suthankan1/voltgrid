@@ -11,3 +11,5 @@ This directory contains verification evidence for **[VG-203][P0] Transport encry
    - Backend transport security guards in Station, Operations, and Authorization services.
    - Complete positive and negative test results (plaintext rejection, wrong CA, missing service key, rogue forwarded headers).
    - Certificate and secret lifecycle / rotation runbook.
+
+- [03-ocpp-proxy-trust.md](03-ocpp-proxy-trust.md) — Native request and explicit proxy peer checks for OCPP transport.
