@@ -36,7 +36,7 @@ public class StationConnectivityService {
             String stationId,
             Instant seenAt
     ) {
-        var station = findStation(stationId);
+        var station = lockStation(stationId);
 
         var previousStatus = station.status();
         long newGeneration = station.connectionGeneration() + 1;
@@ -75,7 +75,7 @@ public class StationConnectivityService {
             String stationId,
             Instant seenAt
     ) {
-        var station = findStation(stationId);
+        var station = lockStation(stationId);
 
         var previousStatus = station.status();
         long newSequence = previousStatus != StationStatus.ONLINE
@@ -121,7 +121,16 @@ public class StationConnectivityService {
             String stationId,
             long expectedGeneration
     ) {
-        var station = findStation(stationId);
+        return markOfflineIfGenerationMatches(stationId, expectedGeneration, () -> { });
+    }
+
+    @Transactional
+    public boolean markOfflineIfGenerationMatches(
+            String stationId,
+            long expectedGeneration,
+            Runnable onActiveDisconnect
+    ) {
+        var station = lockStation(stationId);
 
         if (station.connectionGeneration() != expectedGeneration) {
             log.info("Ignoring stale disconnect for station {} with generation {} (active generation is {})",
@@ -129,6 +138,12 @@ public class StationConnectivityService {
             return false;
         }
 
+        markOffline(station);
+        onActiveDisconnect.run();
+        return true;
+    }
+
+    private void markOffline(ChargingStation station) {
         var previousStatus = station.status();
         var occurredAt = Instant.now();
         long newSequence = station.statusSequenceNumber() + 1;
@@ -155,16 +170,13 @@ public class StationConnectivityService {
                     newSequence
             );
         }
-
-        return true;
     }
 
     @Transactional
     public void markOffline(
             String stationId
     ) {
-        var station = findStation(stationId);
-        markOfflineIfGenerationMatches(stationId, station.connectionGeneration());
+        markOffline(lockStation(stationId));
     }
 
     @Transactional
@@ -172,7 +184,7 @@ public class StationConnectivityService {
             String stationId,
             Instant seenAt
     ) {
-        var station = findStation(stationId);
+        var station = lockStation(stationId);
 
         var previousStatus = station.status();
 
@@ -230,11 +242,11 @@ public class StationConnectivityService {
         );
     }
 
-    private ChargingStation findStation(
+    private ChargingStation lockStation(
             String stationId
     ) {
         return stationReader
-                .findById(
+                .findByIdForUpdate(
                         stationId
                 )
                 .orElseThrow(
